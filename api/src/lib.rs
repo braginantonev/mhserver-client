@@ -1,10 +1,14 @@
 pub mod ping;
 mod endpoints;
 
-struct ServerError(String);
+pub struct ServerError(String);
 
 impl ServerError {
-    fn new(description: &str) -> Self {
+    pub fn new(description: &str) -> Self {
         ServerError(description.to_string())
     }
+
+    pub fn to_string(self) -> String {
+        self.0
+    } 
 }
