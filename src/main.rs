@@ -9,44 +9,51 @@ slint::include_modules!();
 
 #[derive(Default, Clone)]
 struct ServerConnection {
-    client: Option<reqwest::Client>,
+    client: Arc<reqwest::Client>,
     addr: String,
 }
 
 impl ServerConnection {
     fn new(client: Client, addr: &str) -> Self {
-        Self { client: Some(client), addr: addr.to_string() }
+        Self { client: Arc::new(client), addr: addr.to_string() }
     }
 
-    fn set_from(&mut self, conn: ServerConnection) {
-        self.client = conn.client;
-        self.addr = conn.addr;
+    fn clone(&self) -> Self {
+        Self { client: Arc::clone(&self.client), addr: self.addr.clone() }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ApplicationState {
+pub enum States {
     Connection,
     Authorization
 }
 
-impl ApplicationState {
+impl States {
     pub fn next(&self) -> Self {
         match self {
-            ApplicationState::Connection => ApplicationState::Authorization,
-            ApplicationState::Authorization => todo!()
+            States::Connection => States::Authorization,
+            States::Authorization => todo!()
         }
     }
 }
 
-impl fmt::Display for ApplicationState {
+impl fmt::Display for States {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
+struct AppState(States);
+
+impl AppState {
+    fn set_state(&mut self, new_state: States) {
+        self.0 = new_state;
+    }
+}
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), slint::PlatformError>{
     let http_client = reqwest::Client::builder()
         .tls_info(true)
         .tls_backend_rustls()
@@ -55,31 +62,32 @@ async fn main() {
         .build()
         .expect("failed build http client");
 
-    let server_conn = Arc::new(Mutex::new(ServerConnection::default()));
+    let server_conn = ServerConnection::new(http_client, "");
 
     // Set first state
-    let mut app_state = ApplicationState::Connection;
+    let app_state = Arc::new(Mutex::new(AppState(States::Connection)));
 
-    let main_window = MainWindow::new().unwrap();
+    let main_window = MainWindow::new()?;
     let win_weak = main_window.as_weak();
 
     // Open first scene by state
-    win_weak.upgrade().unwrap().set_scene(app_state.to_shared_string());
+    win_weak.upgrade().unwrap().set_scene(app_state.lock().unwrap().0.to_shared_string());
 
     main_window.on_connect(move |server_addr| {
         let win = win_weak.clone();
-        let conn = Arc::clone(&server_conn);
 
-        let req_conn = ServerConnection::new(http_client.clone(), server_addr.as_str());
+        let state = Arc::clone(&app_state);
+        let mut conn = server_conn.clone();
+        conn.addr = server_addr.to_string();
 
         tokio::spawn(async move {
-            match connect::connect(req_conn.clone(), app_state).await {
+            let current_state = state.lock().unwrap().0;
+            match connect::connect(conn, current_state).await {
                 Ok(next_state) => {
-                    app_state = next_state;
-                    conn.lock().unwrap().set_from(req_conn);
+                    state.lock().unwrap().set_state(next_state);
 
                     win.upgrade_in_event_loop(move |main_window| {
-                        main_window.set_scene(app_state.to_shared_string());
+                        main_window.set_scene(state.lock().unwrap().0.to_shared_string());
                     }).unwrap()
                 },
                 Err(err) => println!("{err}")
@@ -87,5 +95,7 @@ async fn main() {
         });
     });
 
-    main_window.run().unwrap();
+    main_window.run()?;
+
+    Ok(())
 }
