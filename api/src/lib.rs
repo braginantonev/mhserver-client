@@ -8,7 +8,7 @@ impl ServerError {
         ServerError(description.to_string())
     }
 
-    pub fn to_string(self) -> String {
+    pub fn to_string(&self) -> String {
         self.0.clone()
     } 
 }
