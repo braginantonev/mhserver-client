@@ -9,6 +9,6 @@ impl ServerError {
     }
 
     pub fn to_string(self) -> String {
-        self.0
+        self.0.clone()
     } 
 }
