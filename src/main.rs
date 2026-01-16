@@ -2,18 +2,25 @@ mod connect;
 
 use {
     reqwest::Client, slint::ToSharedString, std::fmt,
+    std::sync::{Arc, Mutex},
 };
 
 slint::include_modules!();
 
+#[derive(Default, Clone)]
 struct ServerConnection {
-    client: reqwest::Client,
+    client: Option<reqwest::Client>,
     addr: String,
 }
 
 impl ServerConnection {
     fn new(client: Client, addr: &str) -> Self {
-        Self { client, addr: addr.to_string() }
+        Self { client: Some(client), addr: addr.to_string() }
+    }
+
+    fn set_from(&mut self, conn: ServerConnection) {
+        self.client = conn.client;
+        self.addr = conn.addr;
     }
 }
 
@@ -48,6 +55,8 @@ async fn main() {
         .build()
         .expect("failed build http client");
 
+    let server_conn = Arc::new(Mutex::new(ServerConnection::default()));
+
     // Set first state
     let mut app_state = ApplicationState::Connection;
 
@@ -59,13 +68,16 @@ async fn main() {
 
     main_window.on_connect(move |server_addr| {
         let win = win_weak.clone();
-        let conn = ServerConnection::new(http_client.clone(), server_addr.as_str());
+        let conn = Arc::clone(&server_conn);
+
+        let req_conn = ServerConnection::new(http_client.clone(), server_addr.as_str());
 
         tokio::spawn(async move {
-            match connect::connect(conn, app_state).await {
+            match connect::connect(req_conn.clone(), app_state).await {
                 Ok(next_state) => {
                     app_state = next_state;
-                    println!("{}", app_state.to_string());
+                    conn.lock().unwrap().set_from(req_conn);
+
                     win.upgrade_in_event_loop(move |main_window| {
                         main_window.set_scene(app_state.to_shared_string());
                     }).unwrap()
