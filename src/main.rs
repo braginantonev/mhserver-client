@@ -1,7 +1,45 @@
+mod connect;
+
+use {
+    reqwest::Client, slint::ToSharedString, std::fmt,
+};
+
 slint::include_modules!();
 
+struct ServerConnection {
+    client: reqwest::Client,
+    addr: String,
+}
+
+impl ServerConnection {
+    fn new(client: Client, addr: &str) -> Self {
+        Self { client, addr: addr.to_string() }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ApplicationState {
+    Connection,
+    Authorization
+}
+
+impl ApplicationState {
+    pub fn next(&self) -> Self {
+        match self {
+            ApplicationState::Connection => ApplicationState::Authorization,
+            ApplicationState::Authorization => todo!()
+        }
+    }
+}
+
+impl fmt::Display for ApplicationState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[tokio::main]
-async fn main() -> Result<(), slint::PlatformError> {
+async fn main() {
     let http_client = reqwest::Client::builder()
         .tls_info(true)
         .tls_backend_rustls()
@@ -10,27 +48,32 @@ async fn main() -> Result<(), slint::PlatformError> {
         .build()
         .expect("failed build http client");
 
-    let main_window = MainWindow::new()?;
-    //let win_weak = main_window.as_weak();
+    // Set first state
+    let mut app_state = ApplicationState::Connection;
+
+    let main_window = MainWindow::new().unwrap();
+    let win_weak = main_window.as_weak();
+
+    // Open first scene by state
+    win_weak.upgrade().unwrap().set_scene(app_state.to_shared_string());
 
     main_window.on_connect(move |server_addr| {
-        let client = http_client.clone();
+        let win = win_weak.clone();
+        let conn = ServerConnection::new(http_client.clone(), server_addr.as_str());
 
         tokio::spawn(async move {
-            println!("Подключение к {}", server_addr.as_str());
-
-            match api::ping::ping(client, server_addr.as_str()).await {
-                Ok(res) => {
-                    if res { println!("Подключение успешно") }
-                    else { println!("Сервер отключен или неверный ip") }
+            match connect::connect(conn, app_state).await {
+                Ok(next_state) => {
+                    app_state = next_state;
+                    println!("{}", app_state.to_string());
+                    win.upgrade_in_event_loop(move |main_window| {
+                        main_window.set_scene(app_state.to_shared_string());
+                    }).unwrap()
                 },
-                Err(err) => {
-                    println!("Ошибка подключения: {}", err.to_string())
-                }
-                
-            }
+                Err(err) => println!("{err}")
+            };
         });
     });
 
-    main_window.run()
+    main_window.run().unwrap();
 }
