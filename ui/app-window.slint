@@ -1,4 +1,55 @@
+import { Button, LineEdit } from "std-widgets.slint";
+component ConnectionFiled inherits Rectangle {
+    background: #0b0b0b80;
+
+    callback connect(string);
+
+    GridLayout {
+        spacing: 30px;
+        padding: 50px;
+
+        Row {
+            Text {
+                height: 35px;
+                horizontal-alignment: center;
+                text: @tr("Enter your server address");
+                font-size: 16px;
+            }
+        }
+        Row {
+            server_addr_line := LineEdit {
+                height: 30px;
+                width: 200px;
+                placeholder-text: @tr("e.g. localhost:8080");
+            }
+        }
+        Row {
+            Button {
+                height: 30px;
+                text: @tr("Connect");
+                clicked => {
+                    connect(server_addr_line.text)
+                }
+            }
+        }
+
+    }
+}
+
 export component MainWindow inherits Window {
-    width: 500px;
-    height: 400px;
+    title: "mhserver-client";
+
+    width: 800px;
+    height: 600px;
+    background: #2d2a29;
+
+    in property <string> scene: "connection";
+
+    conn_field := ConnectionFiled {
+        width: 300px;
+        height: 250px;
+        visible: scene == "connection";
+    }
+
+    callback connect <=> conn_field.connect;
 }
