@@ -40,9 +40,10 @@ async fn main() -> Result<(), slint::PlatformError>{
             let conn = conn.clone();
             conn.lock().unwrap().set_address(server_addr.as_str());
 
+            let current_state = win.upgrade().unwrap().get_state();
+
             tokio::spawn(async move {
                 let client = conn.lock().unwrap().get_client();
-                let current_state = win.unwrap().get_state();
                 
                 match connection::connect(client, server_addr.as_str(), current_state).await {
                     Ok(next_state) => {
