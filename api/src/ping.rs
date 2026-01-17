@@ -9,7 +9,7 @@ fn addr_formatted(addr: &str) -> bool {
 }
 
 // Return true if server available
-pub async fn ping(http_client: &reqwest::Client, addr: &str) -> Result<bool, ServerError> {
+pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<bool, ServerError> {
     if !addr_formatted(addr) {
         return Err(super::ServerError::new("address have bad syntax"))
     }

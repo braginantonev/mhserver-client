@@ -1,9 +1,9 @@
 use {
-    super::{ States, ServerConnection },
+    super::{ States },
 };
 
-pub async fn connect(conn: ServerConnection, state: States) -> Result<States, String> {
-    match api::ping::ping(conn.client.as_ref(), conn.addr.as_str()).await {
+pub async fn connect(client: reqwest::Client, addr: &str, state: States) -> Result<States, String> {
+    match api::ping::ping(client, addr).await {
         Ok(res) => {
             if res { Ok(state.next()) }
             else { Err("Wrong address or server is off".to_string()) }
