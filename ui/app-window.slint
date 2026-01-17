@@ -1,8 +1,8 @@
 import { Button, LineEdit } from "std-widgets.slint";
 component ConnectionFiled inherits Rectangle {
-    background: #0b0b0b80;
-
     callback connect(string);
+
+    background: #0b0b0b80;
 
     GridLayout {
         spacing: 30px;
@@ -32,9 +32,10 @@ component ConnectionFiled inherits Rectangle {
                 }
             }
         }
-
     }
 }
+
+export enum AppStates { Connection, Authorization }
 
 export component MainWindow inherits Window {
     title: "mhserver-client";
@@ -43,12 +44,16 @@ export component MainWindow inherits Window {
     height: 600px;
     background: #2d2a29;
 
-    in property <string> scene;
+    in property <AppStates> state: Connection;
+
+    callback print_addr();
+
+    
 
     conn_field := ConnectionFiled {
         width: 300px;
         height: 250px;
-        visible: scene == "Connection";
+        visible: state == AppStates.Connection;
     }
 
     callback connect <=> conn_field.connect;

@@ -1,53 +1,18 @@
-mod connect;
+mod connection;
 
 use {
-    reqwest::Client, slint::ToSharedString, std::fmt,
+    slint::ToSharedString,
     std::sync::{Arc, Mutex},
 };
 
 slint::include_modules!();
 
-struct ServerConnection {
-    client: reqwest::Client,
-    addr: String,
-}
-
-impl ServerConnection {
-    fn new(client: Client, addr: &str) -> Self {
-        Self { client: client, addr: addr.to_string() }
-    }
-
-    fn set_addr(&mut self, new_addr: &str) {
-        self.addr = new_addr.to_string()
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum States {
-    Connection,
-    Authorization
-}
-
-impl States {
-    pub fn next(&self) -> Self {
+impl AppStates {
+    fn next(&self) -> AppStates {
         match self {
-            States::Connection => States::Authorization,
-            States::Authorization => todo!()
+            AppStates::Connection => AppStates::Authorization,
+            AppStates::Authorization => todo!()
         }
-    }
-}
-
-impl fmt::Display for States {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-struct AppState(States);
-
-impl AppState {
-    fn set_state(&mut self, new_state: States) {
-        self.0 = new_state;
     }
 }
 
@@ -61,40 +26,35 @@ async fn main() -> Result<(), slint::PlatformError>{
         .build()
         .expect("failed build http client");
 
-    let server_conn = Arc::new(Mutex::new(ServerConnection::new(http_client, "")));
-
-    // Set first state
-    let app_state = Arc::new(Mutex::new(AppState(States::Connection)));
+    let server_conn = Arc::new(Mutex::new(connection::ServerConnection::new(http_client, "")));
 
     let main_window = MainWindow::new()?;
     let win_weak = main_window.as_weak();
 
-    // Open first scene by state
-    win_weak.upgrade().unwrap().set_scene(app_state.lock().unwrap().0.to_shared_string());
-
     main_window.on_connect({
         let conn = server_conn.clone();
-        let state = app_state.clone();
 
         move |server_addr| {
             let win = win_weak.clone();
 
-            let state = state.clone();
             let conn = conn.clone();
-            conn.lock().unwrap().set_addr(server_addr.as_str());
+            conn.lock().unwrap().set_address(server_addr.as_str());
 
             tokio::spawn(async move {
-                let current_state = state.lock().unwrap().0;
-                let client = conn.lock().unwrap().client.clone();
-                match connect::connect(client, server_addr.as_str(), current_state).await {
+                let client = conn.lock().unwrap().get_client();
+                let current_state = win.unwrap().get_state();
+                
+                match connection::connect(client, server_addr.as_str(), current_state).await {
                     Ok(next_state) => {
-                        state.lock().unwrap().set_state(next_state);
-
                         win.upgrade_in_event_loop(move |main_window| {
-                            main_window.set_scene(state.lock().unwrap().0.to_shared_string());
+                            main_window.set_state(next_state);
                         }).unwrap()
                     },
-                    Err(err) => println!("{err}")
+                    Err(err) => {
+                        win.upgrade_in_event_loop(move |main_window| {
+                            
+                        }).unwrap()
+                    }
                 };
             });
         }
