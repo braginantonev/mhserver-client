@@ -1,0 +1,45 @@
+import { Button, HorizontalBox } from "std-widgets.slint";
+
+export enum NotificationType { Info, Error }
+
+export component Notification {
+    in property <NotificationType> type: Info;
+    private property <length> background_padding: 15px;
+
+    callback setup();
+    callback close();
+
+    back := Rectangle {
+        background: #242829;
+        height: layout.height + background_padding;
+        width: layout.width + background_padding;
+        border-radius: background_padding;
+        border-width: 2px;
+    }
+
+    layout := HorizontalLayout {
+        spacing: 10px;
+        padding-right: 5px;
+        padding-left: 5px;
+
+        icon := Image {
+            preferred-height: 32px;
+            preferred-width: 32px;
+        }
+        text := Text {
+            vertical-alignment: center;
+            text: "123";
+        }
+    }
+
+    states [
+        info when type == NotificationType.Info: {
+            back.border-color: #4294ff;
+            icon.source: @image-url("assets/info.png");
+        }
+        error when type == NotificationType.Error: {
+            back.border-color: #ff0000;
+            icon.source: @image-url("assets/error.png");
+        }
+    ]
+}
