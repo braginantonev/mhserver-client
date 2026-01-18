@@ -15,6 +15,7 @@ export component Notification {
 
     private property <length> background_padding: 15px;
     private property <duration> animation_opacity_time: 300ms;
+    private property <float> components_opacity: 1.0;
 
     private property <NotificationInfo> next_info;
     private property <int> update_iteration; // for update timer
@@ -47,6 +48,7 @@ export component Notification {
         width: layout.width + background_padding;
         border-radius: background_padding;
         border-width: 2px;
+        opacity: components_opacity;
     }
 
     layout := HorizontalLayout {
@@ -57,10 +59,14 @@ export component Notification {
         icon := Image {
             preferred-height: 28px;
             preferred-width: 28px;
+            opacity: components_opacity;
         }
         text := Text {
+            max-width: 500px;
             vertical-alignment: center;
             text: info.text;
+            wrap: word-wrap;
+            opacity: components_opacity;
         }
 
         SimpleButton {
@@ -72,6 +78,8 @@ export component Notification {
 
             preferred-width: 12px;
             preferred-height: 12px;
+
+            opacity: components_opacity;
 
             clicked => { hided = !hided }
         }
@@ -87,9 +95,9 @@ export component Notification {
             icon.source: @image-url("assets/error.png");
         }
         hided when hided: {
-            root.opacity: 0.0;
+            components_opacity: 0.0;
             in-out {
-                animate root.opacity { duration: animation_opacity_time; } 
+                animate components_opacity { duration: animation_opacity_time; } 
             }
         }
     ]
