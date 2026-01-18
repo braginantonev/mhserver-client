@@ -2,12 +2,20 @@ import { Button, HorizontalBox } from "std-widgets.slint";
 
 export enum NotificationType { Info, Error }
 
+export struct NotificationInfo {
+    id: string,
+    type: NotificationType,
+    text: string,
+}
+
 export component Notification {
+    in property <bool> hided;
     in property <NotificationType> type: Info;
+    in property <string> text;
+
     private property <length> background_padding: 15px;
 
-    callback setup();
-    callback close();
+    animate x, y { duration: 500ms; }
 
     back := Rectangle {
         background: #242829;
@@ -28,18 +36,24 @@ export component Notification {
         }
         text := Text {
             vertical-alignment: center;
-            text: "123";
+            text: root.text;
         }
     }
 
     states [
-        info when type == NotificationType.Info: {
+        info when type == NotificationType.Info && !hided: {
             back.border-color: #4294ff;
             icon.source: @image-url("assets/info.png");
         }
-        error when type == NotificationType.Error: {
+        error when type == NotificationType.Error && !hided: {
             back.border-color: #ff0000;
             icon.source: @image-url("assets/error.png");
+        }
+        hided when hided: {
+            root.opacity: 0.0;
+            in-out {
+                animate root.opacity { duration: 800ms; } 
+            }
         }
     ]
 }
