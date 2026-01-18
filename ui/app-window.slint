@@ -1,8 +1,13 @@
-import { Button, LineEdit } from "std-widgets.slint";
+import { Button, LineEdit, ListView } from "std-widgets.slint";
+
+import { Notification, NotificationInfo, NotificationType } from "notification.slint";
+export { NotificationInfo }
+
 component ConnectionFiled inherits Rectangle {
     callback connect(string);
 
     background: #0b0b0b80;
+    border-radius: 15px;
 
     GridLayout {
         spacing: 30px;
@@ -38,23 +43,28 @@ component ConnectionFiled inherits Rectangle {
 export enum AppStates { Connection, Authorization }
 
 export component MainWindow inherits Window {
-    title: "mhserver-client";
+    in-out property <AppStates> state: Connection;  
 
+    title: "mhserver-client";
     width: 800px;
     height: 600px;
     background: #2d2a29;
 
-    in property <AppStates> state: Connection;
-
-    callback print_addr();
-
-    
+    main_notification := Notification {
+        x: root.width - self.width - 20px;
+        y: root.height - self.height - 20px;
+        hided: true;
+    }
 
     conn_field := ConnectionFiled {
         width: 300px;
         height: 250px;
         visible: state == AppStates.Connection;
     }
-
+    
+    // Connection field
     callback connect <=> conn_field.connect;
+
+    // Main notification
+    callback update_main_notification <=> main_notification.update;
 }

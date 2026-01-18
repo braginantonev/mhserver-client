@@ -10,13 +10,36 @@ export struct NotificationInfo {
 }
 
 export component Notification {
+    in-out property <NotificationInfo> info;
     in-out property <bool> hided;
-    in property <NotificationType> type: Info;
-    in property <string> text;
 
     private property <length> background_padding: 15px;
+    private property <duration> animation_opacity_time: 300ms;
 
-    animate x, y { duration: 500ms; }
+    private property <NotificationInfo> next_info;
+    private property <int> update_iteration; // for update timer
+    
+    callback update(NotificationInfo);
+    update(nx) => {
+        next_info = nx;
+        hided = true;
+        update_timer.start();
+    }
+  
+    update_timer := Timer {
+        interval: animation_opacity_time;
+        running: false;
+        triggered => {
+            if (update_iteration == 1) {
+                info = next_info;
+                hided = !hided;
+            } else if (update_iteration == 2) {
+                self.stop();
+                update_iteration = 0;
+            }
+            update_iteration += 1;
+        } 
+    }
 
     back := Rectangle {
         background: #242829;
@@ -37,7 +60,7 @@ export component Notification {
         }
         text := Text {
             vertical-alignment: center;
-            text: root.text;
+            text: info.text;
         }
 
         SimpleButton {
@@ -50,23 +73,23 @@ export component Notification {
             preferred-width: 12px;
             preferred-height: 12px;
 
-            clicked => { hided = !hided}
+            clicked => { hided = !hided }
         }
     }
 
     states [
-        info when type == NotificationType.Info && !hided: {
+        info when info.type == NotificationType.Info && !hided: {
             back.border-color: #4294ff;
             icon.source: @image-url("assets/info.png");
         }
-        error when type == NotificationType.Error && !hided: {
+        error when info.type == NotificationType.Error && !hided: {
             back.border-color: #ff0000;
             icon.source: @image-url("assets/error.png");
         }
         hided when hided: {
             root.opacity: 0.0;
             in-out {
-                animate root.opacity { duration: 300ms; } 
+                animate root.opacity { duration: animation_opacity_time; } 
             }
         }
     ]
