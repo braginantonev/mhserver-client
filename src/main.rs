@@ -1,8 +1,8 @@
 mod connection;
+mod notification;
 
 use {
-    slint::ToSharedString,
-    std::sync::{Arc, Mutex},
+    std::sync::{Arc, Mutex}
 };
 
 slint::include_modules!();
@@ -32,11 +32,11 @@ async fn main() -> Result<(), slint::PlatformError>{
     let win_weak = main_window.as_weak();
 
     main_window.on_connect({
+        let win = win_weak.clone();
         let conn = server_conn.clone();
 
         move |server_addr| {
-            let win = win_weak.clone();
-
+            let win = win.clone();
             let conn = conn.clone();
             conn.lock().unwrap().set_address(server_addr.as_str());
 
@@ -53,7 +53,7 @@ async fn main() -> Result<(), slint::PlatformError>{
                     },
                     Err(err) => {
                         win.upgrade_in_event_loop(move |main_window| {
-                            
+                            notification::show(main_window, err.as_str(), NotificationType::Error);
                         }).unwrap()
                     }
                 };
