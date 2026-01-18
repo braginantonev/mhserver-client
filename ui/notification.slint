@@ -1,4 +1,5 @@
 import { Button, HorizontalBox } from "std-widgets.slint";
+import { SimpleButton } from "button.slint";
 
 export enum NotificationType { Info, Error }
 
@@ -9,7 +10,7 @@ export struct NotificationInfo {
 }
 
 export component Notification {
-    in property <bool> hided;
+    in-out property <bool> hided;
     in property <NotificationType> type: Info;
     in property <string> text;
 
@@ -26,17 +27,30 @@ export component Notification {
     }
 
     layout := HorizontalLayout {
-        spacing: 10px;
-        padding-right: 5px;
-        padding-left: 5px;
+        spacing: 15px;
+        padding-right: 10px;
+        padding-left: 10px;
 
         icon := Image {
-            preferred-height: 32px;
-            preferred-width: 32px;
+            preferred-height: 28px;
+            preferred-width: 28px;
         }
         text := Text {
             vertical-alignment: center;
             text: root.text;
+        }
+
+        SimpleButton {
+            icon: @image-url("assets/close.png");
+            icon-color: whitesmoke;
+
+            hover-color: #36454F;
+            hover-max-opacity: 0.8;
+
+            preferred-width: 12px;
+            preferred-height: 12px;
+
+            clicked => { hided = !hided}
         }
     }
 
@@ -52,7 +66,7 @@ export component Notification {
         hided when hided: {
             root.opacity: 0.0;
             in-out {
-                animate root.opacity { duration: 800ms; } 
+                animate root.opacity { duration: 300ms; } 
             }
         }
     ]
