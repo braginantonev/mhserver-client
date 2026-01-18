@@ -1,0 +1,22 @@
+export component SimpleButton inherits TouchArea {
+    in property <image> icon <=> image.source;
+    in property <brush> icon-color <=> image.colorize;
+    
+    in property <brush> hover-color <=> cover.background;
+    in property <float> hover-max-opacity: 1.0;
+    in property <float> hover-min-opacity: 0.0;
+
+    cover := Rectangle {
+        width: root.width + 10px;
+        height: root.width + 10px;
+        border-radius: root.width / 2;
+
+        opacity: root.has-hover ? hover-max-opacity : hover-min-opacity;
+        animate opacity { duration: 150ms; }
+    }
+
+    image := Image {
+        height: root.preferred-height;
+        width: root.preferred-width;    
+    }
+}
