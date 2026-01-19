@@ -1,0 +1,25 @@
+export component BaseField inherits Rectangle {
+    in property <bool> enabled;
+
+    in property <duration> change-duration;
+
+    background: #0b0b0b80;
+    border-radius: 15px;
+
+    animate opacity, height, width {
+        duration: change-duration;
+        easing: ease-in-quart;
+    }
+
+    states [
+        enabled when enabled: {
+            opacity: 1.0;
+            visible: true;
+        }
+
+        enabled when !enabled: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+        }
+    ]
+}
