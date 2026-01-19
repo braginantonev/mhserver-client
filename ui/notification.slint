@@ -19,6 +19,8 @@ export component Notification {
 
     private property <NotificationInfo> next_info;
     private property <int> update_iteration; // for update timer
+
+    visible: components_opacity > 0;
     
     callback update(NotificationInfo);
     update(nx) => {
