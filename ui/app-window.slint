@@ -1,12 +1,17 @@
-import { Notification, NotificationInfo, NotificationType } from "notification.slint";
+import { Notification, NotificationInfo, NotificationType } from "components/notification.slint";
 export { NotificationInfo }
 
-import { ConnectionFiled } from "connection.slint";
+// Fields import
+import { ConnectionFiled } from "fields/connection.slint";
+import { AuthorizationField } from "fields/authorization.slint";
+import { BaseField } from "fields/base.slint";
 
 export enum AppStates { Connection, Authorization }
 
 export component MainWindow inherits Window {
-    in-out property <AppStates> state: Connection;  
+    in-out property <AppStates> state: Connection;
+
+    private property <duration> show-hide-duration: 400ms;
 
     title: "mhserver-client";
     width: 1280px;
@@ -19,13 +24,29 @@ export component MainWindow inherits Window {
         hided: true;
     }
 
-    conn_field := ConnectionFiled {
+    // Disabled by default
+    field := BaseField {
         width: 300px;
-        height: 250px;
-        x: self.width + root.width;
         enabled: false;
-    }
+        change-duration: show-hide-duration;
 
+        conn_field := ConnectionFiled {
+            height: 250px;
+            showed: false;
+            change-duration: show-hide-duration;
+        }
+
+        auth_field := AuthorizationField {
+            height: 300px;
+            showed: false;
+            change-duration: show-hide-duration;
+
+            auth => {
+                state = AppStates.Connection;
+            }
+        }
+    }
+    
     // Main notification
     callback update_main_notification <=> main_notification.update;
 
@@ -34,8 +55,15 @@ export component MainWindow inherits Window {
 
     states [
         connection when state == AppStates.Connection: {
-            conn_field.enabled: true;
-            conn_field.x: root.width / 2 - conn_field.width / 2;
+            field.enabled: true;
+            field.height: conn_field.height + 10px;
+            conn_field.showed: true;
+        }
+
+        authorization when state == AppStates.Authorization: {
+            field.enabled: true;
+            field.height: auth_field.height + 10px;
+            auth_field.showed: true;
         }
     ]
 }
