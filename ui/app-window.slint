@@ -22,7 +22,8 @@ export component MainWindow inherits Window {
     conn_field := ConnectionFiled {
         width: 300px;
         height: 250px;
-        visible: state == AppStates.Connection;
+        x: self.width + root.width;
+        enabled: false;
     }
 
     // Main notification
@@ -30,4 +31,11 @@ export component MainWindow inherits Window {
 
     // Connection field
     callback connect <=> conn_field.connect;
+
+    states [
+        connection when state == AppStates.Connection: {
+            conn_field.enabled: true;
+            conn_field.x: root.width / 2 - conn_field.width / 2;
+        }
+    ]
 }
