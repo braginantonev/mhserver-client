@@ -1,0 +1,72 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component AuthorizationField {
+    in property <bool> showed <=> button.enabled;
+    in property <duration> change-duration;
+
+    callback auth();
+
+    opacity: showed ? 1.0 : 0.0;
+    visible: self.opacity > 0;
+
+    GridLayout {
+        spacing: 20px;
+        padding: 50px;
+
+        Row {
+            Text {
+                height: 50px;
+                horizontal-alignment: center;
+                text: @tr("Authorization");
+                font-size: 18px;
+            }
+        }
+        Row {
+            username := LineEdit {
+                width: 200px;
+                placeholder-text: @tr("Username");
+            }
+        }
+        Row {
+            password := LineEdit {
+                width: 200px;
+                placeholder-text: @tr("Password");
+            }
+        }
+        Row {
+            button := Button {
+                height: 30px;
+                text: @tr("Login");
+                clicked => {
+                    auth();
+                }
+            }
+        }
+    }
+
+    states [
+        showed when showed: {
+            opacity: 1.0;
+            visible: true;
+
+            in {
+                animate opacity {
+                    delay: change-duration;
+                    duration: change-duration;
+                }
+            }
+        }
+
+        hided when !showed: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+
+            in {
+                animate opacity  {
+                    delay: 0;
+                    duration: change-duration;
+                }
+            }
+        }
+    ]
+}
