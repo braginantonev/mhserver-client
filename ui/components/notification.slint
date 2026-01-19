@@ -72,7 +72,7 @@ export component Notification {
         }
 
         SimpleButton {
-            icon: @image-url("assets/close.png");
+            icon: @image-url("../assets/close.png");
             icon-color: whitesmoke;
 
             hover-color: #36454F;
@@ -90,11 +90,11 @@ export component Notification {
     states [
         info when info.type == NotificationType.Info && !hided: {
             back.border-color: #4294ff;
-            icon.source: @image-url("assets/info.png");
+            icon.source: @image-url("../assets/info.png");
         }
         error when info.type == NotificationType.Error && !hided: {
             back.border-color: #ff0000;
-            icon.source: @image-url("assets/error.png");
+            icon.source: @image-url("../assets/error.png");
         }
         hided when hided: {
             components_opacity: 0.0;
