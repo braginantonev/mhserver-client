@@ -1,44 +1,7 @@
-import { Button, LineEdit, ListView } from "std-widgets.slint";
-
 import { Notification, NotificationInfo, NotificationType } from "notification.slint";
 export { NotificationInfo }
 
-component ConnectionFiled inherits Rectangle {
-    callback connect(string);
-
-    background: #0b0b0b80;
-    border-radius: 15px;
-
-    GridLayout {
-        spacing: 30px;
-        padding: 50px;
-
-        Row {
-            Text {
-                height: 35px;
-                horizontal-alignment: center;
-                text: @tr("Enter your server address");
-                font-size: 16px;
-            }
-        }
-        Row {
-            server_addr_line := LineEdit {
-                height: 30px;
-                width: 200px;
-                placeholder-text: @tr("e.g. localhost:8080");
-            }
-        }
-        Row {
-            Button {
-                height: 30px;
-                text: @tr("Connect");
-                clicked => {
-                    connect(server_addr_line.text)
-                }
-            }
-        }
-    }
-}
+import { ConnectionFiled } from "connection.slint";
 
 export enum AppStates { Connection, Authorization }
 
@@ -46,8 +9,8 @@ export component MainWindow inherits Window {
     in-out property <AppStates> state: Connection;  
 
     title: "mhserver-client";
-    width: 800px;
-    height: 600px;
+    width: 1280px;
+    height: 720px;
     background: #2d2a29;
 
     main_notification := Notification {
@@ -61,10 +24,10 @@ export component MainWindow inherits Window {
         height: 250px;
         visible: state == AppStates.Connection;
     }
-    
-    // Connection field
-    callback connect <=> conn_field.connect;
 
     // Main notification
     callback update_main_notification <=> main_notification.update;
+
+    // Connection field
+    callback connect <=> conn_field.connect;
 }
