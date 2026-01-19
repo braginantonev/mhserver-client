@@ -1,20 +1,10 @@
 import { Button, LineEdit } from "std-widgets.slint";
 
-export component ConnectionFiled inherits Rectangle {
-    in property <bool> enabled <=> conn_button.enabled;
+export component ConnectionFiled {
+    in property <bool> showed <=> conn_button.enabled;
+    in property <duration> change-duration;
+
     callback connect(string);
-
-    background: #0b0b0b80;
-    border-radius: 15px;
-
-    opacity: enabled ? 1.0 : 0.0;
-    visible: self.opacity > 0;
-
-    animate opacity, x {
-        delay: 100ms;
-        duration: 800ms;
-        easing: ease-in;
-    }
 
     GridLayout {
         spacing: 30px;
@@ -45,4 +35,30 @@ export component ConnectionFiled inherits Rectangle {
             }
         }
     }
+
+    states [
+        showed when showed: {
+            opacity: 1.0;
+            visible: true;
+
+            in {
+                animate opacity {
+                    delay: change-duration;
+                    duration: change-duration;
+                }
+            }
+        }
+
+        hided when !showed: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+
+            in {
+                animate opacity {
+                    delay: 0;
+                    duration: change-duration;
+                }
+            }
+        }
+    ]
 }
