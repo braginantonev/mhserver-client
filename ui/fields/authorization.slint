@@ -1,8 +1,8 @@
 import { Button, LineEdit } from "std-widgets.slint";
 import { BaseField } from "base.slint";
 
-export component AuthorizationField inherits BaseField {
-    callback auth(string, string);
+export component LoginField inherits BaseField {
+    callback login(string, string);
 
     GridLayout {
         spacing: 20px;
@@ -34,7 +34,7 @@ export component AuthorizationField inherits BaseField {
                 height: 30px;
                 text: @tr("Login");
                 clicked => {
-                    auth(username.text, password.text);
+                    login(username.text, password.text);
                 }
             }
         }

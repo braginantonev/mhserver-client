@@ -3,7 +3,7 @@ export { NotificationInfo }
 
 // Fields import
 import { ConnectionFiled } from "fields/connection.slint";
-import { AuthorizationField } from "fields/authorization.slint";
+import { LoginField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
 
 export enum AppStates { Connection, Authorization }
@@ -37,12 +37,12 @@ export component MainWindow inherits Window {
             change-duration: show-hide-duration;
         }
 
-        auth_field := AuthorizationField {
+        auth_field := LoginField {
             height: 300px;
             showed: false;
             change-duration: show-hide-duration;
 
-            auth => {
+            login => {
                 state = AppStates.Connection;
             }
         }
