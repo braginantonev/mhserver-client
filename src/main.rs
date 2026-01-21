@@ -10,8 +10,9 @@ slint::include_modules!();
 impl AppStates {
     fn next(&self) -> AppStates {
         match self {
-            AppStates::Connection => AppStates::Authorization,
-            AppStates::Authorization => todo!()
+            AppStates::Connection => AppStates::Login,
+            AppStates::Login => todo!(),
+            AppStates::Register => todo!()
         }
     }
 }

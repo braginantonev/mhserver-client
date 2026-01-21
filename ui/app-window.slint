@@ -3,10 +3,11 @@ export { NotificationInfo }
 
 // Fields import
 import { ConnectionFiled } from "fields/connection.slint";
-import { LoginField } from "fields/authorization.slint";
+import { LoginField, RegisterField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
+import { Button } from "std-widgets.slint";
 
-export enum AppStates { Connection, Authorization }
+export enum AppStates { Connection, Login, Register }
 
 export component MainWindow inherits Window {
     in-out property <AppStates> state: Connection;
@@ -24,30 +25,39 @@ export component MainWindow inherits Window {
         hided: true;
     }
 
-    // Disabled by default
-    field_back := FieldBackground {
-        enabled: false;
+    // Fields
+    Rectangle {
         width: 300px;
-        height: 0px;
-        change-duration: show-hide-duration;
+
+        field_back := FieldBackground {
+            enabled: false;
+            change-duration: show-hide-duration;
+        }
 
         conn_field := ConnectionFiled {
-            height: 250px;
             showed: false;
             change-duration: show-hide-duration;
         }
 
-        auth_field := LoginField {
-            height: 300px;
+        log_field := LoginField {
             showed: false;
             change-duration: show-hide-duration;
 
             login => {
-                state = AppStates.Connection;
+                state = AppStates.Register;
+            }
+        }
+
+        reg_field := RegisterField {
+            showed: false;
+            change-duration: show-hide-duration;
+
+            register => {
+                state = AppStates.Connection
             }
         }
     }
-    
+        
     // Main notification
     callback update_main_notification <=> main_notification.update;
 
@@ -55,16 +65,22 @@ export component MainWindow inherits Window {
     callback connect <=> conn_field.connect;
 
     states [
-        connection when state == AppStates.Connection: {
+        conn when state == AppStates.Connection: {
             field_back.enabled: true;
-            field_back.height: conn_field.height + 10px;
+            field_back.height: conn_field.height;
             conn_field.showed: true;
         }
 
-        authorization when state == AppStates.Authorization: {
+        login when state == AppStates.Login: {
             field_back.enabled: true;
-            field_back.height: auth_field.height + 10px;
-            auth_field.showed: true;
+            field_back.height: log_field.height;
+            log_field.showed: true;
+        }
+
+        reg when state == AppStates.Register: {
+            field_back.enabled: true;
+            field_back.height: reg_field.height;
+            reg_field.showed: true;
         }
     ]
 }
