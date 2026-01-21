@@ -1,41 +1,81 @@
 import { Button, LineEdit } from "std-widgets.slint";
-import { BaseField } from "base.slint";
+import { BaseGridField } from "base.slint";
 
-export component LoginField inherits BaseField {
+export component LoginField inherits BaseGridField {
     callback login(string, string);
 
-    GridLayout {
-        spacing: 20px;
-        padding: 50px;
+    height: 300px;
 
-        Row {
-            Text {
-                height: 50px;
-                horizontal-alignment: center;
-                text: @tr("Authorization");
-                font-size: 18px;
+    Row {
+        Text {
+            height: 50px;
+            horizontal-alignment: center;
+            text: @tr("Login");
+            font-size: 18px;
+        }
+    }
+    Row {
+        username := LineEdit {
+            height: 30px;
+            placeholder-text: @tr("Username");
+        }
+    }
+    Row {
+        password := LineEdit {
+            height: 30px;
+            placeholder-text: @tr("Password");
+        }
+    }
+    Row {
+        button := Button {
+            enabled: root.showed;
+            height: 30px;
+            text: @tr("Login");
+            clicked => {
+                login(username.text, password.text);
             }
         }
-        Row {
-            username := LineEdit {
-                width: 200px;
-                placeholder-text: @tr("Username");
-            }
+    }
+}
+
+export component RegisterField inherits BaseGridField {
+    callback register(string, string, string);
+
+    height: 350px;
+
+    Row {
+        Text {
+            height: 50px;
+            horizontal-alignment: center;
+            text: @tr("Registration");
+            font-size: 18px;
         }
-        Row {
-            password := LineEdit {
-                width: 200px;
-                placeholder-text: @tr("Password");
-            }
+    }
+    Row {
+        username := LineEdit {
+            height: 30px;
+            placeholder-text: @tr("Username");
         }
-        Row {
-            button := Button {
-                enabled: root.showed;
-                height: 30px;
-                text: @tr("Login");
-                clicked => {
-                    login(username.text, password.text);
-                }
+    }
+    Row {
+        password := LineEdit {
+            height: 30px;
+            placeholder-text: @tr("Password");
+        }
+    }
+    Row {
+        verify := LineEdit {
+            height: 30px;
+            placeholder-text: @tr("Verify password");
+        }
+    }
+    Row {
+        button := Button {
+            enabled: root.showed;
+            height: 30px;
+            text: @tr("Register");
+            clicked => {
+                register(username.text, password.text, verify.text);
             }
         }
     }
