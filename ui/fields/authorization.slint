@@ -1,10 +1,12 @@
 import { Button, LineEdit } from "std-widgets.slint";
 import { BaseGridField } from "base.slint";
+import { SimpleButton } from "../components/button.slint";
 
 export component LoginField inherits BaseGridField {
     callback login(string, string);
+    callback register_request();
 
-    height: 300px;
+    height: 310px;
 
     Row {
         Text {
@@ -27,7 +29,7 @@ export component LoginField inherits BaseGridField {
         }
     }
     Row {
-        button := Button {
+        Button {
             enabled: root.showed;
             height: 30px;
             text: @tr("Login");
@@ -36,12 +38,28 @@ export component LoginField inherits BaseGridField {
             }
         }
     }
+    Row {
+        SimpleButton {
+            vertical-stretch: 0;
+            text: @tr("Don't have account?");
+
+            hover-color: #36454F;
+            hover-border-radius: 8px;
+            hover-max-opacity: 0.35;
+
+            preferred-width: self.text-length;
+            preferred-height: 12px;
+
+            clicked => { register_request(); }
+        }
+    }
 }
 
 export component RegisterField inherits BaseGridField {
     callback register(string, string, string);
+    callback login_request();
 
-    height: 350px;
+    height: 360px;
 
     Row {
         Text {
@@ -70,13 +88,28 @@ export component RegisterField inherits BaseGridField {
         }
     }
     Row {
-        button := Button {
+        Button {
             enabled: root.showed;
             height: 30px;
             text: @tr("Register");
             clicked => {
                 register(username.text, password.text, verify.text);
             }
+        }
+    }
+    Row {
+        SimpleButton {
+            vertical-stretch: 0;
+            text: @tr("Have account?");
+
+            hover-color: #36454F;
+            hover-border-radius: 8px;
+            hover-max-opacity: 0.35;
+
+            preferred-width: self.text-length;
+            preferred-height: 12px;
+
+            clicked => { login_request(); }
         }
     }
 }
