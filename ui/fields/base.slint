@@ -1,4 +1,4 @@
-export component BaseField inherits Rectangle {
+export component FieldBackground inherits Rectangle {
     in property <bool> enabled;
 
     in property <duration> change-duration;
@@ -22,4 +22,37 @@ export component BaseField inherits Rectangle {
             visible: self.opacity > 0;
         }
     ]
+}
+
+export component BaseField {
+    in-out property <bool> showed;
+    in property <duration> change-duration;
+
+    states [
+        showed when showed: {
+            opacity: 1.0;
+            visible: true;
+
+            in {
+                animate opacity {
+                    delay: change-duration;
+                    duration: change-duration;
+                }
+            }
+        }
+
+        hided when !showed: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+
+            in {
+                animate opacity  {
+                    delay: 0;
+                    duration: change-duration;
+                }
+            }
+        }
+    ]
+
+    @children
 }

@@ -4,7 +4,7 @@ export { NotificationInfo }
 // Fields import
 import { ConnectionFiled } from "fields/connection.slint";
 import { AuthorizationField } from "fields/authorization.slint";
-import { BaseField } from "fields/base.slint";
+import { FieldBackground } from "fields/base.slint";
 
 export enum AppStates { Connection, Authorization }
 
@@ -25,9 +25,10 @@ export component MainWindow inherits Window {
     }
 
     // Disabled by default
-    field := BaseField {
-        width: 300px;
+    field_back := FieldBackground {
         enabled: false;
+        width: 300px;
+        height: 0px;
         change-duration: show-hide-duration;
 
         conn_field := ConnectionFiled {
@@ -55,14 +56,14 @@ export component MainWindow inherits Window {
 
     states [
         connection when state == AppStates.Connection: {
-            field.enabled: true;
-            field.height: conn_field.height + 10px;
+            field_back.enabled: true;
+            field_back.height: conn_field.height + 10px;
             conn_field.showed: true;
         }
 
         authorization when state == AppStates.Authorization: {
-            field.enabled: true;
-            field.height: auth_field.height + 10px;
+            field_back.enabled: true;
+            field_back.height: auth_field.height + 10px;
             auth_field.showed: true;
         }
     ]
