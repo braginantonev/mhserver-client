@@ -24,9 +24,12 @@ export component FieldBackground inherits Rectangle {
     ]
 }
 
-export component BaseField {
+export component BaseGridField inherits GridLayout {
     in-out property <bool> showed;
     in property <duration> change-duration;
+
+    spacing: 20px;
+    padding: 50px;
 
     states [
         showed when showed: {
