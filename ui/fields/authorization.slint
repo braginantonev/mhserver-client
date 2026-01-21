@@ -1,45 +1,40 @@
 import { Button, LineEdit } from "std-widgets.slint";
 
-export component AuthorizationField {
+export component AuthorizationField inherits GridLayout {
     in property <bool> showed <=> button.enabled;
     in property <duration> change-duration;
 
-    callback auth();
+    callback auth(string, string);
 
-    opacity: showed ? 1.0 : 0.0;
-    visible: self.opacity > 0;
+    spacing: 20px;
+    padding: 50px;
 
-    GridLayout {
-        spacing: 20px;
-        padding: 50px;
-
-        Row {
-            Text {
-                height: 50px;
-                horizontal-alignment: center;
-                text: @tr("Authorization");
-                font-size: 18px;
-            }
+    Row {
+        Text {
+            height: 50px;
+            horizontal-alignment: center;
+            text: @tr("Authorization");
+            font-size: 18px;
         }
-        Row {
-            username := LineEdit {
-                width: 200px;
-                placeholder-text: @tr("Username");
-            }
+    }
+    Row {
+        username := LineEdit {
+            width: 200px;
+            placeholder-text: @tr("Username");
         }
-        Row {
-            password := LineEdit {
-                width: 200px;
-                placeholder-text: @tr("Password");
-            }
+    }
+    Row {
+        password := LineEdit {
+            width: 200px;
+            placeholder-text: @tr("Password");
         }
-        Row {
-            button := Button {
-                height: 30px;
-                text: @tr("Login");
-                clicked => {
-                    auth();
-                }
+    }
+    Row {
+        button := Button {
+            height: 30px;
+            text: @tr("Login");
+            clicked => {
+                auth(username.text, password.text);
             }
         }
     }

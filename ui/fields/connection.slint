@@ -1,37 +1,35 @@
 import { Button, LineEdit } from "std-widgets.slint";
 
-export component ConnectionFiled {
+export component ConnectionFiled inherits GridLayout {
     in property <bool> showed <=> conn_button.enabled;
     in property <duration> change-duration;
 
     callback connect(string);
 
-    GridLayout {
-        spacing: 30px;
-        padding: 50px;
+    spacing: 30px;
+    padding: 50px;
 
-        Row {
-            Text {
-                height: 35px;
-                horizontal-alignment: center;
-                text: @tr("Enter your server address");
-                font-size: 16px;
-            }
+    Row {
+        Text {
+            height: 35px;
+            horizontal-alignment: center;
+            text: @tr("Enter your server address");
+            font-size: 16px;
         }
-        Row {
-            server_addr_line := LineEdit {
-                height: 30px;
-                width: 200px;
-                placeholder-text: @tr("e.g. localhost:8080");
-            }
+    }
+    Row {
+        server_addr_line := LineEdit {
+            height: 30px;
+            width: 200px;
+            placeholder-text: @tr("e.g. localhost:8080");
         }
-        Row {
-            conn_button := Button {
-                height: 30px;
-                text: @tr("Connect");
-                clicked => {
-                    connect(server_addr_line.text)
-                }
+    }
+    Row {
+        conn_button := Button {
+            height: 30px;
+            text: @tr("Connect");
+            clicked => {
+                connect(server_addr_line.text)
             }
         }
     }
