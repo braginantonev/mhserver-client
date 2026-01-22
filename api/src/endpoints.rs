@@ -1,6 +1,7 @@
 // mhserver api version: 1.3.0 (dev)
 
-pub const API_URL: &str = "/api/v1";
+pub const API_V1: &str = "/api/v1";
+pub const API_V2: &str = "/api/v2";
 
 /// Method - POST
 pub const PING: &str = "/ping";
