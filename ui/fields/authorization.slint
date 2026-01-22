@@ -23,7 +23,8 @@ export component LoginField inherits BaseGridField {
         }
     }
     Row {
-        password := LineEdit {
+        pass := LineEdit {
+            input-type: password;
             height: 30px;
             placeholder-text: @tr("Password");
         }
@@ -34,7 +35,7 @@ export component LoginField inherits BaseGridField {
             height: 30px;
             text: @tr("Login");
             clicked => {
-                login(username.text, password.text);
+                login(username.text, pass.text);
             }
         }
     }
@@ -76,13 +77,15 @@ export component RegisterField inherits BaseGridField {
         }
     }
     Row {
-        password := LineEdit {
+        pass := LineEdit {
+            input-type: password;
             height: 30px;
             placeholder-text: @tr("Password");
         }
     }
     Row {
         verify := LineEdit {
+            input-type: password;
             height: 30px;
             placeholder-text: @tr("Verify password");
         }
@@ -93,7 +96,7 @@ export component RegisterField inherits BaseGridField {
             height: 30px;
             text: @tr("Register");
             clicked => {
-                register(username.text, password.text, verify.text);
+                register(username.text, pass.text, verify.text);
             }
         }
     }
