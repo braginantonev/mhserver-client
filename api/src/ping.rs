@@ -10,7 +10,7 @@ pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<bool, Serv
         return Err(super::ServerError::new("address have bad syntax"))
     }
 
-    let resp =  http_client.post(format!("https://{}{}{}", addr, endpoints::API_URL, endpoints::PING))
+    let resp =  http_client.post(endpoints::build_url(addr, endpoints::API_URL, endpoints::PING))
         .send()
         .await;
 
