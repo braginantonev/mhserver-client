@@ -42,19 +42,13 @@ export component MainWindow inherits Window {
         log_field := LoginField {
             showed: false;
             change-duration: show-hide-duration;
-
-            login => {
-                state = AppStates.Register;
-            }
+            register_request => { state = AppStates.Register };
         }
 
         reg_field := RegisterField {
             showed: false;
             change-duration: show-hide-duration;
-
-            register => {
-                state = AppStates.Connection
-            }
+            login_request => { state = AppStates.Login };
         }
     }
         
@@ -63,6 +57,10 @@ export component MainWindow inherits Window {
 
     // Connection field
     callback connect <=> conn_field.connect;
+
+    // Authorization field
+    callback login <=> log_field.login;
+    callback register <=> reg_field.register;
 
     states [
         conn when state == AppStates.Connection: {
