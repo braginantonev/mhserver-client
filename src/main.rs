@@ -1,8 +1,10 @@
 mod connection;
 mod notification;
+mod authorization;
 
 use {
-    std::sync::{Arc, Mutex}
+    std::sync::{Arc, Mutex},
+    api::authorization::User,
 };
 
 slint::include_modules!();
@@ -42,6 +44,31 @@ async fn main() -> Result<(), slint::PlatformError>{
         let current_state = win.upgrade().unwrap().get_state();
 
         tokio::spawn(connection::connect(win, conn, current_state));
+    });
+
+    let call_win = win_weak.clone();
+    let call_conn = server_conn.clone();
+    main_window.on_login(move |username, password| {
+        let win = call_win.clone();
+        let conn = call_conn.clone();
+
+        tokio::spawn(authorization::login(win, conn, User::new(username.as_str(), password.as_str())));
+    });
+
+    let call_win = win_weak.clone();
+    let call_conn = server_conn.clone();
+    main_window.on_register(move |username, password, verify| {
+        let win = call_win.clone();
+        let conn = call_conn.clone();
+
+        if password != verify {
+            let _ = win.upgrade_in_event_loop(move |win| {
+                notification::show(win, "Password and verify password not ident!", NotificationType::Error);
+            });
+            return
+        }
+
+        tokio::spawn(authorization::register(win, conn, User::new(username.as_str(), password.as_str())));
     });
 
     main_window.run()?;
