@@ -6,7 +6,7 @@ use super::{endpoints, ServerError};
 // Return true if server available
 pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<bool, ServerError> {
     let addr_regexp = Regex::new(r"[a-z0-9:.]+[:][1-9][0-9]+").unwrap();
-    if addr_regexp.is_match(addr) {
+    if !addr_regexp.is_match(addr) {
         return Err(super::ServerError::new("address have bad syntax"))
     }
 
