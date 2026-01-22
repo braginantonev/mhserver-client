@@ -1,5 +1,5 @@
 use {
-    super::{ AppStates, MainWindow, NotificationType, notification },
+    super::{ AppStates, MainWindow, NotificationType, UiActions, notification },
     std::sync::{ Arc, Mutex },
     reqwest::Client, 
     slint::Weak,
@@ -30,17 +30,20 @@ impl ServerConnection {
 }
 
 pub async fn connect(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, current_state: AppStates) {
-    let client = conn.lock().unwrap().get_client();
-    let server_addr = conn.lock().unwrap().get_address();
+    let (client, server_addr) = {
+        let guard = conn.lock().unwrap();
+        (guard.get_client(), guard.get_address())
+    };
 
-    let resp = api::ping::ping(client, server_addr.as_str()).await;
+    let action = match api::ping::ping(client, server_addr.as_str()).await {
+        Ok(_) => UiActions::ChangeState(current_state.next()),
+        Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
+    };
 
     let _ = win.upgrade_in_event_loop(move |win| {
-        match resp {
-            Ok(res) => {
-                if res { win.set_state(current_state.next()); }
-            },
-            Err(err) => { notification::show(win, err.to_str(), NotificationType::Error); }
+        match action {
+            UiActions::ChangeState(next) => win.set_state(next),
+            UiActions::ShowNotification(err, r#type) => { notification::show(win, err.as_str(), r#type); }
         }
     });
 }

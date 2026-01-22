@@ -1,38 +1,54 @@
 use {
-    super::{ AppStates, MainWindow, NotificationType, notification, connection::ServerConnection },
-    std::sync::{ Arc, Mutex },
-    slint::Weak,
-    api::authorization::{ login_v1, register_v1, User },
+    super::{ 
+        connection::ServerConnection,
+        AppStates, MainWindow, NotificationType, UiActions,
+        notification, 
+    },
+    api::authorization::{ User, login_v1, register_v1 },
+    slint::Weak, 
+    std::sync::{ Arc, Mutex }
 };
 
 /// Return JWT token
 pub async fn login(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, user: User) -> Option<String> {
-    let client = conn.lock().unwrap().get_client();
-    let server_addr = conn.lock().unwrap().get_address();
+    let (client, server_addr) = {
+        let guard = conn.lock().unwrap();
+        (guard.get_client(), guard.get_address())
+    };
 
-    match login_v1(client, server_addr.as_str(), user).await {
-        Ok(jwt) => Some(jwt),
-        Err(err) => {
-            let _ = win.upgrade_in_event_loop(move |win| {
-                notification::show(win, err.to_str(), NotificationType::Error);
-            });
-            
-            None
-        }
-    }
+    let action = match login_v1(client, server_addr.as_str(), user).await {
+        Ok(jwt) => return Some(jwt),
+        Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
+    };
+
+    let _ = win.upgrade_in_event_loop(move |win| {
+        match action {
+            UiActions::ShowNotification(err, r#type) => {
+                notification::show(win, err.as_str(), r#type);
+            }
+            _ => (),
+        };   
+    });
+    
+    None
 }
 
 pub async fn register(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, user: User) {
-    let client = conn.lock().unwrap().get_client();
-    let server_addr = conn.lock().unwrap().get_address();
+    let (client, server_addr) = {
+        let guard = conn.lock().unwrap();
+        (guard.get_client(), guard.get_address())
+    };
 
-    let resp = register_v1(client, server_addr.as_str(), user).await;
+    let action = match register_v1(client, server_addr.as_str(), user).await {
+        Ok(_) => UiActions::ChangeState(AppStates::Login),
+        Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
+    };
 
     let _ = win.upgrade_in_event_loop(move |win| {
-        match resp {
-            Ok(_) => { win.set_state(AppStates::Login); },
-            Err(err) => {
-                notification::show(win, err.to_str(), NotificationType::Error);
+        match action {
+            UiActions::ChangeState(next) => { win.set_state(next); }
+            UiActions::ShowNotification(err, r#type) => { 
+                notification::show(win, err.as_str(), r#type);
             }
         };
     });
