@@ -32,13 +32,11 @@ async fn main() -> Result<(), slint::PlatformError>{
     let main_window = MainWindow::new()?;
     let win_weak = main_window.as_weak();
 
-    main_window.on_connect({
-        let win = win_weak.clone();
-        let conn = server_conn.clone();
-
-        move |server_addr| {
-            let win = win.clone();
-            let conn = conn.clone();
+    let call_win = win_weak.clone();
+    let call_conn = server_conn.clone();
+    main_window.on_connect(move |server_addr| {
+            let win = call_win.clone();
+            let conn = call_conn.clone();
             conn.lock().unwrap().set_address(server_addr.as_str());
 
             let current_state = win.upgrade().unwrap().get_state();
@@ -60,7 +58,7 @@ async fn main() -> Result<(), slint::PlatformError>{
                 };
             });
         }
-    });
+    );
 
     main_window.run()?;
 
