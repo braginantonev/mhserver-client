@@ -26,12 +26,14 @@ pub async fn register(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>,
     let client = conn.lock().unwrap().get_client();
     let server_addr = conn.lock().unwrap().get_address();
 
-    match register_v1(client, server_addr.as_str(), user).await {
-        Ok(_) => {},
-        Err(err) => {
-            let _ = win.upgrade_in_event_loop(move |win| {
+    let resp = register_v1(client, server_addr.as_str(), user).await;
+
+    let _ = win.upgrade_in_event_loop(move |win| {
+        match resp {
+            Ok(_) => { win.set_state(AppStates::Login); },
+            Err(err) => {
                 notification::show(win, err.to_str(), NotificationType::Error);
-            });
-        }
-    };
+            }
+        };
+    });
 }
