@@ -19,6 +19,11 @@ impl AppStates {
     }
 }
 
+enum UiActions {
+    ChangeState(AppStates),
+    ShowNotification(String, NotificationType)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), slint::PlatformError>{
     let http_client = reqwest::Client::builder()
