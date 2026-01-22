@@ -40,7 +40,7 @@ pub async fn connect(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, 
             Ok(res) => {
                 if res { win.set_state(current_state.next()); }
             },
-            Err(err) => { notification::show(win, err.to_string().as_str(), NotificationType::Error); }
+            Err(err) => { notification::show(win, err.to_str(), NotificationType::Error); }
         }
     });
 }
