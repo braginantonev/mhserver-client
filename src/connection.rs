@@ -1,6 +1,8 @@
 use {
-    super::{ AppStates },
-    reqwest::Client
+    super::{ AppStates, MainWindow, NotificationType, notification },
+    std::sync::{ Arc, Mutex },
+    reqwest::Client, 
+    slint::Weak,
 };
 
 pub struct ServerConnection {
@@ -27,12 +29,18 @@ impl ServerConnection {
     }
 }
 
-pub async fn connect(client: Client, addr: &str, state: AppStates) -> Result<AppStates, String> {
-    match api::ping::ping(client, addr).await {
-        Ok(res) => {
-            if res { Ok(state.next()) }
-            else { Err("Wrong address or server is off".to_string()) }
-        },
-        Err(err) => { Err(err.to_string()) }
-    }
+pub async fn connect(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, current_state: AppStates) {
+    let client = conn.lock().unwrap().get_client();
+    let server_addr = conn.lock().unwrap().get_address();
+
+    let resp = api::ping::ping(client, server_addr.as_str()).await;
+
+    let _ = win.upgrade_in_event_loop(move |win| {
+        match resp {
+            Ok(res) => {
+                if res { win.set_state(current_state.next()); }
+            },
+            Err(err) => { notification::show(win, err.to_string().as_str(), NotificationType::Error); }
+        }
+    });
 }

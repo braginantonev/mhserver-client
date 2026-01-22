@@ -35,30 +35,14 @@ async fn main() -> Result<(), slint::PlatformError>{
     let call_win = win_weak.clone();
     let call_conn = server_conn.clone();
     main_window.on_connect(move |server_addr| {
-            let win = call_win.clone();
-            let conn = call_conn.clone();
-            conn.lock().unwrap().set_address(server_addr.as_str());
+        let win = call_win.clone();
+        let conn = call_conn.clone();
+        conn.lock().unwrap().set_address(server_addr.as_str());
 
-            let current_state = win.upgrade().unwrap().get_state();
+        let current_state = win.upgrade().unwrap().get_state();
 
-            tokio::spawn(async move {
-                let client = conn.lock().unwrap().get_client();
-                
-                match connection::connect(client, server_addr.as_str(), current_state).await {
-                    Ok(next_state) => {
-                        win.upgrade_in_event_loop(move |main_window| {
-                            main_window.set_state(next_state);
-                        }).unwrap()
-                    },
-                    Err(err) => {
-                        win.upgrade_in_event_loop(move |main_window| {
-                            notification::show(main_window, err.as_str(), NotificationType::Error);
-                        }).unwrap()
-                    }
-                };
-            });
-        }
-    );
+        tokio::spawn(connection::connect(win, conn, current_state));
+    });
 
     main_window.run()?;
 
