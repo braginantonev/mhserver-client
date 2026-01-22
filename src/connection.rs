@@ -33,6 +33,6 @@ pub async fn connect(client: Client, addr: &str, state: AppStates) -> Result<App
             if res { Ok(state.next()) }
             else { Err("Wrong address or server is off".to_string()) }
         },
-        Err(err) => { Err(format!("Connection error: {}", err.to_string())) }
+        Err(err) => { Err(err.to_string()) }
     }
 }
