@@ -2890,9 +2890,11 @@ version = "0.1.0"
 dependencies = [
  "api",
  "reqwest",
+ "serde",
  "slint",
  "slint-build",
  "tokio",
+ "toml",
 ]
 
 [[package]]
