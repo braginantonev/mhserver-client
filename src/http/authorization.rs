@@ -1,8 +1,8 @@
 use {
-    super::{ 
-        connection::ServerConnection,
+    crate::{ 
+        ConnectionInfo,
         AppStates, MainWindow, NotificationType, UiActions,
-        notification, 
+        notification,
     },
     api::authorization::{ User, login_v1, register_v1 },
     slint::Weak, 
@@ -10,13 +10,8 @@ use {
 };
 
 /// Return JWT token
-pub async fn login(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, user: User) -> Option<String> {
-    let (client, server_addr) = {
-        let guard = conn.lock().unwrap();
-        (guard.get_client(), guard.get_address())
-    };
-
-    let action = match login_v1(client, server_addr.as_str(), user).await {
+pub async fn login(win: Weak<MainWindow>, conn: ConnectionInfo, user: User) -> Option<String> {
+    let action = match login_v1(conn.client, conn.server_address.as_str(), user).await {
         Ok(jwt) => return Some(jwt),
         Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
     };
@@ -33,13 +28,8 @@ pub async fn login(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, us
     None
 }
 
-pub async fn register(win: Weak<MainWindow>, conn: Arc<Mutex<ServerConnection>>, user: User) {
-    let (client, server_addr) = {
-        let guard = conn.lock().unwrap();
-        (guard.get_client(), guard.get_address())
-    };
-
-    let action = match register_v1(client, server_addr.as_str(), user).await {
+pub async fn register(win: Weak<MainWindow>, conn: ConnectionInfo, user: User) {
+    let action = match register_v1(conn.client, conn.server_address.as_str(), user).await {
         Ok(_) => UiActions::ChangeState(AppStates::Login),
         Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
     };
