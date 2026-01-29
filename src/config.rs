@@ -1,49 +1,66 @@
 use {
-    serde::{ Serialize, Deserialize },
-    std::{env, fs},
+    serde::{ Deserialize, Serialize },
+    std::{env, fs, io::Error, path::PathBuf},
 };
 
-#[cfg(target_os = "linux")]
-const CONFIG_PATH: &str = "/.config/mhserver-client";
+const CONFIG_PATH: &str = ".config/mhserver-client";
+const CONFIG_FILENAME: &str = "general.conf";
 
-#[cfg(target_os = "windows")]
-const CONFIG_PATH: &str = "\\AppData\\Local\\mhserver-client"; 
-
-fn config_path() -> String {
-    format!("{}/{}", env::home_dir().expect("failed get user home dir").display(), CONFIG_PATH)
+#[derive(Serialize, Deserialize, Default)]
+struct ServerCommunication {
+    server_address: String,
+    user_jwt: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
-    #[serde(rename = "ServerAddress")]
-    server_address: String,
+    #[serde(rename = "server_communication")]
+    srv_com: ServerCommunication,
+}
 
-    #[serde(rename = "UserJWT")]
-    user_jwt: String,
+fn config_dir() -> PathBuf {
+    env::home_dir().expect("failed get home dir").join(CONFIG_PATH)
+}
+
+fn config_file() -> PathBuf {
+    config_dir().join(CONFIG_FILENAME)
 }
 
 impl Config {
-    pub fn from_file() -> Result<Self, std::io::Error> {
-        match fs::read_to_string(config_path()) {
-            Ok(read) => Ok(toml::from_str::<Config>(read.as_str()).expect("failed convert toml file to Config")),
+    pub fn from_file() -> Result<Self, Error> {
+        match fs::read_to_string(config_file()) {
+            Ok(read) => Ok(toml::from_str(read.as_str()).expect("failed convert toml file to Config")),
             Err(err) => Err(err)
         }
     }
 
+    pub fn save_to_file(&self) {
+        if !fs::exists(config_file()).unwrap() {
+            let _ = fs::create_dir_all(config_dir());
+        }
+
+        let _ = fs::write(
+            config_file(),
+            toml::to_string_pretty(&self).expect("failed serialize config to string")
+        );
+    }
+
+    //* Server communication 
+
     pub fn get_server_address(&self) -> String {
-        self.server_address.clone()
+        self.srv_com.server_address.clone()
     }
 
     pub fn get_user_jwt(&self) -> String {
-        self.user_jwt.clone()
+        self.srv_com.user_jwt.clone()
     }
 
     pub fn set_address(&mut self, new_addr: &str) {
-        self.server_address = new_addr.to_string()
+        self.srv_com.server_address = new_addr.to_string()
     }
 
     pub fn set_user_jwt(&mut self, new_jwt: &str) {
-        self.user_jwt = new_jwt.to_string();
+        self.srv_com.user_jwt = new_jwt.to_string();
     }
 }
 
