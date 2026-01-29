@@ -63,20 +63,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Err(_) => Config::default()
     }));
 
-    let (preparing_tx, preparing_rx) = tokio::sync::mpsc::channel::<String>(1);
-    let preparing_rx = Arc::new(Mutex::new(preparing_rx));
+    let (preparing_tx, preparing_rx) = tokio::sync::broadcast::channel::<String>(2);
     
     // Setup server connection and jwt
     main_window.on_start_preparing({
         let win = win_weak.clone();
         let cfg = cfg.clone();
         let client = http_client.clone();
+        let rx = preparing_rx.resubscribe();
 
         move || {
             let win = win.clone();
             let cfg = cfg.clone();
             let client = client.clone(); 
-            let rx = preparing_rx.clone();
+            let mut rx = rx.resubscribe();
 
             tokio::spawn(async move {
                 let (server_address, jwt) = {
@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         });
 
                         // Wait jwt from login callback
-                        let server_address = rx.lock().await.recv().await.expect("failed receive address from chanel");
+                        let server_address = rx.recv().await.expect("failed receive address from chanel");
                         cfg.lock().await.set_address(server_address.as_str());
                     },
                     _ => {}
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
 
                 // Wait jwt from login callback
-                let jwt = rx.lock().await.recv().await.expect("failed receive jwt from channel");
+                let jwt = rx.recv().await.expect("failed receive jwt from channel");
                 {
                     let mut guard = cfg.lock().await;
                     guard.set_user_jwt(jwt.as_str());
@@ -118,8 +118,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     println!("end of preparing");
                     //win.set_state(AppStates::Main);
                 });
-
-                rx.lock().await.close();
             });
         }
     });
@@ -138,7 +136,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             tokio::spawn(async move {
                 if let Some(act) = match api::ping::ping(client, server_addr.as_str()).await {
                     Ok(_) => {
-                        match tx.send(server_addr.to_string()).await {
+                        match tx.send(server_addr.to_string()) {
                             Err(err) => Some(UiActions::ShowNotification(err.0, NotificationType::Error)),
                             _ => None
                         }
@@ -174,7 +172,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     ConnectionInfo::new(http_client, server_address.as_str()), 
                     User::new(username.as_str(), password.as_str())
                 ).await {
-                    tx.send(jwt).await.expect("failed to send jwt to channel");
+                    tx.send(jwt).expect("failed to send jwt to channel");
                 }
             });
         }
