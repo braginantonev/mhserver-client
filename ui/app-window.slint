@@ -7,10 +7,12 @@ import { LoginField, RegisterField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
 import { Button } from "std-widgets.slint";
 
-export enum AppStates { Connection, Login, Register }
+export enum PreparingStates { Normal, Connection, Login, Register }
+export enum AppStates { Preparing, Main }
 
 export component MainWindow inherits Window {
-    in-out property <AppStates> state: Connection;
+    in-out property <AppStates> state: Preparing;
+    in-out property <PreparingStates> prepare-state: Normal;
 
     private property <duration> show-hide-duration: 400ms;
 
@@ -42,16 +44,28 @@ export component MainWindow inherits Window {
         log_field := LoginField {
             showed: false;
             change-duration: show-hide-duration;
-            register_request => { state = AppStates.Register };
+            register_request => { prepare-state = PreparingStates.Register };
         }
 
         reg_field := RegisterField {
             showed: false;
             change-duration: show-hide-duration;
-            login_request => { state = AppStates.Login };
+            login_request => { prepare-state = PreparingStates.Login };
         }
     }
-        
+
+    // For a smooth startup
+    Timer {
+        interval: 250ms;
+        running: true;
+        triggered => {
+            self.running = false;
+            start_preparing();
+        }
+    }
+
+    callback start_preparing();
+
     // Main notification
     callback update_main_notification <=> main_notification.update;
 
@@ -63,19 +77,19 @@ export component MainWindow inherits Window {
     callback register <=> reg_field.register;
 
     states [
-        conn when state == AppStates.Connection: {
+        conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
             field_back.enabled: true;
             field_back.height: conn_field.height;
             conn_field.showed: true;
         }
 
-        login when state == AppStates.Login: {
+        login when state == AppStates.Preparing && prepare-state == PreparingStates.Login: {
             field_back.enabled: true;
             field_back.height: log_field.height;
             log_field.showed: true;
         }
 
-        reg when state == AppStates.Register: {
+        reg when state == AppStates.Preparing && prepare-state == PreparingStates.Register: {
             field_back.enabled: true;
             field_back.height: reg_field.height;
             reg_field.showed: true;
