@@ -1,6 +1,7 @@
 use {
     serde::{ Deserialize, Serialize },
-    std::{env, fs, io::Error, path::PathBuf},
+    std::{env, fs, path::PathBuf},
+    
     super::com::ServerComConfig,
 };
 
@@ -22,7 +23,7 @@ pub struct ApplicationConfig {
 }
 
 impl ApplicationConfig {
-    pub fn from_file() -> Result<Self, Error> {
+    pub fn from_file() -> Result<Self, std::io::Error> {
         match fs::read_to_string(config_file()) {
             Ok(read) => Ok(toml::from_str(read.as_str()).expect("failed convert toml file to Config")),
             Err(err) => Err(err)

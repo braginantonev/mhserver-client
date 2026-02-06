@@ -11,12 +11,12 @@ impl ServerComConfig {
         Self { server_address: srv_addr.to_owned(), user_jwt: user_jwt.to_owned() }
     }
 
-    pub fn server_address(&self) -> String {
-        self.server_address.clone()
+    pub fn server_address(&self) -> &str {
+        self.server_address.as_str()
     }
 
-    pub fn user_jwt(&self) -> String {
-        self.user_jwt.clone()
+    pub fn user_jwt(&self) -> &str {
+        self.user_jwt.as_str()
     }
 
     pub fn set_user_jwt(&mut self, new_user_jwt: &str) {
