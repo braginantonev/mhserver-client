@@ -1,6 +1,5 @@
 pub mod ping;
-pub mod authorization;
-
+pub mod auth;
 mod endpoints;
 
 pub struct ServerError(String);
