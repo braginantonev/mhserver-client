@@ -11,21 +11,25 @@ use {
 };
 
 pub struct Application {
+    ui_window: MainWindow,
     cfg: Arc<OnceCell<ApplicationConfig>>
 }
 
 impl Application {
     pub fn new() -> Result<Self, ApplicationError> {
-        Ok(Self { cfg: Arc::new(OnceCell::new()) })
-    }
-
-    pub fn run(&mut self) -> Result<(), ApplicationError> {
-        let main_window = match MainWindow::new() {
+        let win = match MainWindow::new() {
             Ok(win) => win,
             Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateWindow(err.to_string()))),
         };
 
-        let win_weak = main_window.as_weak();
+        Ok(Self{
+            ui_window: win, 
+            cfg: Arc::new(OnceCell::new()) 
+        })
+    }
+
+    pub fn run(&mut self) -> Result<(), ApplicationError> {
+        let win_weak = self.ui_window.as_weak();
 
         let http_client = match reqwest::Client::builder()
             .tls_info(true)
@@ -52,7 +56,7 @@ impl Application {
             }
         }));
 
-        main_window.on_change_preparing_state({
+        self.ui_window.on_change_preparing_state({
             let win = win_weak.clone();
             let main_cfg = self.cfg.clone();
             let pre_cfg = preparing_cfg.clone();
@@ -99,7 +103,7 @@ impl Application {
             }
         });
 
-        main_window.on_connect({
+        self.ui_window.on_connect({
             let win = win_weak.clone();
             let client = http_client.clone();
             let pre_cfg = preparing_cfg.clone();
@@ -121,7 +125,7 @@ impl Application {
             }
         });
 
-        main_window.on_login({
+        self.ui_window.on_login({
             let win = win_weak.clone();
             let service = auth_service.clone();
             let pre_cfg = preparing_cfg.clone();
@@ -145,7 +149,7 @@ impl Application {
             }
         });
 
-        main_window.on_register({
+        self.ui_window.on_register({
             let win = win_weak.clone();
             let service = auth_service.clone();
             let pre_cfg = preparing_cfg.clone();
@@ -169,7 +173,7 @@ impl Application {
             }
         });
 
-        match main_window.run() {
+        match self.ui_window.run() {
             Ok(_) => Ok(()),
             Err(err) => Err(ApplicationError::new(ApplicationErrors::WindowError(err.to_string())))
         }
