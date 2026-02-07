@@ -7,7 +7,7 @@ import { LoginField, RegisterField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
 import { Button } from "std-widgets.slint";
 
-export enum PreparingStates { Normal, Connection, Login, Register }
+export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
 export enum AppStates { Preparing, Main }
 
 export component MainWindow inherits Window {
@@ -60,11 +60,13 @@ export component MainWindow inherits Window {
         running: true;
         triggered => {
             self.running = false;
-            start_preparing();
+
+            // Use this callback to start preparing logic
+            change_preparing_state(PreparingStates.Normal);
         }
     }
 
-    callback start_preparing();
+    callback change_preparing_state(PreparingStates);
 
     // Main notification
     callback update_main_notification <=> main_notification.update;
