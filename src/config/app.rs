@@ -16,7 +16,7 @@ fn config_file() -> PathBuf {
     config_dir().join(CONFIG_FILENAME)
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ApplicationConfig {
     #[serde(rename = "server_communication")]
     srv_com: ServerComConfig,
@@ -43,5 +43,9 @@ impl ApplicationConfig {
 
     pub fn server_com_config(&self) -> &ServerComConfig {
         &self.srv_com
+    }
+
+    pub fn server_com_config_mut(&mut self) -> &mut ServerComConfig {
+        &mut self.srv_com
     }
 }

@@ -1,6 +1,6 @@
 use serde::{ Deserialize, Serialize };
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ServerComConfig {
     server_address: String,
     user_jwt: String,
