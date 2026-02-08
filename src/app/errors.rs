@@ -3,7 +3,6 @@ use std::error::Error;
 
 #[derive(Debug)]
 pub enum ApplicationErrors {
-    ConfigFileNotFound(String),
     FailedCreateWindow(String),
     FailedCreateHttpClient(String),
     WindowError(String)
@@ -12,7 +11,6 @@ pub enum ApplicationErrors {
 impl ApplicationErrors {
     fn name<'a>(&self) -> &'a str {
         match self {
-            ApplicationErrors::ConfigFileNotFound(_) => "config file not found",
             ApplicationErrors::FailedCreateWindow(_) => "failed create main window",
             ApplicationErrors::FailedCreateHttpClient(_) => "failed create client window",
             ApplicationErrors::WindowError(_) => "window error",
@@ -21,7 +19,6 @@ impl ApplicationErrors {
 
     fn desc(&self) -> &str {
         match self {
-            ApplicationErrors::ConfigFileNotFound(desc) => desc,
             ApplicationErrors::FailedCreateWindow(desc) => desc,
             ApplicationErrors::FailedCreateHttpClient(desc) => desc,
             ApplicationErrors::WindowError(desc) => desc,
@@ -36,7 +33,7 @@ pub struct ApplicationError {
 
 impl fmt::Display for ApplicationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "app error: {}\n", self.err.name());
+        let _ = write!(f, "app error: {}\n", self.err.name());
         write!(f, "error description: {}", self.err.desc())
     }
 }
