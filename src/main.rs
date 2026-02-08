@@ -26,7 +26,7 @@ impl PreparingStates {
 #[tokio::main]
 async fn main() -> Result<(), app::errors::ApplicationError> {
     let mut app = app::Application::new()?;
-
+    
     app.run()?;
 
     Ok(())

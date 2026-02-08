@@ -1,5 +1,10 @@
 use {
-    crate::{NotificationType, actions::UiActions, app::{Application, ApplicationConfig}, service::auth},
+    crate::{
+        NotificationType, 
+        actions::UiActions, 
+        app::{Application, ApplicationConfig},
+        service::auth
+    },
     slint::ComponentHandle, 
     std::sync::Arc,
     tokio::sync::RwLock,

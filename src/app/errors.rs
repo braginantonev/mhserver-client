@@ -1,5 +1,7 @@
-use std::fmt;
-use std::error::Error;
+use std::{
+    error::Error,
+    fmt, 
+};
 
 #[derive(Debug)]
 pub enum ApplicationErrors {

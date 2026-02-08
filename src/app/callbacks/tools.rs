@@ -1,5 +1,9 @@
 use {
-    crate::{NotificationType, PreparingStates, actions::UiActions, app::{Application, ApplicationConfig}},
+    crate::{
+        NotificationType, PreparingStates, 
+        actions::UiActions, 
+        app::{Application, ApplicationConfig}
+    },
     slint::ComponentHandle, 
     std::sync::Arc,
     tokio::sync::RwLock,

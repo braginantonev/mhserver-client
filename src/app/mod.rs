@@ -3,7 +3,9 @@ pub mod callbacks;
 
 use {
     crate::{
-        MainWindow, NotificationType, PreparingStates, actions::UiActions, config::app::ApplicationConfig, service::*
+        MainWindow, 
+        config::app::ApplicationConfig, 
+        service::*
     },
     errors::{ApplicationError, ApplicationErrors},
     slint::ComponentHandle, 
