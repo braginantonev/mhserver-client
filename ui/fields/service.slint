@@ -1,0 +1,68 @@
+import { FieldBackground } from "base.slint";
+import { SimpleButton } from "../components/button.slint";
+
+//* From mhserver-api 1.3.x
+// Note: AI - LLM service
+export enum Services { Files, Music, Images, AI }
+
+component ServiceButton inherits SimpleButton {
+    preferred-height: 45px;
+    preferred-width: 45px;
+
+    hover-color: #36454F;
+    hover-border-radius: 8px;
+    hover-max-opacity: 0.35;
+
+    icon-color: white;
+}
+
+export component ServiceField inherits FieldBackground {
+    callback service_triggered(Services);
+
+    width: 65px;
+
+    border-radius: 0px;
+    border-bottom-right-radius: 15px;
+    border-top-right-radius: 15px;
+
+    field-color: #000907;
+
+    VerticalLayout {
+        y: 5px;
+        height: (50px + self.spacing) * 4;
+
+        alignment: space-around;
+
+        padding: 10px;
+        spacing: 15px;
+        
+        ServiceButton {
+            icon: @image-url("../assets/files-service.png");
+            clicked => { service_triggered(Services.Files) }
+        }
+
+        ServiceButton {
+            icon: @image-url("../assets/images-service.png");
+            clicked => { service_triggered(Services.Images) }
+        }
+
+        ServiceButton {
+            icon: @image-url("../assets/music-service.png");
+            clicked => { service_triggered(Services.Music) }
+        }
+
+        ServiceButton {
+            icon: @image-url("../assets/llm-service.png");
+            clicked => { service_triggered(Services.AI) }
+        }
+    }
+
+    ServiceButton {
+        preferred-width: 30px;
+        preferred-height: 30px;
+
+        y: root.height / 2 - self.preferred-height - 5px;
+
+        icon: @image-url("../assets/settings.png");
+    }
+}

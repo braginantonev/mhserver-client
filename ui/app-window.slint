@@ -6,12 +6,13 @@ import { ConnectionFiled } from "fields/connection.slint";
 import { LoginField, RegisterField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
 import { Button } from "std-widgets.slint";
+import { ServiceField } from "fields/service.slint";
 
 export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
 export enum AppStates { Preparing, Main }
 
 export component MainWindow inherits Window {
-    in-out property <AppStates> state: Preparing;
+    in-out property <AppStates> state: Main;
     in-out property <PreparingStates> prepare-state: Normal;
 
     private property <duration> show-hide-duration: 400ms;
@@ -32,6 +33,7 @@ export component MainWindow inherits Window {
         width: 300px;
 
         field_back := FieldBackground {
+            field-color: #0b0b0b80;
             enabled: false;
             change-duration: show-hide-duration;
         }
@@ -54,10 +56,15 @@ export component MainWindow inherits Window {
         }
     }
 
+    service_field := ServiceField {
+        x: 0px;
+        enabled: false;
+    }
+
     // For a smooth startup
     Timer {
         interval: 250ms;
-        running: true;
+        running: false;
         triggered => {
             self.running = false;
 
@@ -95,6 +102,10 @@ export component MainWindow inherits Window {
             field_back.enabled: true;
             field_back.height: reg_field.height;
             reg_field.showed: true;
+        }
+        
+        main when state == AppStates.Main: {
+            service_field.enabled: true;
         }
     ]
 }
