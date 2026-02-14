@@ -1,9 +1,8 @@
 export component FieldBackground inherits Rectangle {
     in property <bool> enabled;
-
     in property <duration> change-duration;
+    in property <brush> field-color <=> self.background;
 
-    background: #0b0b0b80;
     border-radius: 15px;
 
     animate opacity, height, width {
