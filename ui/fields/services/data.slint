@@ -1,0 +1,51 @@
+import { FieldBackground } from "../base.slint";
+import { SimpleButton } from "../../components/button.slint";
+
+export struct File {
+    name: string,
+    icon: image,
+    server_path: string,
+}
+
+export component DataServiceField inherits FieldBackground {
+    in property <[File]> showed_files;
+    in property <length> tile-width: 64px;
+    in property <length> tile-height: 64px;
+
+    private property <length> grid-spacing: 30px;
+    private property <int> cols-count: self.width / (tile-width + grid-spacing);
+    private property <int> rows: Math.ceil(showed_files.length / cols-count);
+
+    callback file_opened(string);
+    callback make_dir();
+    callback remove_dir();
+    callback save_file();
+    callback delete_file();
+
+    GridLayout {
+        spacing: grid-spacing;
+        padding: 20px;
+        y: 0px;
+
+        height: rows * (tile-height + self.spacing) + self.padding * 2;
+
+        for file[i] in showed_files: SimpleButton {
+            col: i.mod(cols-count);
+            row: i / cols-count;
+            preferred-height: tile-height;
+            preferred-width: tile-width;
+            icon: file.icon;
+
+            hover-color: #36454F;
+            hover-border-radius: 8px;
+            hover-max-opacity: 0.25;
+            //text: file.name;
+
+            clicked => {
+                debug(parent.height, cols-count, rows);
+                file_opened(file.name);
+                debug("clicked", file.name, "file");
+            }
+        }
+    }
+}
