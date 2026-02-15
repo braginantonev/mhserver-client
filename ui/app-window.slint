@@ -1,12 +1,15 @@
 import { Notification, NotificationInfo, NotificationType } from "components/notification.slint";
 export { NotificationInfo }
 
-// Fields import
+//* Fields import
 import { ConnectionFiled } from "fields/connection.slint";
 import { LoginField, RegisterField } from "fields/authorization.slint";
 import { FieldBackground } from "fields/base.slint";
 import { Button } from "std-widgets.slint";
 import { ServiceField, Services } from "fields/service.slint";
+
+// Services
+import { DataServiceField } from "fields/services/data.slint";
 
 export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
 export enum AppStates { Preparing, Main }
@@ -62,6 +65,12 @@ export component MainWindow inherits Window {
         enabled: false;
     }
 
+    data_service_field := DataServiceField {
+        width: root.width - service_field.width - 20px;
+        x: service_field.width + 20px;
+        enabled: false;
+    }
+
     // For a smooth startup
     Timer {
         interval: 250ms;
@@ -108,8 +117,13 @@ export component MainWindow inherits Window {
             reg_field.showed: true;
         }
         
-        main when state == AppStates.Main: {
+        main_empty when state == AppStates.Main && active-service == Services.Empty: {
             service_field.enabled: true;
+        }
+
+        main_files when state == AppStates.Main && active-service == Services.Files: {
+            service_field.enabled: true;
+            data_service_field.enabled: true;
         }
     ]
 }
