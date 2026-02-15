@@ -1,7 +1,6 @@
-// mhserver api version: 1.3.0 (dev)
+// mhserver api version: 1.2.0 (dev)
 
 pub const API_V1: &str = "/api/v1";
-pub const API_V2: &str = "/api/v2";
 
 /// Method - POST
 pub const PING: &str = "/ping";
@@ -32,10 +31,16 @@ pub mod data {
     pub const GET_SUM: &str = "/files/{uuid}/sum";
 
     /// Method - GET
-    pub const GET_FILES_LIST: &str = "/files/list";
+    pub const GET_FILES: &str = "/files";
 
     /// Method - GET
     pub const GET_AVAILABLE_SPACE: &str = "/files/space";
+
+    /// Method - POST
+    pub const CREATE_DIR: &str = "/files/mkdir";
+
+    /// Method - POST
+    pub const REMOVE_DIR: &str = "/files/rmdir";
 }
 
 /// Build a standard URL, with https.
