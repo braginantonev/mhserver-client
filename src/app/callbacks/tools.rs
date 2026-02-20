@@ -2,7 +2,7 @@ use {
     crate::{
         NotificationType, PreparingStates, 
         actions::UiActions, 
-        app::{Application, ApplicationConfig}
+        app::{Application, ApplicationConfig},
     },
     slint::ComponentHandle, 
     std::sync::Arc,
@@ -46,18 +46,41 @@ impl Application {
                             })
                         }
                         PreparingStates::End => {
-                            if main_cfg.set(pre_cfg.read().await.clone()).is_err() {
-                                panic!("failed init main config") // ! For debug only
-                            };
+                            let prepared_cfg = pre_cfg.read().await.clone();
 
-                            main_cfg.get().unwrap().save_to_file();
-                            println!("end of preparing");
+                            main_cfg.write().await.update_from_self(prepared_cfg);
+                            main_cfg.read().await.save_to_file();
+
+                            let _ = win.upgrade_in_event_loop(|win| {
+                                win.invoke_update_services();
+                            });
+
+                            println!("end preparing");
 
                             UiActions::ChangeAppState(crate::AppStates::Main)
                         }
                         _ => UiActions::ShowNotification(format!("unexpected preparing state: {:?}", new_preparing_state), NotificationType::Info)
                     }.run_in_event_loop(win);
                 });
+            }
+        });
+
+        self.ui_window.on_update_services({
+            let main_cfg = self.cfg.clone();
+            let services = self.services.clone();
+
+            move || {
+                let main_cfg = main_cfg.clone();
+                let services = services.clone();
+
+                for service in services {
+                    let cfg = main_cfg.clone();
+
+                    tokio::spawn(async move {
+                        let cfg = cfg.read().await.clone();
+                        service.write().await.update_config_from_app(cfg);
+                    });
+                }
             }
         });
 
@@ -84,4 +107,3 @@ impl Application {
         });
     }
 }
-
