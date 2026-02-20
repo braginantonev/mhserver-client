@@ -1,6 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingStates, actions::UiActions
+        NotificationType, PreparingStates, actions::UiActions,
     },
     api::auth::*,
     reqwest::Client,
@@ -32,4 +32,9 @@ impl Authenticator {
             Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
         }
     }
+}
+
+impl super::Service for Authenticator {
+    //Todo: delete this shit
+    fn update_config_from_app(&mut self, _app_cfg: crate::config::app::ApplicationConfig) {}
 }
