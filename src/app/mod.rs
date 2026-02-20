@@ -6,20 +6,21 @@ use {
         MainWindow, 
         config::app::ApplicationConfig, 
         service::*
-    },
-    errors::{ApplicationError, ApplicationErrors},
-    slint::ComponentHandle, 
-    std::sync::Arc,
-    tokio::sync::OnceCell,
+    }, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 
 pub struct Application {
     ui_window: MainWindow,
     http_client: reqwest::Client,
-    cfg: Arc<OnceCell<ApplicationConfig>>
+    cfg: Arc<RwLock<ApplicationConfig>>,
+    services: Vec<Arc<RwLock<dyn Service + Send + Sync>>>
 }
 
 impl Application {
+    fn add_service<T: Service + Send + Sync + 'static>(&mut self, service: Arc<RwLock<T>>) {
+        self.services.push(service);
+    }
+
     pub fn new() -> Result<Self, ApplicationError> {
         let win = match MainWindow::new() {
             Ok(win) => win,
@@ -39,11 +40,12 @@ impl Application {
         Ok(Self{
             ui_window: win,
             http_client: http_client,
-            cfg: Arc::new(OnceCell::new()) 
+            cfg: Arc::new(RwLock::new(ApplicationConfig::default())) ,
+            services: Vec::new()
         })
     }
 
-    pub fn run(&mut self) -> Result<(), ApplicationError> {
+    pub async fn run(&mut self) -> Result<(), ApplicationError> {
         let preparing_cfg = Arc::new(tokio::sync::RwLock::new(match ApplicationConfig::from_file() {
             Ok(res) => res,
             Err(_) => {
@@ -53,10 +55,18 @@ impl Application {
             }
         }));
 
-        let auth_service = Arc::new(auth::Authenticator::new(self.http_client.clone()));
+        let auth_service = Arc::new(RwLock::new(auth::Authenticator::new(self.http_client.clone())));
+        self.add_service(auth_service.clone());
+
+        let files_service = Arc::new(RwLock::new(files::FileManager::new(
+            self.http_client.clone(),
+            None
+        )));
+        self.add_service(files_service.clone());
 
         self.init_preparing_callbacks(preparing_cfg.clone());
         self.init_auth_callbacks(preparing_cfg.clone(), auth_service);
+        self.init_data_callbacks(files_service);
 
         match self.ui_window.run() {
             Ok(_) => Ok(()),

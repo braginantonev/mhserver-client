@@ -27,7 +27,7 @@ impl PreparingStates {
 async fn main() -> Result<(), app::errors::ApplicationError> {
     let mut app = app::Application::new()?;
     
-    app.run()?;
+    app.run().await?;
 
     Ok(())
 }
