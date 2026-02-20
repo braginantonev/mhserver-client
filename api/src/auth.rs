@@ -1,3 +1,9 @@
+//* ------------------------------- *//
+//*                                 *//
+//*   Mhserver API version: 1.2.x   *//
+//*                                 *//
+//* ------------------------------- *//
+
 use {
     super::{
         ServerError,
@@ -6,11 +12,9 @@ use {
             auth::{ LOGIN, REGISTRATION }
         },
     },
+    reqwest::Client,
     serde::{ Deserialize, Serialize },
 };
-
-
-// mhserver api version: 1.3.0
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
@@ -25,7 +29,7 @@ impl User {
 }
 
 /// Return response body
-pub async fn login_v1(client: reqwest::Client, addr: &str, user: User) -> Result<String, ServerError> {
+pub async fn login_v1(client: Client, addr: &str, user: User) -> Result<String, ServerError> {
     match client.get(build_url(addr, API_V1, LOGIN))
         .json(&user)
         .send()
@@ -38,7 +42,7 @@ pub async fn login_v1(client: reqwest::Client, addr: &str, user: User) -> Result
         };
 }
 
-pub async fn register_v1(client: reqwest::Client, addr: &str, user: User) -> Result<(), ServerError> {
+pub async fn register_v1(client: Client, addr: &str, user: User) -> Result<(), ServerError> {
     match client.post(build_url(addr, API_V1, REGISTRATION))
         .json(&user)
         .send()

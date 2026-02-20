@@ -1,3 +1,9 @@
+//* ------------------------------- *//
+//*                                 *//
+//*   Mhserver API version: 1.2.x   *//
+//*                                 *//
+//* ------------------------------- *//
+
 use regex::Regex;
 
 use super::{endpoints, ServerError};

@@ -1,4 +1,8 @@
-// mhserver api version: 1.2.0 (dev)
+//* ------------------------------- *//
+//*                                 *//
+//*   Mhserver API version: 1.2.x   *//
+//*                                 *//
+//* ------------------------------- *//
 
 pub const API_V1: &str = "/api/v1";
 
