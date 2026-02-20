@@ -1,7 +1,10 @@
+use std::fmt;
+
 pub mod ping;
 pub mod auth;
 mod endpoints;
 
+#[derive(Debug)]
 pub struct ServerError(String);
 
 impl ServerError {
@@ -17,3 +20,11 @@ impl ServerError {
         self.0.as_str()
     }
 }
+
+impl fmt::Display for ServerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Server error: {}", self.0)
+    }
+}
+
+impl std::error::Error for ServerError {}
