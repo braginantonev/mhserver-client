@@ -15,8 +15,12 @@ use {
 #[derive(Serialize, Deserialize)]
 pub struct FileInfo {
     name: String,
-    is_dir: bool,
     size: u64,
+
+    #[serde(rename = "isDir")]
+    is_dir: bool,
+
+    #[serde(rename = "modTime")]
     mod_time: i64
 }
 
