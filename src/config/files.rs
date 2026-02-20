@@ -1,11 +1,11 @@
 use super::com::ServerComConfig;
 
 #[derive(Default, Debug)]
-pub struct FilesServerConfig {
+pub struct FileServiceConfig {
     srv_com: ServerComConfig
 }
 
-impl FilesServerConfig {
+impl FileServiceConfig {
     pub fn new(srv_com_cfg: ServerComConfig) -> Self {
         Self { srv_com: srv_com_cfg }
     }

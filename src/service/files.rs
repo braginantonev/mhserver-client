@@ -1,11 +1,11 @@
 use {
     reqwest::Client,
-    crate::config::files::FilesServerConfig
+    crate::config::files::FileServiceConfig
 };
 
 pub struct FileManager {
     client: Client,
-    cfg: FilesServerConfig
+    cfg: FileServiceConfig
 }
 
 impl FileManager {
@@ -13,19 +13,19 @@ impl FileManager {
         self.client.clone()
     }
 
-    pub fn new(client: Client, cfg: Option<FilesServerConfig>) -> Self {
+    pub fn new(client: Client, cfg: Option<FileServiceConfig>) -> Self {
         let cfg = match cfg {
             Some(x) => x,
-            None => FilesServerConfig::default(),
+            None => FileServiceConfig::default(),
         };
         Self { client: client.clone(), cfg }
     }
 
-    pub fn config(&self) -> &FilesServerConfig {
+    pub fn config(&self) -> &FileServiceConfig {
         &self.cfg
     }
 
-    pub fn config_mut(&mut self) -> &mut FilesServerConfig {
+    pub fn config_mut(&mut self) -> &mut FileServiceConfig {
         &mut self.cfg
     }
 }
