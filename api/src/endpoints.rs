@@ -4,6 +4,8 @@
 //*                                 *//
 //* ------------------------------- *//
 
+use reqwest::Url;
+
 pub const API_V1: &str = "/api/v1";
 
 /// Method - POST
@@ -53,6 +55,15 @@ pub mod data {
 /// 1. Server address (e.g. localhost:8080)
 /// 2. API URL with version (e.g. /api/v1)
 /// 3. Endpoint (e.g. /ping)
-pub fn build_url(addr: &str, api: &str, endpoint: &str) -> String {
-    format!("https://{}{}{}", addr, api, endpoint)
+pub fn build_url(addr: &str, api: &str, endpoint: &str, params: Option<&[(&str, &str)]>) -> Result<Url, ()> {
+    let url = format!("https://{}{}{}", addr, api, endpoint);
+
+    match if let Some(params) = params {
+        Url::parse_with_params(url.as_str(), params)
+    } else {
+        Url::parse(url.as_str())
+    } {
+        Ok(url) => Ok(url),
+        Err(_) => Err(())
+    }
 }

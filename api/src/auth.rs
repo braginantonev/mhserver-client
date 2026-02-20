@@ -30,7 +30,7 @@ impl User {
 
 /// Return response body
 pub async fn login_v1(client: Client, addr: &str, user: User) -> Result<String, ServerError> {
-    match client.get(build_url(addr, API_V1, LOGIN))
+    match client.get(build_url(addr, API_V1, LOGIN, None).unwrap())
         .json(&user)
         .send()
         .await {
@@ -43,7 +43,7 @@ pub async fn login_v1(client: Client, addr: &str, user: User) -> Result<String, 
 }
 
 pub async fn register_v1(client: Client, addr: &str, user: User) -> Result<(), ServerError> {
-    match client.post(build_url(addr, API_V1, REGISTRATION))
+    match client.post(build_url(addr, API_V1, REGISTRATION, None).unwrap())
         .json(&user)
         .send()
         .await {
