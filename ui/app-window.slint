@@ -9,7 +9,7 @@ import { Button } from "std-widgets.slint";
 import { ServiceField, Services } from "fields/service.slint";
 
 // Services
-import { DataServiceField } from "fields/services/data.slint";
+import { FilesServiceField } from "fields/services/files.slint";
 
 export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
 export enum AppStates { Preparing, Main }
@@ -65,7 +65,7 @@ export component MainWindow inherits Window {
         enabled: false;
     }
 
-    data_service_field := DataServiceField {
+    files_service_field := FilesServiceField {
         width: root.width - service_field.width - 20px;
         x: service_field.width + 20px;
         enabled: false;
@@ -100,7 +100,7 @@ export component MainWindow inherits Window {
     callback show_service <=> service_field.service_triggered;
 
     // Data service
-    callback data_update_showed_files <=> data_service_field.update_showed_files;
+    callback data_update_showed_files <=> files_service_field.update_showed_files;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
@@ -127,7 +127,7 @@ export component MainWindow inherits Window {
 
         main_files when state == AppStates.Main && active-service == Services.Files: {
             service_field.enabled: true;
-            data_service_field.enabled: true;
+            files_service_field.enabled: true;
         }
     ]
 }

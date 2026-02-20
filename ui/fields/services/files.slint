@@ -7,7 +7,7 @@ export struct File {
     server_path: string,
 }
 
-export component DataServiceField inherits FieldBackground {
+export component FilesServiceField inherits FieldBackground {
     in property <[File]> showed_files;
     in property <length> tile-width: 64px;
     in property <length> tile-height: 64px;
@@ -17,6 +17,8 @@ export component DataServiceField inherits FieldBackground {
     private property <int> rows: Math.ceil(showed_files.length / cols-count);
 
     callback file_opened(string);
+    callback update_showed_files([File]);
+
     callback make_dir();
     callback remove_dir();
     callback save_file();
@@ -48,4 +50,8 @@ export component DataServiceField inherits FieldBackground {
             }
         }
     }
+
+    update_showed_files(files) => {
+        showed_files: files
+    };
 }

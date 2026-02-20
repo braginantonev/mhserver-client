@@ -58,15 +58,12 @@ impl Application {
         let auth_service = Arc::new(RwLock::new(auth::Authenticator::new(self.http_client.clone())));
         self.add_service(auth_service.clone());
 
-        let files_service = Arc::new(RwLock::new(files::FileManager::new(
-            self.http_client.clone(),
-            None
-        )));
+        let files_service = Arc::new(RwLock::new(files::FileManager::new(self.http_client.clone(), None)));
         self.add_service(files_service.clone());
 
         self.init_preparing_callbacks(preparing_cfg.clone());
         self.init_auth_callbacks(preparing_cfg.clone(), auth_service);
-        self.init_data_callbacks(files_service);
+        self.init_files_callbacks(files_service);
 
         match self.ui_window.run() {
             Ok(_) => Ok(()),

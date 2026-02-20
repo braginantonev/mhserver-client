@@ -3,7 +3,7 @@ use {
 };
 
 impl Application {
-    pub fn init_data_callbacks(&mut self, files_service: Arc<RwLock<service::files::FileManager>>) {
+    pub fn init_files_callbacks(&mut self, files_service: Arc<RwLock<service::files::FileManager>>) {
         self.ui_window.on_show_service({
             let service = files_service.clone();
 
