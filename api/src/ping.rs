@@ -12,7 +12,7 @@ use super::{endpoints, ServerError};
 pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<(), ServerError> {
     let addr_regexp = Regex::new(r"[a-z0-9:.]+[:][1-9][0-9]+").unwrap();
     if !addr_regexp.is_match(addr) {
-        return Err(super::ServerError::new("address have bad syntax"))
+        return Err(super::ServerError::from("address have bad syntax"))
     }
 
     let resp =  http_client.post(endpoints::build_url(addr, endpoints::API_V1, endpoints::PING, None).unwrap())
@@ -21,7 +21,7 @@ pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<(), Server
 
     match resp {
         Ok(_) => Ok(()),
-        Err(err) => { Err(ServerError::new(err.to_string().as_str())) }
+        Err(err) => { Err(ServerError(err.to_string())) }
     }
 }
 
