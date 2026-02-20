@@ -1,16 +1,12 @@
 use serde::{ Deserialize, Serialize };
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct ServerComConfig {
     server_address: String,
     user_jwt: String,
 }
 
 impl ServerComConfig {
-    pub fn new(srv_addr: &str, user_jwt: &str) -> Self {
-        Self { server_address: srv_addr.to_owned(), user_jwt: user_jwt.to_owned() }
-    }
-
     pub fn server_address(&self) -> &str {
         self.server_address.as_str()
     }

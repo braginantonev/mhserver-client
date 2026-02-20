@@ -23,6 +23,10 @@ pub struct ApplicationConfig {
 }
 
 impl ApplicationConfig {
+    pub fn update_from_self(&mut self, from: Self) {
+        self.srv_com = from.srv_com
+    }
+
     pub fn from_file() -> Result<Self, std::io::Error> {
         match fs::read_to_string(config_file()) {
             Ok(read) => Ok(toml::from_str(read.as_str()).expect("failed convert toml file to Config")),
