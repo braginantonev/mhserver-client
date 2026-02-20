@@ -15,7 +15,7 @@ export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Log
 export enum AppStates { Preparing, Main }
 
 export component MainWindow inherits Window {
-    in-out property <AppStates> state: Main;
+    in-out property <AppStates> state: Preparing;
     in-out property <PreparingStates> prepare-state: Normal;
     in-out property <Services> active-service: Empty;
 
@@ -74,7 +74,7 @@ export component MainWindow inherits Window {
     // For a smooth startup
     Timer {
         interval: 250ms;
-        running: false;
+        running: true;
         triggered => {
             self.running = false;
 
@@ -84,6 +84,7 @@ export component MainWindow inherits Window {
     }
 
     callback change_preparing_state(PreparingStates);
+    callback update_services();
 
     // Main notification
     callback update_main_notification <=> main_notification.update;
@@ -97,6 +98,9 @@ export component MainWindow inherits Window {
 
     // Service field
     callback show_service <=> service_field.service_triggered;
+
+    // Data service
+    callback data_update_showed_files <=> data_service_field.update_showed_files;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
