@@ -48,9 +48,12 @@ pub async fn get_files_v1(http_client: Client, srv_addr: &str, target_dir: &str)
     match http_client.get(endpoints::build_url(srv_addr, endpoints::API_V1,data::GET_FILES, Some(&[("dir", target_dir)])).unwrap())
     .send().await {
         Ok(resp) => {
-            if resp.status() != 200 { Err(ServerError(resp.text().await.unwrap())) }
+            if resp.status() != 200 {
+                let st = resp.status();
+                Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+            }
             else { Ok(resp.json::<Vec<FileInfo>>().await.expect("server have another response body structure")) }
         },
-        Err(err) => Err(ServerError(err.to_string()))
+        Err(err) => Err(ServerError::from(err))
     }
 }

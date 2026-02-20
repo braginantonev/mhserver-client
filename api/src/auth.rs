@@ -35,10 +35,13 @@ pub async fn login_v1(client: Client, addr: &str, user: User) -> Result<String, 
         .send()
         .await {
             Ok(resp) => {
-                if resp.status() != 200 { return Err(ServerError(resp.text().await.expect("failed get response text"))) }
+                if resp.status() != 200 {
+                    let st = resp.status();
+                    return Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+                }
                 else { return Ok(resp.text().await.expect("failed get response text")) }
             }
-            Err(err) => { return Err(ServerError(err.to_string())) }
+            Err(err) => { return Err(ServerError::from(err)) }
         };
 }
 
@@ -48,9 +51,12 @@ pub async fn register_v1(client: Client, addr: &str, user: User) -> Result<(), S
         .send()
         .await {
             Ok(resp) => {
-                if resp.status() != 200 { return Err(ServerError(resp.text().await.expect("failed get response text"))) }
+                if resp.status() != 200 { 
+                    let st = resp.status();
+                    return Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+                }
             }
-            Err(err) => { return Err(ServerError(err.to_string())) }
+            Err(err) => { return Err(ServerError::from(err)) }
         };
     
     Ok(())

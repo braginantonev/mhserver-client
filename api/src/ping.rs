@@ -21,7 +21,7 @@ pub async fn ping(http_client: reqwest::Client, addr: &str) -> Result<(), Server
 
     match resp {
         Ok(_) => Ok(()),
-        Err(err) => { Err(ServerError(err.to_string())) }
+        Err(err) => { Err(ServerError::from(err)) }
     }
 }
 
