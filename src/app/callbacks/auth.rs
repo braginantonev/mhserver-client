@@ -3,7 +3,7 @@ use {
         NotificationType, 
         actions::UiActions, 
         app::{Application, ApplicationConfig},
-        service::auth
+        service::auth::Authenticator
     },
     slint::ComponentHandle, 
     std::sync::Arc,
@@ -11,7 +11,7 @@ use {
 };
 
 impl Application {
-    pub fn init_auth_callbacks(&self, preparing_cfg: Arc<RwLock<ApplicationConfig>>, auth_service: Arc<auth::Authenticator>) {
+    pub fn init_auth_callbacks(&self, preparing_cfg: Arc<RwLock<ApplicationConfig>>, auth_service: Arc<RwLock<Authenticator>>) {
         let win_weak = self.ui_window.as_weak();
 
         self.ui_window.on_login({
@@ -25,7 +25,7 @@ impl Application {
                 let pre_cfg = pre_cfg.clone();
 
                 tokio::spawn(async move {
-                    let (jwt, act) = service.login(
+                    let (jwt, act) = service.read().await.login(
                         pre_cfg.read().await.server_com_config().server_address(),
                         api::auth::User::new(username.as_str(), password.as_str())
                     ).await;
@@ -54,7 +54,7 @@ impl Application {
                         return
                     }
 
-                    service.register(
+                    service.read().await.register(
                         pre_cfg.read().await.server_com_config().server_address(),
                         api::auth::User::new(username.as_str(), password.as_str())
                     ).await.run_in_event_loop(win);
