@@ -5,11 +5,11 @@
 //* ------------------------------- *//
 
 use {
-    super::{ServerError, endpoints, endpoints::data},
-    chrono::{TimeZone, DateTime},
+    super::{ServerError, endpoints::{self, data}},
+    chrono::{DateTime, TimeZone},
     chrono_tz::Tz, 
-    reqwest::Client,
-    serde::{Serialize, Deserialize},
+    reqwest::{Client, StatusCode},
+    serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -41,6 +41,10 @@ impl FileInfo {
     pub fn mod_time(&self, tz: Tz) -> DateTime<Tz> {
         tz.timestamp_opt(self.mod_time, 0).unwrap()
     }
+
+    pub fn mod_time_unix(&self) -> i64 {
+        self.mod_time
+    }
 }
 
 /// Return a vector of file infos from server (from internal dir)
@@ -52,7 +56,12 @@ pub async fn get_files_v1(http_client: Client, srv_addr: &str, target_dir: &str)
                 let st = resp.status();
                 Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
             }
-            else { Ok(resp.json::<Vec<FileInfo>>().await.expect("server have another response body structure")) }
+            else { 
+                match resp.json::<Vec<FileInfo>>().await {
+                    Ok(res) => Ok(res),
+                    Err(_) => Err(ServerError::new("server have another json structure", StatusCode::BAD_REQUEST))
+                }
+            }
         },
         Err(err) => Err(ServerError::from(err))
     }
