@@ -1,8 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingStates, 
-        actions::UiActions, 
-        app::{Application, ApplicationConfig},
+        NotificationType, PreparingStates, actions::UiActions, app::{Application, ApplicationConfig}
     },
     slint::ComponentHandle, 
     std::sync::Arc,
@@ -65,25 +63,6 @@ impl Application {
             }
         });
 
-        self.ui_window.on_update_services({
-            let main_cfg = self.cfg.clone();
-            let services = self.services.clone();
-
-            move || {
-                let main_cfg = main_cfg.clone();
-                let services = services.clone();
-
-                for service in services {
-                    let cfg = main_cfg.clone();
-
-                    tokio::spawn(async move {
-                        let cfg = cfg.read().await.clone();
-                        service.write().await.update_config_from_app(cfg);
-                    });
-                }
-            }
-        });
-
         self.ui_window.on_connect({
             let win = win_weak.clone();
             let client = self.http_client.clone();
@@ -103,6 +82,25 @@ impl Application {
                         Err(desc) => UiActions::ShowNotification(desc.to_string(), NotificationType::Error)
                     }.run_in_event_loop(win);
                 });
+            }
+        });
+
+        self.ui_window.on_update_services({
+            let main_cfg = self.cfg.clone();
+            let services = self.services.clone();
+
+            move || {
+                let main_cfg = main_cfg.clone();
+                let services = services.clone();
+
+                for service in services {
+                    let cfg = main_cfg.clone();
+
+                    tokio::spawn(async move {
+                        let cfg = cfg.read().await.clone();
+                        service.write().await.update_config_from_app(cfg);
+                    });
+                }
             }
         });
     }
