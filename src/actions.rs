@@ -30,15 +30,15 @@ impl UiActions {
                 notification::show(win, desc.as_str(), r#type);
             }
             UiActions::DataUpdateFilesList(files) => {
-                let slint_files: Vec<File> = files.iter().map(|f| {
+                let slint_files = files.iter().map(|f| {
                     File {
                         icon: FileTypes::from(f).to_slint_image().expect("failed load file icon"),
                         name: f.name().to_shared_string(),
                         server_path: "".to_shared_string()
                     }
-                }).collect();
+                });
 
-                win.invoke_data_update_showed_files(ModelRc::from(Rc::new(VecModel::from(slint_files))));
+                win.invoke_data_update_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
             }
         }
     }
