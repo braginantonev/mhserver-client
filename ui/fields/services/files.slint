@@ -23,18 +23,21 @@ component FileCeil {
     }
 
     VerticalLayout {
+        spacing: 7px;
+
         file-icon := Image {}
         text := Text {
             vertical-alignment: center;
             horizontal-alignment: center;
+            overflow: elide;
         }
     }
 }
 
 export component FilesServiceField inherits FieldBackground {
     out property <[File]> showed_files;
-    in property <length> tile-width: 64px;
-    in property <length> tile-height: 64px;
+    in property <length> tile-width: 100px;
+    in property <length> tile-height: 100px;
 
     private property <length> grid-spacing: 30px;
     private property <int> cols-count: self.width / (tile-width + grid-spacing);
