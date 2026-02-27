@@ -63,6 +63,7 @@ impl Application {
 
         self.init_preparing_callbacks(preparing_cfg.clone());
         self.init_auth_callbacks(preparing_cfg.clone(), auth_service);
+        self.init_service_callbacks(files_service.clone());
         self.init_files_callbacks(files_service);
 
         match self.ui_window.run() {
