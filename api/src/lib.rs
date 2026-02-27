@@ -50,7 +50,7 @@ impl ServerError {
 
 impl From<&str> for ServerError {
     fn from(value: &str) -> Self {
-        Self { desc: value.to_owned(), status: Some(StatusCode::BAD_REQUEST) }
+        Self::new(value)
     }
 }
 
@@ -62,18 +62,16 @@ impl From<reqwest::Error> for ServerError {
 
 impl From<url::ParseError> for ServerError {
     fn from(value: url::ParseError) -> Self {
-        Self { desc: value.to_string(), status: Some(StatusCode::BAD_REQUEST) }
+        Self::new(value.to_string().as_str())
     }
 }
 
 impl fmt::Display for ServerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let st_code = match self.status {
-            Some(st) => st.as_u16(),
-            None => 0
-        };
-
-        write!(f, "Server error ({}): {}", st_code, self.desc)
+        match self.status {
+            Some(st) => write!(f, "Server error ({}): {}", st, self.desc),
+            None => write!(f, "Server error: {}", self.desc)
+        }
     }
 }
 
