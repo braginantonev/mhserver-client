@@ -3,6 +3,7 @@ mod app;
 mod service;
 mod notification;
 mod actions;
+mod repository;
 
 slint::include_modules!();
 
