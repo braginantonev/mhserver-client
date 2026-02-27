@@ -7,8 +7,32 @@ export struct File {
     server_path: string,
 }
 
+component FileCeil {
+    in property <image> file-icon <=> file-icon.source;
+    in property <string> name <=> text.text;
+
+    callback triggered <=> butt.clicked;
+
+    butt := SimpleButton {
+        hover-color: #36454F;
+        hover-border-radius: 8px;
+        hover-max-opacity: 0.25;
+
+        preferred-height: parent.height;
+        preferred-width: parent.width;
+    }
+
+    VerticalLayout {
+        file-icon := Image {}
+        text := Text {
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}
+
 export component FilesServiceField inherits FieldBackground {
-    in property <[File]> showed_files;
+    out property <[File]> showed_files;
     in property <length> tile-width: 64px;
     in property <length> tile-height: 64px;
 
@@ -31,19 +55,16 @@ export component FilesServiceField inherits FieldBackground {
 
         height: rows * (tile-height + self.spacing) + self.padding * 2;
 
-        for file[i] in showed_files: SimpleButton {
+        for file[i] in showed_files: FileCeil {
             col: i.mod(cols-count);
             row: i / cols-count;
-            preferred-height: tile-height;
-            preferred-width: tile-width;
-            icon: file.icon;
+            
+            height: tile-height;
+            width: tile-width;
+            file-icon: file.icon;
+            name: file.name;
 
-            hover-color: #36454F;
-            hover-border-radius: 8px;
-            hover-max-opacity: 0.25;
-            //text: file.name;
-
-            clicked => {
+            triggered => {
                 debug(parent.height, cols-count, rows);
                 file_opened(file.name);
                 debug("clicked", file.name, "file");
@@ -51,7 +72,11 @@ export component FilesServiceField inherits FieldBackground {
         }
     }
 
+    function local_update_files(files: [File]) {
+        showed_files = files;
+    }
+
     update_showed_files(files) => {
-        showed_files: files
-    };
+        local_update_files(files)
+    }
 }

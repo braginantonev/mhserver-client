@@ -9,7 +9,7 @@ import { Button } from "std-widgets.slint";
 import { ServiceField, Services } from "fields/service.slint";
 
 // Services
-import { FilesServiceField } from "fields/services/files.slint";
+import { FilesServiceField, File } from "fields/services/files.slint";
 
 export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
 export enum AppStates { Preparing, Main }
@@ -85,6 +85,13 @@ export component MainWindow inherits Window {
 
     callback change_preparing_state(PreparingStates);
     callback update_services();
+
+    update_services => {
+        update_main_notification({
+            text: "Services will be updated",
+            type: NotificationType.Info
+        });
+    }
 
     // Main notification
     callback update_main_notification <=> main_notification.update;
