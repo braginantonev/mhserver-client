@@ -37,7 +37,7 @@ pub async fn login_v1(client: Client, addr: &str, user: User) -> Result<String, 
             Ok(resp) => {
                 if resp.status() != 200 {
                     let st = resp.status();
-                    return Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+                    return Err(ServerError::new(resp.text().await.unwrap().as_str()).with_status(st)) 
                 }
                 else { return Ok(resp.text().await.expect("failed get response text")) }
             }
@@ -53,7 +53,7 @@ pub async fn register_v1(client: Client, addr: &str, user: User) -> Result<(), S
             Ok(resp) => {
                 if resp.status() != 200 { 
                     let st = resp.status();
-                    return Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+                    return Err(ServerError::new(resp.text().await.unwrap().as_str()).with_status(st)) 
                 }
             }
             Err(err) => { return Err(ServerError::from(err)) }

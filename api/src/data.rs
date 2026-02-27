@@ -5,19 +5,21 @@
 //* ------------------------------- *//
 
 use {
-    super::{ServerError, endpoints::{self, data}},
+    super::{AuthorizedRequest, ServerError, endpoints::{self, data}},
     chrono::{DateTime, TimeZone},
     chrono_tz::Tz, 
-    reqwest::{Client, StatusCode},
+    reqwest::StatusCode,
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize)]
 pub struct FileInfo {
     name: String,
+
+    #[serde(default)]
     size: u64,
 
-    #[serde(rename = "isDir")]
+    #[serde(rename = "isDir", default)]
     is_dir: bool,
 
     #[serde(rename = "modTime")]
@@ -48,18 +50,20 @@ impl FileInfo {
 }
 
 /// Return a vector of file infos from server (from internal dir)
-pub async fn get_files_v1(http_client: Client, srv_addr: &str, target_dir: &str) -> Result<Vec<FileInfo>, ServerError> {
-    match http_client.get(endpoints::build_url(srv_addr, endpoints::API_V1,data::GET_FILES, Some(&[("dir", target_dir)])).unwrap())
+pub async fn get_files_v1(req: AuthorizedRequest, target_dir: &str) -> Result<Vec<FileInfo>, ServerError> {
+    match req.client.get(endpoints::build_url(req.srv_addr_str(), endpoints::API_V1,data::GET_FILES, Some(&[("dir", target_dir)])).unwrap())
+    .bearer_auth(req.jwt)
     .send().await {
         Ok(resp) => {
             if resp.status() != 200 {
                 let st = resp.status();
-                Err(ServerError::new(resp.text().await.unwrap().as_str(), st)) 
+                Err(ServerError::new(resp.text().await.unwrap().as_str()).with_status(st)) 
             }
             else { 
+                //println!("{}", resp.text().await.unwrap());
                 match resp.json::<Vec<FileInfo>>().await {
                     Ok(res) => Ok(res),
-                    Err(_) => Err(ServerError::new("server have another json structure", StatusCode::BAD_REQUEST))
+                    Err(_) => Err(ServerError::new("server have another json structure").with_status(StatusCode::BAD_REQUEST))
                 }
             }
         },
