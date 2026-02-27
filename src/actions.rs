@@ -1,14 +1,18 @@
 use {
     super::{
-        AppStates, MainWindow, NotificationType, PreparingStates
+        AppStates, File, MainWindow, NotificationType, PreparingStates, Services, repository::filetypes::FileTypes
     },
-    crate::notification, slint::Weak,
+    crate::notification, 
+    slint::{ToSharedString, Weak, ModelRc, VecModel}, 
+    std::rc::Rc,
 };
 
 pub enum UiActions {
     ChangeAppState(AppStates),
     ChangePreparingState(PreparingStates),
-    ShowNotification(String, NotificationType)
+    ChangeActiveService(Services),
+    ShowNotification(String, NotificationType),
+    DataUpdateFilesList(Vec<api::data::FileInfo>),
 }
 
 impl UiActions {
@@ -19,8 +23,22 @@ impl UiActions {
                 win.set_prepare_state(next);
                 win.invoke_change_preparing_state(next);
             },
+            UiActions::ChangeActiveService(new_service) => {
+                win.set_active_service(new_service);
+            }
             UiActions::ShowNotification(desc, r#type) => {
                 notification::show(win, desc.as_str(), r#type);
+            }
+            UiActions::DataUpdateFilesList(files) => {
+                let slint_files: Vec<File> = files.iter().map(|f| {
+                    File {
+                        icon: FileTypes::from(f).to_slint_image().expect("failed load file icon"),
+                        name: f.name().to_shared_string(),
+                        server_path: "".to_shared_string()
+                    }
+                }).collect();
+
+                win.invoke_data_update_showed_files(ModelRc::from(Rc::new(VecModel::from(slint_files))));
             }
         }
     }
