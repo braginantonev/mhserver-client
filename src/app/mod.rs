@@ -4,7 +4,7 @@ pub mod callbacks;
 use {
     crate::{
         MainWindow, 
-        config::app::ApplicationConfig, 
+        config::{self, app::ApplicationConfig}, 
         service::*
     }, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
@@ -36,33 +36,43 @@ impl Application {
                 Ok(cl) => cl,
                 Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateHttpClient(err.to_string())))
             };
+            
+        let cfg = Arc::new(RwLock::new(match ApplicationConfig::from_file() {
+            Ok(res) => res,
+            Err(_) => ApplicationConfig::default()
+        }));
 
         Ok(Self{
             ui_window: win,
-            http_client: http_client,
-            cfg: Arc::new(RwLock::new(ApplicationConfig::default())) ,
+            http_client,
+            cfg,
             services: Vec::new()
         })
     }
 
     pub async fn run(&mut self) -> Result<(), ApplicationError> {
-        let preparing_cfg = Arc::new(tokio::sync::RwLock::new(match ApplicationConfig::from_file() {
-            Ok(res) => res,
-            Err(_) => {
-                let buff = ApplicationConfig::default();
-                buff.save_to_file();
-                buff
-            }
-        }));
+        let mut api_conf = openapi::apis::configuration::Configuration::new();
+        api_conf.client = self.http_client.clone();
 
-        let auth_service = Arc::new(RwLock::new(auth::Authenticator::new(self.http_client.clone())));
+        {
+            let lock = self.cfg.read().await;
+            let server_api_conf = lock.server_api_config();
+
+            api_conf.base_path = server_api_conf.base_path().to_owned();
+            api_conf.bearer_access_token = Some(server_api_conf.jwt().to_owned());
+        }
+
+        let tools_service = Arc::new(RwLock::new(tools::ServerTools::new(api_conf.clone())));
+        self.add_service(tools_service.clone());
+
+        let auth_service = Arc::new(RwLock::new(auth::Authenticator::new(api_conf.clone())));
         self.add_service(auth_service.clone());
 
-        let files_service = Arc::new(RwLock::new(files::FileManager::new(self.http_client.clone(), None)));
+        let files_service = Arc::new(RwLock::new(files::FileManager::new(config::files::FileServiceConfig::new(api_conf.clone()))));
         self.add_service(files_service.clone());
 
-        self.init_preparing_callbacks(preparing_cfg.clone());
-        self.init_auth_callbacks(preparing_cfg.clone(), auth_service);
+        self.init_preparing_callbacks(self.cfg.clone());
+        self.init_auth_callbacks(self.cfg.clone(), auth_service);
         self.init_service_callbacks(files_service.clone());
         self.init_files_callbacks(files_service);
 
