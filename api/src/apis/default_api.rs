@@ -843,7 +843,7 @@ pub async fn get_files_list_0(configuration: &configuration::Configuration, dir:
 /// Используется для пинга сервера
 pub async fn ping(configuration: &configuration::Configuration, ) -> Result<String, Error<PingError>> {
 
-    let uri_str = format!("{}/", configuration.base_path);
+    let uri_str = format!("{}/tools/ping", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);
 
     if let Some(ref user_agent) = configuration.user_agent {
@@ -865,7 +865,7 @@ pub async fn ping(configuration: &configuration::Configuration, ) -> Result<Stri
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `String`"))),
+            ContentType::Text => return Ok(content),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -902,7 +902,7 @@ pub async fn users_login(configuration: &configuration::Configuration, user_logi
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `String`"))),
+            ContentType::Text => return Ok(content),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -939,7 +939,7 @@ pub async fn users_login_0(configuration: &configuration::Configuration, user_lo
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `String`"))),
+            ContentType::Text => return Ok(content),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {

@@ -42,7 +42,7 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**files_save_chunk_0**](docs/DefaultApi.md#files_save_chunk_0) | **POST** /files/save | Сохранить часть файла
 *DefaultApi* | [**get_files_list**](docs/DefaultApi.md#get_files_list) | **GET** /files | Получить список файлов в каталоге
 *DefaultApi* | [**get_files_list_0**](docs/DefaultApi.md#get_files_list_0) | **GET** /files | Получить список файлов в каталоге
-*DefaultApi* | [**ping**](docs/DefaultApi.md#ping) | **POST** / | Приветствие
+*DefaultApi* | [**ping**](docs/DefaultApi.md#ping) | **POST** /tools/ping | Приветствие
 *DefaultApi* | [**users_login**](docs/DefaultApi.md#users_login) | **POST** /users/login | Получение JWT пользователя
 *DefaultApi* | [**users_login_0**](docs/DefaultApi.md#users_login_0) | **POST** /users/login | Получение JWT пользователя
 *DefaultApi* | [**users_register**](docs/DefaultApi.md#users_register) | **POST** /users/register | Регистрация пользователя
