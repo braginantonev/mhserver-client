@@ -2,32 +2,31 @@ use {
     crate::{
         NotificationType, PreparingStates, actions::UiActions,
     },
-    api::auth::*,
-    reqwest::Client,
+    openapi::{
+        apis::configuration::Configuration,
+        apis::default_api::{users_login, users_register},
+        models::{UserLoginRequest, UserRegisterRequest},
+    },
 };
 
 pub struct Authenticator {
-    client: Client,
+    api_conf: Configuration,
 }
 
 impl Authenticator {
-    fn cloned_client(&self) -> Client {
-        self.client.clone()
+    pub fn new(api_conf: Configuration) -> Self {
+        Self { api_conf }
     }
 
-    pub fn new(http_client: Client) -> Self {
-        Self { client: http_client }
-    }
-
-    pub async fn login(&self, srv_addr: &str, user: User) -> (Option<String>, UiActions) {
-        match login_v1(self.cloned_client(), srv_addr, user).await {
+    pub async fn login(&self, user: UserLoginRequest) -> (Option<String>, UiActions) {
+        match users_login(&self.api_conf, user).await {
             Ok(jwt) => (Some(jwt), UiActions::ChangePreparingState(PreparingStates::Login.next())),
             Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
         }
     }
 
-    pub async fn register(&self, srv_addr: &str, user: User) -> UiActions {
-        match register_v1(self.cloned_client(), srv_addr, user).await {
+    pub async fn register(&self, user: UserRegisterRequest) -> UiActions {
+        match users_register(&self.api_conf, user).await {
             Ok(_) => UiActions::ChangePreparingState(PreparingStates::Login),
             Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
         }
@@ -35,6 +34,7 @@ impl Authenticator {
 }
 
 impl super::Service for Authenticator {
-    //Todo: delete this shit
-    fn update_config_from_app(&mut self, _app_cfg: crate::config::app::ApplicationConfig) {}
+    fn update_config_from_app(&mut self, app_cfg: crate::config::app::ApplicationConfig) {
+        self.api_conf.base_path = app_cfg.server_api_config().base_path().to_owned();
+    }
 }

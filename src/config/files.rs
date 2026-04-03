@@ -1,20 +1,12 @@
-use super::com::ServerComConfig;
+use openapi::apis::configuration::Configuration;
 
 #[derive(Default, Debug)]
 pub struct FileServiceConfig {
-    srv_com: ServerComConfig
+    pub api_conf: Configuration,
 }
 
 impl FileServiceConfig {
-    pub fn new(srv_com_cfg: ServerComConfig) -> Self {
-        Self { srv_com: srv_com_cfg }
-    }
-
-    pub fn srv_com(&self) -> &ServerComConfig {
-        &self.srv_com
-    }
-
-    pub fn srv_com_mut(&mut self) -> &mut ServerComConfig {
-        &mut self.srv_com
+    pub fn new(api_conf: Configuration) -> Self {
+        Self { api_conf: api_conf }
     }
 }
