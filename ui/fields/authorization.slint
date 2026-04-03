@@ -57,7 +57,7 @@ export component LoginField inherits BaseGridField {
 }
 
 export component RegisterField inherits BaseGridField {
-    callback register(string, string, string);
+    callback register(string, string, string, string);
     callback login_request();
 
     height: 360px;
@@ -91,12 +91,19 @@ export component RegisterField inherits BaseGridField {
         }
     }
     Row {
+        key := LineEdit {
+            input-type: password;
+            height: 30px;
+            placeholder-text: @tr("Secret key");
+        }
+    }
+    Row {
         Button {
             enabled: root.showed;
             height: 30px;
             text: @tr("Register");
             clicked => {
-                register(username.text, pass.text, verify.text);
+                register(username.text, pass.text, verify.text, key.text);
             }
         }
     }
