@@ -31,11 +31,6 @@ impl Application {
 
                     if let Some(jwt) = jwt {
                         cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
-
-                        //Todo: add multiply events update
-                        let _ = win.upgrade_in_event_loop(|win| {
-                            win.invoke_update_services();
-                        });
                     }
                     act.run_in_event_loop(win);
                 });

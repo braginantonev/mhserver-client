@@ -49,7 +49,7 @@ impl Application {
 
                             //Todo: add multiply events update
                             let _ = win.upgrade_in_event_loop(|win| {
-                                win.invoke_update_services();
+                                win.invoke_update_service_configs();
                             });
 
                             println!("end preparing");
@@ -78,7 +78,7 @@ impl Application {
 
                         //Todo: add multiply events update
                         let _ = win.upgrade_in_event_loop(|win| {
-                            win.invoke_update_services();
+                            win.invoke_update_service_configs();
                         });
                         
                         UiActions::ChangePreparingState(PreparingStates::Connection.next())
@@ -89,7 +89,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_update_services({
+        self.ui_window.on_update_service_configs({
             let main_cfg = self.cfg.clone();
             let services = self.services.clone();
 

@@ -84,14 +84,7 @@ export component MainWindow inherits Window {
     }
 
     callback change_preparing_state(PreparingStates);
-    callback update_services();
-
-    update_services => {
-        update_main_notification({
-            text: "Services will be updated",
-            type: NotificationType.Info
-        });
-    }
+    callback update_service_configs();
 
     // Main notification
     callback update_main_notification <=> main_notification.update;
