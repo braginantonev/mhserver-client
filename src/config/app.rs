@@ -1,8 +1,7 @@
 use {
-    serde::{ Deserialize, Serialize },
-    std::{env, fs, path::PathBuf},
-    
-    super::com::ServerComConfig,
+    super::api::ServerApiConfiguration, 
+    serde::{ Deserialize, Serialize }, 
+    std::{env, fs, path::PathBuf}
 };
 
 const CONFIG_PATH: &str = ".config/mhserver-client";
@@ -18,13 +17,12 @@ fn config_file() -> PathBuf {
 
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ApplicationConfig {
-    #[serde(rename = "server_communication")]
-    srv_com: ServerComConfig,
+    server_api: ServerApiConfiguration,
 }
 
 impl ApplicationConfig {
     pub fn update_from_self(&mut self, from: Self) {
-        self.srv_com = from.srv_com
+        self.server_api = from.server_api
     }
 
     pub fn from_file() -> Result<Self, std::io::Error> {
@@ -45,11 +43,11 @@ impl ApplicationConfig {
         );
     }
 
-    pub fn server_com_config(&self) -> &ServerComConfig {
-        &self.srv_com
+    pub fn server_api_config(&self) -> &ServerApiConfiguration {
+        &self.server_api
     }
 
-    pub fn server_com_config_mut(&mut self) -> &mut ServerComConfig {
-        &mut self.srv_com
+    pub fn server_api_config_mut(&mut self) -> &mut ServerApiConfiguration {
+        &mut self.server_api
     }
 }
