@@ -1,13 +1,17 @@
 use {
     crate::{
-        NotificationType, actions::UiActions, config::files::FileServiceConfig},
-        std::{path::{Path, PathBuf},
-        str::FromStr    
-    },
+        NotificationType, 
+        actions::UiActions, 
+        config::files::FileServiceConfig
+    }, 
     openapi::{
-        models::{FilesListInner},
-        apis::default_api::{get_files_list}
-    },
+        apis::default_api::get_files_list,
+        models::FilesListInner
+    }, 
+    std::{
+        path::{Path, PathBuf},
+        str::FromStr
+    }
 };
 
 pub struct FileManager {
@@ -19,14 +23,20 @@ impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
         Self { 
             cfg,
-            active_dir: PathBuf::from_str("/").expect("failed create default file manager path")
+            active_dir: PathBuf::from_str("/").unwrap()
         }
     }
 
     async fn get_files_from(&self, target_dir: &str) -> Result<Vec<FilesListInner>, UiActions> {
         match get_files_list(&self.cfg.api_conf, target_dir).await {
             Ok(res ) => Ok(res),
-            Err(err) => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
+            Err(err) => {
+                if let openapi::apis::Error::ResponseError(x) = err {
+                    Err(UiActions::ShowNotification(x.content, NotificationType::Error))
+                } else {
+                    Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
+                }
+            }
         }
     }
 
