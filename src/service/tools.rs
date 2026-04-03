@@ -14,10 +14,22 @@ impl ServerTools {
     }
 
     /// Ping server. Return true, if server available, and false, if not available
-    pub async fn ping(&self) -> bool {
-        match default_api::ping(&self.api_conf).await {
+    /// Use to ping server addr from self, if target is None
+    pub async fn ping(&self, target: Option<&str>) -> bool {
+        let mut local_api_conf = self.api_conf.clone();
+
+        if let Some(addr) = target {
+            local_api_conf.base_path = addr.to_owned()
+        }
+
+        println!("{:?}", local_api_conf);
+
+        match default_api::ping(&local_api_conf).await {
             Ok(_) => true,
-            Err(_) => false
+            Err(err) => {
+                println!("Error: {}", err.to_string());
+                false
+            }
         }
     }
 }
