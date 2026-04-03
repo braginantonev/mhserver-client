@@ -12,7 +12,7 @@ pub enum UiActions {
     ChangePreparingState(PreparingStates),
     ChangeActiveService(Services),
     ShowNotification(String, NotificationType),
-    DataUpdateFilesList(Vec<api::data::FileInfo>),
+    DataUpdateFilesList(Vec<openapi::models::FilesListInner>),
 }
 
 impl UiActions {
@@ -33,7 +33,7 @@ impl UiActions {
                 let slint_files = files.iter().map(|f| {
                     File {
                         icon: FileTypes::from(f).to_slint_image().expect("failed load file icon"),
-                        name: f.name().to_shared_string(),
+                        name: f.name.to_shared_string(),
                         server_path: "".to_shared_string()
                     }
                 });

@@ -1,6 +1,6 @@
 use {
     std::path::Path,
-    api::data::FileInfo,
+    openapi::models::FilesListInner,
 };
 
 pub enum FileTypes {
@@ -27,13 +27,13 @@ impl FileTypes {
     }
 }
 
-impl From<&FileInfo> for FileTypes {
-    fn from(value: &FileInfo) -> Self {
-        if value.is_dir() {
+impl From<&FilesListInner> for FileTypes {
+    fn from(value: &FilesListInner) -> Self {
+        if value.is_dir != None {
             return FileTypes::Directory
         }
 
-        let extension = match value.name().split('.').last() {
+        let extension = match value.name.split('.').last() {
             Some(x) => x,
             None => "exe" // Linux use empty extension like executable file
         };

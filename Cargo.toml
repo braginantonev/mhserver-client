@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-api = { path = "api" }
+openapi = { path = "./api" }
 reqwest = { version = "0.13.1", features = ["json", "rustls"] }
 slint = "1.14.1"
 tokio = { version = "1.49.0", features = ["full"] }
@@ -14,7 +14,3 @@ toml = "0.9.11"
 
 [build-dependencies]
 slint-build = "1.14.1"
-
-[workspace]
-resolver = "1"
-members = ["api"]
