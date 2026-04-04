@@ -40,12 +40,10 @@ impl Application {
         self.ui_window.on_register({
             let win = win_weak.clone();
             let service = auth_service.clone();
-            let cfg = self.cfg.clone();
 
             move |username, password, verify, key| {
                 let win = win.clone();
                 let service = service.clone();
-                let cfg = cfg.clone();
 
                 tokio::spawn(async move {
                     if password != verify {
