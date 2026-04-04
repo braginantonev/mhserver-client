@@ -37,7 +37,7 @@ impl Application {
 
                     println!("files: {:?}", files);
 
-                    UiActions::DataUpdateFilesList(files).run_in_event_loop(win);
+                    UiActions::DataUpdateFilesList(files, String::from("/")).run_in_event_loop(win);
                 });
             }
         });

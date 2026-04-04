@@ -3,8 +3,15 @@ import { SimpleButton } from "../../components/button.slint";
 
 export struct File {
     name: string,
-    icon: image,
+    is_dir: bool,
     server_path: string,
+    size: int,
+    icon: image,
+}
+
+struct FileExtenderInfo {
+    name: string,
+    is_dir: bool
 }
 
 component FileCeil {
@@ -37,7 +44,7 @@ component FileCeil {
 }
 
 component FileExtender {
-    in property <string> active-file-name <=> txt.text;
+    in property <FileExtenderInfo> active-file;
 
     private property <length> text-padding: 15px;
 
@@ -60,11 +67,13 @@ component FileExtender {
     txt := Text {
         height: parent.height;
         x: parent.x + text-padding;
-        font-size: 16pt;
+        font-size: 12pt;
+        vertical-alignment: center;
+        text: active-file.name + (active-file.is-dir ? @tr(" (Folder)") : "");
     }
 
     states [
-        showed when active-file-name != "": {
+        showed when active-file.name != "": {
             opacity: 1.0;
         }
     ]
@@ -72,7 +81,7 @@ component FileExtender {
 
 export component FilesServiceField inherits FieldBackground {
     out property <[File]> showed_files;
-    out property <string> active-file;
+    out property <File> active-file;
     in property <length> tile-width: 100px;
     in property <length> tile-height: 100px;
 
@@ -93,7 +102,7 @@ export component FilesServiceField inherits FieldBackground {
         height: parent.height;
         
         clicked => {
-            active-file = "";
+            active-file = {};
         }
     }
 
@@ -114,18 +123,17 @@ export component FilesServiceField inherits FieldBackground {
             name: file.name;
 
             selected => {
-                debug("set active file: ", self.name);
-                active-file = self.name;
+                active-file = file;
             }
 
             triggered => {
-                debug("open file: ", self.name);
+                
             }
         }
     }
 
     extender := FileExtender {
-        active-file-name: active-file;
+        active-file: { name: active-file.name, is-dir: active-file.is-dir };
         x: 0px;
         y: parent.height - self.height;
     }
