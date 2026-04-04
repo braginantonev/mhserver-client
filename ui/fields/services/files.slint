@@ -8,10 +8,12 @@ export struct File {
 }
 
 component FileCeil {
+    out property <bool> has-hover <=> butt.has-hover; 
     in property <image> file-icon <=> file-icon.source;
     in property <string> name <=> text.text;
 
-    callback triggered <=> butt.clicked;
+    callback selected <=> butt.clicked;
+    callback triggered <=> butt.double-clicked;
 
     butt := SimpleButton {
         hover-color: #36454F;
@@ -34,8 +36,43 @@ component FileCeil {
     }
 }
 
+component FileExtender {
+    in property <string> active-file-name <=> txt.text;
+
+    private property <length> text-padding: 15px;
+
+    height: 35px;
+
+    opacity: 0.0;
+    animate opacity { duration: 250ms; }
+
+    Rectangle {
+        width: txt.width + text-padding * 2;
+        height: txt.height;
+        x: 0px;
+
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+            
+        background: #302222;
+    }
+
+    txt := Text {
+        height: parent.height;
+        x: parent.x + text-padding;
+        font-size: 16pt;
+    }
+
+    states [
+        showed when active-file-name != "": {
+            opacity: 1.0;
+        }
+    ]
+}
+
 export component FilesServiceField inherits FieldBackground {
     out property <[File]> showed_files;
+    out property <string> active-file;
     in property <length> tile-width: 100px;
     in property <length> tile-height: 100px;
 
@@ -50,6 +87,15 @@ export component FilesServiceField inherits FieldBackground {
     callback remove_dir();
     callback save_file();
     callback delete_file();
+
+    TouchArea {
+        width: parent.width;
+        height: parent.height;
+        
+        clicked => {
+            active-file = "";
+        }
+    }
 
     GridLayout {
         spacing: grid-spacing;
@@ -67,19 +113,24 @@ export component FilesServiceField inherits FieldBackground {
             file-icon: file.icon;
             name: file.name;
 
+            selected => {
+                debug("set active file: ", self.name);
+                active-file = self.name;
+            }
+
             triggered => {
-                debug(parent.height, cols-count, rows);
-                file_opened(file.name);
-                debug("clicked", file.name, "file");
+                debug("open file: ", self.name);
             }
         }
     }
 
-    function local_update_files(files: [File]) {
-        showed_files = files;
+    extender := FileExtender {
+        active-file-name: active-file;
+        x: 0px;
+        y: parent.height - self.height;
     }
 
     update_showed_files(files) => {
-        local_update_files(files)
+        showed_files = files;
     }
 }
