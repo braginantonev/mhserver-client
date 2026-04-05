@@ -5,7 +5,7 @@ use {
         config::files::FileServiceConfig
     }, 
     openapi::{
-        apis::default_api::get_files_list,
+        apis::{ default_api::get_files_list, Error },
         models::FilesListInner
     }, 
     std::{
@@ -14,46 +14,33 @@ use {
     }
 };
 
+fn back_dir() -> FilesListInner {
+    FilesListInner { name: "..".to_owned(), is_dir: Some(true), size: None, mod_time: 0 }
+}
+
+fn add_back_to_files(mut files: Vec<FilesListInner>) -> Vec<FilesListInner> {
+    let mut with_back = vec![back_dir()];
+    with_back.append(&mut files);
+    with_back
+}
+
 pub struct FileManager {
     cfg: FileServiceConfig,
     active_dir: PathBuf
 }
 
 impl FileManager {
-    pub fn new(cfg: FileServiceConfig) -> Self {
-        Self { 
-            cfg,
-            active_dir: PathBuf::from_str("/").unwrap()
-        }
-    }
-
     async fn get_files_from(&self, target_dir: &str) -> Result<Vec<FilesListInner>, UiActions> {
         match get_files_list(&self.cfg.api_conf, target_dir).await {
-            Ok(res ) => {
-                if target_dir != "/" {
-                    let mut with_back = vec![FilesListInner { name: "..".to_owned(), is_dir: Some(true), size: None, mod_time: 0 }];
-                    with_back.extend(res.into_iter());
-                    return Ok(with_back);
-                }
-                Ok(res)
-            },
+            Ok(res ) => if target_dir != "/" { Ok(add_back_to_files(res)) } else { Ok(res) }
             Err(err) => {
-                if let openapi::apis::Error::ResponseError(x) = err {
-                    Err(UiActions::ShowNotification(x.content, NotificationType::Error))
-                } else {
-                    Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
+                match err {
+                    Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
+                    Error::Serde(_) => Ok(vec![back_dir()]), // Null response
+                    _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
                 }
             }
         }
-    }
-
-    pub fn get_current_dir(&self) -> &str {
-        self.active_dir.to_str().unwrap_or("/")
-    }
-
-    /// Return vector of file infos from active dir
-    pub async fn get_files(&self) -> Result<Vec<FilesListInner>, UiActions> {
-        self.get_files_from(self.active_dir.to_str().unwrap()).await
     }
 
     /// Change file manager active directory
@@ -73,6 +60,22 @@ impl FileManager {
         }
 
         files
+    }
+
+    pub fn new(cfg: FileServiceConfig) -> Self {
+        Self { 
+            cfg,
+            active_dir: PathBuf::from_str("/").unwrap()
+        }
+    }
+
+    pub fn get_current_dir(&self) -> &str {
+        self.active_dir.to_str().unwrap_or("/")
+    }
+
+    /// Return vector of file infos from active dir
+    pub async fn get_files(&self) -> Result<Vec<FilesListInner>, UiActions> {
+        self.get_files_from(self.active_dir.to_str().unwrap()).await
     }
 
     /// This is similar change_dir(), which use a current active dir as root
