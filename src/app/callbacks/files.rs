@@ -52,7 +52,12 @@ impl Application {
 
                 tokio::spawn(async move {
                     let mut lock = service.write().await;
-                    match lock.change_dir_from_current(Path::new(target.as_str())).await {
+
+                    match if target != ".." {
+                        lock.next(target.as_str()).await
+                    } else {
+                        lock.prev().await
+                    } {
                         Ok(files) => UiActions::DataUpdateFilesList(files, lock.get_current_dir().to_owned()),
                         Err(act) => act
                     }.run_in_event_loop(win);

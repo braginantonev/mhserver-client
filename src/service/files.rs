@@ -29,7 +29,14 @@ impl FileManager {
 
     async fn get_files_from(&self, target_dir: &str) -> Result<Vec<FilesListInner>, UiActions> {
         match get_files_list(&self.cfg.api_conf, target_dir).await {
-            Ok(res ) => Ok(res),
+            Ok(res ) => {
+                if target_dir != "/" {
+                    let mut with_back = vec![FilesListInner { name: "..".to_owned(), is_dir: Some(true), size: None, mod_time: 0 }];
+                    with_back.extend(res.into_iter());
+                    return Ok(with_back);
+                }
+                Ok(res)
+            },
             Err(err) => {
                 if let openapi::apis::Error::ResponseError(x) = err {
                     Err(UiActions::ShowNotification(x.content, NotificationType::Error))
@@ -50,9 +57,14 @@ impl FileManager {
     }
 
     /// Change file manager active directory
-    pub async fn change_dir(&mut self, target_dir: PathBuf) -> Result<Vec<FilesListInner>, UiActions> {
+    async fn change_dir(&mut self, target_dir: PathBuf) -> Result<Vec<FilesListInner>, UiActions> {
         // I know this is not the best way to do it, but while I don't change server API, there is one way, which can I see.
-        let send_dir = target_dir.to_str().unwrap_or("/").to_owned() + "/";
+        let mut send_dir = target_dir.to_str().unwrap_or("/").to_owned();
+
+        // API required
+        if !send_dir.ends_with("/") {
+            send_dir += "/";
+        }
         
         let files = self.get_files_from(send_dir.as_str()).await;
 
@@ -64,9 +76,17 @@ impl FileManager {
     }
 
     /// This is similar change_dir(), which use a current active dir as root
-    pub async fn change_dir_from_current(&mut self, next_dir: &Path) -> Result<Vec<FilesListInner>, UiActions> {
-        self.change_dir(self.active_dir.join(next_dir)).await
+    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, UiActions> {
+        self.change_dir(self.active_dir.join(Path::new(dir_name))).await
     }
+
+    pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
+        let mut target = self.active_dir.clone();
+        target.pop();
+        self.change_dir(target).await
+    }
+
+    
 }
 
 impl super::Service for FileManager {
