@@ -101,6 +101,7 @@ export component MainWindow inherits Window {
 
     // Data service
     callback data_update_showed_files <=> files_service_field.update_showed_files;
+    callback data_change_directory <=> files_service_field.change_dir;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {

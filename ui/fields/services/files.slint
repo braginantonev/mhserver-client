@@ -9,7 +9,7 @@ export struct File {
     icon: image,
 }
 
-struct FileExtenderInfo {
+struct ExtendFileInfo {
     name: string,
     is_dir: bool
 }
@@ -44,7 +44,7 @@ component FileCeil {
 }
 
 component FileExtender {
-    in property <FileExtenderInfo> active-file;
+    in property <ExtendFileInfo> active-file;
 
     private property <length> text-padding: 15px;
 
@@ -89,9 +89,9 @@ export component FilesServiceField inherits FieldBackground {
     private property <int> cols-count: self.width / (tile-width + grid-spacing);
     private property <int> rows: Math.ceil(showed_files.length / cols-count);
 
-    callback file_opened(string);
     callback update_showed_files([File]);
 
+    callback change_dir(string);
     callback make_dir();
     callback remove_dir();
     callback save_file();
@@ -127,7 +127,11 @@ export component FilesServiceField inherits FieldBackground {
             }
 
             triggered => {
-                
+                if file.is-dir {
+                    change_dir(file.name);
+                } else {
+                    debug("file triggered");
+                }
             }
         }
     }
