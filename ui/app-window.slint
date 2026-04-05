@@ -26,12 +26,6 @@ export component MainWindow inherits Window {
     height: 720px;
     background: #2d2a29;
 
-    main_notification := Notification {
-        x: root.width - self.width - 20px;
-        y: root.height - self.height - 20px;
-        hided: true;
-    }
-
     // Fields
     Rectangle {
         width: 300px;
@@ -69,6 +63,12 @@ export component MainWindow inherits Window {
         width: root.width - service_field.width - 20px;
         x: service_field.width + 20px;
         enabled: false;
+    }
+
+    main_notification := Notification {
+        x: root.width - self.width - 20px;
+        y: root.height - self.height - 20px;
+        hided: true;
     }
 
     // For a smooth startup
