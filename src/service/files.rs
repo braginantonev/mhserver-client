@@ -18,9 +18,9 @@ fn back_dir() -> FilesListInner {
     FilesListInner { name: "..".to_owned(), is_dir: Some(true), size: None, mod_time: 0 }
 }
 
-fn add_back_to_files(mut files: Vec<FilesListInner>) -> Vec<FilesListInner> {
+fn add_back_to_files(files: Vec<FilesListInner>) -> Vec<FilesListInner> {
     let mut with_back = vec![back_dir()];
-    with_back.append(&mut files);
+    with_back.extend(files.into_iter());
     with_back
 }
 
