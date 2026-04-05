@@ -33,9 +33,13 @@ impl From<&FilesListInner> for FileTypes {
             return FileTypes::Directory
         }
 
-        let extension = match value.name.split('.').last() {
-            Some(x) => x,
-            None => "exe" // Linux use empty extension like executable file
+        let extension = if !value.name.contains('.') {
+            "exe" // Linux use empty extension like executable file
+        } else {
+            match value.name.split('.').last() {
+                Some(x) => x,
+                None => "UNDEFINED" 
+            }
         };
 
         match extension {
