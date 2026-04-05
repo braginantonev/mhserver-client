@@ -6,7 +6,7 @@ use {
         service
     }, 
     slint::ComponentHandle, 
-    std::sync::Arc, 
+    std::{path::Path, sync::Arc}, 
     tokio::sync::RwLock
 };
 
@@ -38,6 +38,24 @@ impl Application {
                     println!("files: {:?}", files);
 
                     UiActions::DataUpdateFilesList(files, String::from("/")).run_in_event_loop(win);
+                });
+            }
+        });
+
+        self.ui_window.on_data_change_directory({
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move |target| {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let mut lock = service.write().await;
+                    match lock.change_dir_from_current(Path::new(target.as_str())).await {
+                        Ok(files) => UiActions::DataUpdateFilesList(files, lock.get_current_dir().to_owned()),
+                        Err(act) => act
+                    }.run_in_event_loop(win);
                 });
             }
         });

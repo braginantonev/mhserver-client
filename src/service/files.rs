@@ -40,6 +40,10 @@ impl FileManager {
         }
     }
 
+    pub fn get_current_dir(&self) -> &str {
+        self.active_dir.to_str().unwrap_or("/")
+    }
+
     /// Return vector of file infos from active dir
     pub async fn get_files(&self) -> Result<Vec<FilesListInner>, UiActions> {
         self.get_files_from(self.active_dir.to_str().unwrap()).await
@@ -47,7 +51,10 @@ impl FileManager {
 
     /// Change file manager active directory
     pub async fn change_dir(&mut self, target_dir: PathBuf) -> Result<Vec<FilesListInner>, UiActions> {
-        let files = self.get_files_from(target_dir.to_str().unwrap()).await;
+        // I know this is not the best way to do it, but while I don't change server API, there is one way, which can I see.
+        let send_dir = target_dir.to_str().unwrap_or("/").to_owned() + "/";
+        
+        let files = self.get_files_from(send_dir.as_str()).await;
 
         if files.is_ok() {
             self.active_dir = target_dir;
