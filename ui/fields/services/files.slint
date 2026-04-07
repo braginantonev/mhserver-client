@@ -1,6 +1,8 @@
 import { FieldBackground } from "../base.slint";
 import { SimpleButton } from "../../components/button.slint";
 
+//* ----------------- File ----------------- *//
+
 export struct File {
     name: string,
     is_dir: bool,
@@ -15,12 +17,16 @@ struct ExtendFileInfo {
 }
 
 component FileCeil {
-    out property <bool> has-hover <=> butt.has-hover; 
+    out property <bool> has-hover <=> butt.has-hover;
+    out property <length> mouse-x <=> butt.mouse-x;
+    out property <length> mouse-y <=> butt.mouse-y;
+
     in property <image> file-icon <=> file-icon.source;
     in property <string> name <=> text.text;
 
     callback selected <=> butt.clicked;
-    callback triggered <=> butt.double-clicked;
+    callback opened <=> butt.double-clicked;
+    callback context-triggered();
 
     butt := SimpleButton {
         hover-color: #36454F;
@@ -29,6 +35,12 @@ component FileCeil {
 
         preferred-height: parent.height;
         preferred-width: parent.width;
+
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
+                context-triggered();
+            }
+        }
     }
 
     VerticalLayout {
@@ -79,6 +91,106 @@ component FileExtender {
     ]
 }
 
+//* ----------------- Context Menu ----------------- *//
+
+component MenuItem inherits SimpleButton {
+    use-native-scale: true;
+    hover-additional-width: -2px; // * Change with ContextMenu background border-width 
+    hover-color: whitesmoke;
+    hover-max-opacity: 0.4;
+}
+
+component MenuSeparator {
+    height: 1px;
+    Rectangle {
+        width: parent.width - 2px * 2; // * Change with ContextMenu background border-width 
+        background: gray;
+    }
+}
+
+component ContextMenu {
+    private property <bool> target-empty;
+    private property <length> element-height: 40px;
+    private property <length> element-border-radius: 20px;
+    private property <length> mouse-padding: 5px;
+
+    callback open_triggered <=> act_open.clicked;
+
+    callback download_triggered <=> act_download.clicked;
+    callback delete_triggered <=> act_delete.clicked;
+    callback create_folder_triggered <=> act_mkdir.clicked; // Create folder in current directory
+
+    callback properties_triggered <=> act_properties.clicked;
+
+    opacity: 0.0;
+    visible: self.opacity > 0.0;
+    width: 200px;
+
+    animate opacity { duration: 250ms; }
+
+    Rectangle {
+        background: #332e2e;
+        border-radius: element-border-radius;
+        border-color: #ffd000;
+        border-width: 2px;
+    }
+
+    actions := VerticalLayout {
+        // Open action
+        act_open := MenuItem {
+            enabled: !target-empty; //Todo: delete this with file preview func enhancement
+            height: element-height;
+            hover-border-radius: element-border-radius;
+            text: @tr("Open");
+        }
+
+        MenuSeparator {}
+
+        // Download action
+        act_download := MenuItem {
+            height: element-height;
+            hover-border-radius: element-border-radius;
+            text: @tr("Download");
+        }
+
+        // Delete action
+        act_delete := MenuItem {
+            height: element-height;
+            hover-border-radius: element-border-radius;
+            text: @tr("Delete");
+        }
+
+        // Create folder action
+        act_mkdir := MenuItem {
+            height: element-height;
+            hover-border-radius: element-border-radius;
+            text: @tr("Create folder");
+        }
+
+        MenuSeparator {}
+
+        // Properties action
+        act_properties := MenuItem {
+            height: element-height;
+            hover-border-radius: element-border-radius;
+            text: @tr("Properties");
+        }
+    }
+
+    public function show(target-empty: bool, p: Point) {
+        self.target-empty = target-empty;
+        self.opacity = 1.0;
+        self.x = p.x + mouse-padding;
+        self.y = p.y + mouse-padding;
+    }
+
+    public function hide() {
+        self.opacity = 0.0;
+    }
+}
+
+//* ----------------- Service ----------------- *//
+
 export component FilesServiceField inherits FieldBackground {
     out property <[File]> showed_files;
     out property <File> active-file;
@@ -92,17 +204,26 @@ export component FilesServiceField inherits FieldBackground {
     callback update_showed_files([File]);
 
     callback change_dir(string);
-    callback make_dir();
-    callback remove_dir();
-    callback save_file();
-    callback delete_file();
+    callback make_dir(string);
+    callback remove_dir(string);
+    callback download_dir(string);
+
+    callback download_file(string);
+    callback delete_file(string);
 
     TouchArea {
         width: parent.width;
         height: parent.height;
         
         clicked => {
+            context_menu.hide();
             active-file = {};
+        }
+
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
+                context_menu.show(true, { x: self.x + self.mouse-x, y: self.y + self.mouse-y })
+            }
         }
     }
 
@@ -124,15 +245,52 @@ export component FilesServiceField inherits FieldBackground {
 
             selected => {
                 active-file = file;
+                context_menu.hide();
             }
 
-            triggered => {
+            opened => {
                 if file.is-dir {
                     change_dir(file.name);
-                } else {
-                    debug("file triggered");
+                } // Todo: Add on else - preview file
+            }
+
+            context-triggered => {
+                self.selected();
+                if file.name != ".." {
+                    context_menu.show(false, { x:  self.x + self.mouse-x, y:  self.y + self.mouse-y });
                 }
             }
+        }
+    }
+
+    context_menu := ContextMenu {
+        open_triggered => {
+            self.hide();
+            if active_file.is-dir {
+                change_dir(active_file.name);
+            }
+            // Todo: Add preview file, if active file is not dir
+        }
+
+        download_triggered => {
+            self.hide();
+            active-file.is-dir ? download_dir(active-file.name) : download_file(active-file.name);
+        }
+
+        delete_triggered => { 
+            self.hide();
+            active-file.is-dir ? remove_dir(active-file.name) : delete_file(active-file.name);
+        }            
+
+        create_folder_triggered => {
+            self.hide();
+            //make_dir(""); //Todo: add input folder name 
+            debug("make dir triggered")
+        }
+
+        properties_triggered => { 
+            self.hide();
+            debug("properties triggered");
         }
     }
 
