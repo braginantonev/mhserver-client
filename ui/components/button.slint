@@ -4,6 +4,7 @@ export component SimpleButton inherits TouchArea {
     
     in property <brush> hover-color <=> cover.background;
     in property <length> hover-border-radius <=> cover.border-radius;
+    in property <length> hover-additional-width;
     in property <float> hover-max-opacity: 1.0;
     in property <float> hover-min-opacity: 0.0;
 
@@ -11,9 +12,13 @@ export component SimpleButton inherits TouchArea {
     in property <length> font-size <=> text.font-size;
     out property <length> text-length <=> text.width;
 
+    in property <bool> use-native-scale: false;
+    private property <length> components-width: use-native-scale ? self.width : self.preferred-width;
+    private property <length> components-height: use-native-scale ? self.height : self.preferred-height;
+
     cover := Rectangle {
-        width: root.preferred-width + 10px;
-        height: root.preferred-height + 10px;
+        width: components-width + hover-additional-width;
+        height: components-height + hover-additional-width;
         border-radius: self.width / 4;
 
         opacity: root.has-hover ? hover-max-opacity : hover-min-opacity;
@@ -24,7 +29,7 @@ export component SimpleButton inherits TouchArea {
 
     image := Image {
         image-rendering: smooth;
-        height: root.preferred-height;
-        width: root.preferred-width;    
+        height: components-height;
+        width: components-width;    
     }
 }
