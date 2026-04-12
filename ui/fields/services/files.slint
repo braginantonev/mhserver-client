@@ -1,5 +1,44 @@
 import { FieldBackground } from "../base.slint";
 import { SimpleButton } from "../../components/button.slint";
+import { LineEdit } from "std-widgets.slint";
+
+//* ----------------- General ----------------- *//
+
+component PopupBackground inherits Rectangle {
+    background: #332e2e;
+    border-radius: 10px;
+    border-color: yellow;
+    border-width: 2px;
+}
+
+component FolderNameInput inherits PopupWindow {
+    width: 400px;
+    height: 100px;
+    close-policy: close-on-click-outside;
+
+    callback accepted(string);
+    
+    PopupBackground {}
+
+    VerticalLayout {
+        padding: 15px;
+        spacing: 5px;
+
+        Text {
+            font-size: 15pt; 
+            text: @tr("Create folder");
+        }
+
+        input := LineEdit {
+            placeholder-text: @tr("Enter folder name");
+
+            accepted(text) => {
+                root.close();
+                root.accepted(text);
+            }
+        }
+    }    
+}
 
 //* ----------------- File ----------------- *//
 
@@ -123,7 +162,6 @@ global ContextMenuInfo {
 }
 
 component ContextMenu inherits PopupWindow {
-    private property <bool> target-empty;
     private property <length> element-height: 40px;
     private property <length> element-border-radius: 20px;
 
@@ -139,11 +177,8 @@ component ContextMenu inherits PopupWindow {
     x <=> ContextMenuInfo.target-x;
     y <=> ContextMenuInfo.target-y;
 
-    Rectangle {
-        background: #332e2e;
+    PopupBackground {
         border-radius: element-border-radius;
-        border-color: #ffd000;
-        border-width: 2px;
     }
 
     VerticalLayout {
@@ -280,12 +315,19 @@ export component FilesServiceField inherits FieldBackground {
         }            
 
         create_folder_triggered => {
-            //make_dir(""); // Todo: add input folder name 
-            debug("make dir triggered")
+            filename_input.show();
         }
 
         properties_triggered => { 
             debug("properties triggered");
+        }
+    }
+
+    filename_input := FolderNameInput {
+        x: parent.width / 2 - self.width / 2;
+        y: parent.height / 2 - self.height / 2;
+        accepted(name) => {
+            make_dir(name);
         }
     }
 
