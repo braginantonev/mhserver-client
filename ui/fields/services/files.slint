@@ -56,13 +56,10 @@ component FileCeil {
     }
 }
 
-component FileExtender {
-    in property <ExtendFileInfo> active-file;
-
+component FileExtender { 
     private property <length> text-padding: 15px;
 
     height: 35px;
-
     opacity: 0.0;
     animate opacity { duration: 250ms; }
 
@@ -82,14 +79,17 @@ component FileExtender {
         x: parent.x + text-padding;
         font-size: 12pt;
         vertical-alignment: center;
-        text: active-file.name + (active-file.is-dir ? @tr(" (Folder)") : "");
+        
     }
 
-    states [
-        showed when active-file.name != "": {
-            opacity: 1.0;
-        }
-    ]
+    public function show_file(file-info: ExtendFileInfo) {
+        self.opacity = 1.0;
+        txt.text = file-info.name + (file-info.is-dir ? @tr(" (Folder)") : "");
+    }
+
+    public function hide() {
+        self.opacity = 0.0;
+    }
 }
 
 //* ----------------- Context Menu ----------------- *//
@@ -119,7 +119,7 @@ component ContextMenu {
 
     callback download_triggered <=> act_download.clicked;
     callback delete_triggered <=> act_delete.clicked;
-    callback create_folder_triggered <=> act_mkdir.clicked; // Create folder in current directory
+    callback create_folder_triggered <=> act_mkdir.clicked;
 
     callback properties_triggered <=> act_properties.clicked;
 
@@ -136,10 +136,10 @@ component ContextMenu {
         border-width: 2px;
     }
 
-    actions := VerticalLayout {
+    VerticalLayout {
         // Open action
         act_open := MenuItem {
-            enabled: !target-empty; //Todo: delete this with file preview func enhancement
+            enabled: !target-empty; // Todo: delete this with file preview func enhancement
             height: element-height;
             hover-border-radius: element-border-radius;
             text: @tr("Open");
@@ -218,7 +218,7 @@ export component FilesServiceField inherits FieldBackground {
         
         clicked => {
             context_menu.hide();
-            active-file = {};
+            extender.hide();
         }
 
         pointer-event(event) => {
@@ -245,7 +245,7 @@ export component FilesServiceField inherits FieldBackground {
             name: file.name;
 
             selected => {
-                active-file = file;
+                extender.show_file(file);
                 context_menu.hide();
             }
 
@@ -285,7 +285,7 @@ export component FilesServiceField inherits FieldBackground {
 
         create_folder_triggered => {
             self.hide();
-            //make_dir(""); //Todo: add input folder name 
+            //make_dir(""); // Todo: add input folder name 
             debug("make dir triggered")
         }
 
@@ -296,7 +296,6 @@ export component FilesServiceField inherits FieldBackground {
     }
 
     extender := FileExtender {
-        active-file: { name: active-file.name, is-dir: active-file.is-dir };
         x: 0px;
         y: parent.height - self.height;
     }
