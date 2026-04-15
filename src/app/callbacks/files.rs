@@ -6,7 +6,7 @@ use {
         service
     }, 
     slint::ComponentHandle, 
-    std::{path::Path, sync::Arc}, 
+    std::sync::Arc, 
     tokio::sync::RwLock
 };
 
@@ -42,7 +42,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_data_change_directory({
+        self.ui_window.on_files_change_directory({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 

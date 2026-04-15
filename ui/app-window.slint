@@ -100,8 +100,13 @@ export component MainWindow inherits Window {
     callback show_service <=> service_field.service_triggered;
 
     // Data service
-    callback data_update_showed_files <=> files_service_field.update_showed_files;
-    callback data_change_directory <=> files_service_field.change_dir;
+    callback files_update_showed_files <=> files_service_field.update_showed_files;
+    callback files_change_directory <=> files_service_field.change_dir;
+    callback files_make_directory <=> files_service_field.make_dir;
+    callback files_remove_directory <=> files_service_field.remove_dir;
+    callback files_download_directory <=> files_service_field.download_dir;
+    callback files_download_file <=> files_service_field.download_file;
+    callback files_delete_file <=> files_service_field.delete_file;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {

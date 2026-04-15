@@ -40,7 +40,7 @@ impl UiActions {
                     }
                 });
 
-                win.invoke_data_update_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
+                win.invoke_files_update_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
             }
         }
     }
