@@ -4,10 +4,7 @@ use {
         actions::UiActions, 
         app::Application, 
         service
-    }, 
-    slint::ComponentHandle, 
-    std::sync::Arc, 
-    tokio::sync::RwLock
+    }, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 
 impl Application {
@@ -27,7 +24,7 @@ impl Application {
                 UiActions::ChangeActiveService(target).run_in_event_loop(win.clone());
 
                 tokio::spawn(async move {
-                    let files = match service.read().await.get_files().await {
+                    let files = match service.write().await.get_files().await {
                         Ok(res) => res,
                         Err(act) => {
                             act.run_in_event_loop(win);
@@ -60,6 +57,31 @@ impl Application {
                     } {
                         Ok(files) => UiActions::DataUpdateFilesList(files, lock.get_current_dir().to_owned()),
                         Err(act) => act
+                    }.run_in_event_loop(win);
+                });
+            }
+        });
+
+        self.ui_window.on_files_make_directory({
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move |dir_name| {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let resp = service.write().await.make_dir(dir_name.as_str()).await;
+                    match resp {
+                        Ok(_) => {
+                            // Append new dir to files list instead a send request to server, to reduce the load on it.
+                            let (files, from) = {
+                                let lock = service.read().await;
+                                (lock.get_cached_files(), lock.get_current_dir().to_owned())
+                            };
+                            UiActions::DataUpdateFilesList(files, from)
+                        },
+                        Err(err) => err
                     }.run_in_event_loop(win);
                 });
             }

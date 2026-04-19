@@ -7,11 +7,21 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Debug, Clone)]
 pub enum UiActions {
+    /// Change application state to target
     ChangeAppState(AppStates),
+
+    /// Change preparing state to target
     ChangePreparingState(PreparingStates),
+
+    /// Change active service to target
     ChangeActiveService(Services),
+
+    /// Show notification with description and type
     ShowNotification(String, NotificationType),
+
+    /// Update files in data service. Required the files, and server path, where is this files located. 
     DataUpdateFilesList(Vec<openapi::models::FilesListInner>, String),
 }
 
