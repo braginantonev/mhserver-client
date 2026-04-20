@@ -8,21 +8,52 @@ use {
         apis::{ 
             default_api::{
                 get_files_list,
+                files_remove_directory,
                 files_make_directory,
             },
             Error,
         },
         models::FilesListInner,
-    }, 
-    std::{
-        path::{Path, PathBuf},
-        str::FromStr
-    }
+    },
 };
 
-// Temporary. API required
-fn format_dir_for_req(target_dir: &str) -> String {
-    format!("{}/", target_dir)
+#[derive(Clone)]
+pub struct ServerPath {
+    buff: Vec<String>,
+}
+
+impl ServerPath {
+    pub fn new() -> Self {
+        Self { buff: Vec::new() }
+    }
+
+    /// Push a single directory.
+    #[allow(dead_code)] // Todo: Remove in prod
+    pub fn push(&mut self, path: &str) {
+        self.buff.push(path.to_owned());
+    }
+
+    /// Pop a singe directory.
+    pub fn pop(&mut self) -> bool {
+        self.buff.pop().is_some()
+    }
+
+    pub fn with(&self, element: &str) -> Self {
+        let mut res = self.buff.clone();
+        res.push(element.to_owned());
+        Self { buff: res }
+    }
+}
+
+impl ToString for ServerPath {
+    fn to_string(&self) -> String {
+        let mut s = String::from("/");
+        for element in &self.buff {
+            s.push_str(element);
+            s.push('/');
+        }
+        s
+    }
 }
 
 #[derive(Clone)]
@@ -54,7 +85,7 @@ impl Default for FilesList {
 
 pub struct FileManager {
     cfg: FileServiceConfig,
-    active_dir: PathBuf,
+    active_dir: ServerPath,
     cached_files: FilesList,
 }
 
@@ -62,45 +93,39 @@ impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
         Self { 
             cfg,
-            active_dir: PathBuf::from_str("/").unwrap(),
+            active_dir: ServerPath::new(),
             cached_files: FilesList::new(),
         }
     }
 
-    /// Change file manager active directory. Client the guarantees that target_dir is exist on the server.
-    async fn change_dir(&mut self, target_dir: PathBuf) -> Result<Vec<FilesListInner>, UiActions> {
-        self.active_dir = target_dir;
+    /// Change file manager active directory. Client the guarantees that new_dir is exist on the server.
+    async fn change_dir(&mut self, new_dir: ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
+        self.active_dir = new_dir;
         self.get_files().await
     }
 
-    pub fn get_current_dir(&self) -> &str {
-        self.active_dir.to_str().unwrap_or("/")
+    pub fn current_dir(&self) -> String {
+        self.active_dir.to_string()
     }
 
     /// Get a cached files list
-    pub fn get_cached_files(&self) -> Vec<FilesListInner> {
-        if self.get_current_dir() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
+    pub fn cached_files(&self) -> Vec<FilesListInner> {
+        if self.current_dir() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
     }
 
     /// Get files list from server and save to local cache
     pub async fn get_files(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
-        let mut req_dir = self.active_dir.to_str().unwrap().to_owned();
-
-        if !req_dir.ends_with('/') {
-            req_dir += "/";
-        }
-
-        match get_files_list(&self.cfg.api_conf, req_dir.as_str()).await {
+        match get_files_list(&self.cfg.api_conf, self.current_dir().as_str()).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res);
-                Ok(self.get_cached_files())
+                Ok(self.cached_files())
             },
             Err(err) => {
                 match err {
                     Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
                     Error::Serde(_) => { // Null response
                         self.cached_files = FilesList::default();
-                        Ok(self.get_cached_files())
+                        Ok(self.cached_files())
                     }, 
                     _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
                 }
@@ -110,10 +135,10 @@ impl FileManager {
 
     /// Go to next folder, and return files list
     pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, UiActions> {
-        self.change_dir(self.active_dir.join(Path::new(dir_name))).await
+        self.change_dir(self.active_dir.with(dir_name)).await
     }
 
-    // Go to previous folder, and return files list
+    /// Go to previous folder, and return files list
     pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
         let mut target = self.active_dir.clone();
         target.pop();
@@ -121,8 +146,9 @@ impl FileManager {
     }
 
     pub async fn make_dir(&mut self, target_dir: &str) -> Result<(), UiActions> {
-        match files_make_directory(&self.cfg.api_conf, format_dir_for_req(&self.active_dir.join(Path::new(target_dir)).to_str().unwrap()).as_str()).await {
+        match files_make_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
             Ok(_) => {
+                // Append new dir to files list instead a send request to server, to reduce the load on it.
                 self.cached_files.0.push(FilesListInner { name: target_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
                 Ok(())
             },

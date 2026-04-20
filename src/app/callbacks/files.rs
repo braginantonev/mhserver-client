@@ -24,17 +24,11 @@ impl Application {
                 UiActions::ChangeActiveService(target).run_in_event_loop(win.clone());
 
                 tokio::spawn(async move {
-                    let files = match service.write().await.get_files().await {
-                        Ok(res) => res,
-                        Err(act) => {
-                            act.run_in_event_loop(win);
-                            return
-                        }
-                    };
-
-                    println!("files: {:?}", files);
-
-                    UiActions::DataUpdateFilesList(files, String::from("/")).run_in_event_loop(win);
+                    let files = service.write().await.get_files().await; 
+                    match files {
+                        Ok(res) => UiActions::DataUpdateFilesList(res, String::from("/")),
+                        Err(err_act) => err_act
+                    }.run_in_event_loop(win);
                 });
             }
         });
@@ -55,7 +49,7 @@ impl Application {
                     } else {
                         lock.prev().await
                     } {
-                        Ok(files) => UiActions::DataUpdateFilesList(files, lock.get_current_dir().to_owned()),
+                        Ok(files) => UiActions::DataUpdateFilesList(files, lock.current_dir()),
                         Err(act) => act
                     }.run_in_event_loop(win);
                 });
@@ -74,10 +68,9 @@ impl Application {
                     let resp = service.write().await.make_dir(dir_name.as_str()).await;
                     match resp {
                         Ok(_) => {
-                            // Append new dir to files list instead a send request to server, to reduce the load on it.
                             let (files, from) = {
                                 let lock = service.read().await;
-                                (lock.get_cached_files(), lock.get_current_dir().to_owned())
+                                (lock.cached_files(), lock.current_dir())
                             };
                             UiActions::DataUpdateFilesList(files, from)
                         },
