@@ -79,5 +79,30 @@ impl Application {
                 });
             }
         });
+
+        self.ui_window.on_files_remove_directory({
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move |dir_name| {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let resp = service.write().await.remove_dir(dir_name.as_str()).await;
+                    match resp {
+                        Ok(_) => {
+                            let (files, from) = {
+                                let lock = service.read().await;
+                                (lock.cached_files(), lock.current_dir())
+                            };
+                            UiActions::DataUpdateFilesList(files, from)
+                        },
+                        Err(err) => err
+                    }.run_in_event_loop(win);
+                });
+
+            }
+        });
     }
 }

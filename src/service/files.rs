@@ -6,15 +6,12 @@ use {
     }, 
     openapi::{
         apis::{ 
-            default_api::{
-                get_files_list,
-                files_remove_directory,
-                files_make_directory,
-            },
-            Error,
+            Error, default_api::{
+                files_make_directory, files_remove_directory, get_files_list
+            }
         },
         models::FilesListInner,
-    },
+    }, std::ops::Index,
 };
 
 #[derive(Clone)]
@@ -74,6 +71,10 @@ impl FilesList {
         res.push(self.back_dir());
         res.extend_from_slice(&self.0);
         Self(res)
+    }
+
+    pub fn remove(&mut self, target: &str, is_dir: bool) {
+        self.0.remove(self.0.iter().position(|f| f.name == target && f.is_dir.unwrap_or(false) == is_dir ).expect("dir to remove not found"));
     }
 }
 
@@ -145,11 +146,11 @@ impl FileManager {
         self.change_dir(target).await
     }
 
-    pub async fn make_dir(&mut self, target_dir: &str) -> Result<(), UiActions> {
-        match files_make_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
+    pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), UiActions> {
+        match files_make_directory(&self.cfg.api_conf, self.active_dir.with(new_dir).to_string().as_str()).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
-                self.cached_files.0.push(FilesListInner { name: target_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
+                self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
                 Ok(())
             },
             Err(err) => {
@@ -157,6 +158,19 @@ impl FileManager {
                     Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
                     _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
                 }
+            }
+        }
+    }
+
+    pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), UiActions> {
+        match files_remove_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
+            Ok(_) => {
+                self.cached_files.remove(target_dir, true);
+                Ok(())
+            },
+            Err(err) => match err {
+                Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
+                _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
             }
         }
     }
