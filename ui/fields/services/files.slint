@@ -77,8 +77,12 @@ component FileCeil {
         preferred-width: parent.width;
 
         pointer-event(event) => {
-            if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
-                context-triggered();
+            if event.kind == PointerEventKind.up {
+                selected();
+
+                if event.button == PointerEventButton.right {
+                    context-triggered();
+                }
             }
         }
     }
@@ -201,6 +205,7 @@ component ContextMenu inherits PopupWindow {
 
         // Delete action
         act_delete := MenuItem {
+            enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             hover-border-radius: element-border-radius;
             text: @tr("Delete");
@@ -279,6 +284,7 @@ export component FilesServiceField inherits FieldBackground {
             name: file.name;
 
             selected => {
+                active-file = file;
                 extender.show_file(file);
             }
 
