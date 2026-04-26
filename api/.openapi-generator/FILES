@@ -3,6 +3,7 @@
 .travis.yml
 Cargo.toml
 README.md
+docs/ConnectionMode.md
 docs/ConnectionRequest.md
 docs/ConnectionResponse.md
 docs/DefaultApi.md
@@ -15,6 +16,7 @@ src/apis/configuration.rs
 src/apis/default_api.rs
 src/apis/mod.rs
 src/lib.rs
+src/models/connection_mode.rs
 src/models/connection_request.rs
 src/models/connection_response.rs
 src/models/files_list_inner.rs

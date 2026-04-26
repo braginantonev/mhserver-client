@@ -249,7 +249,7 @@ pub enum UsersRegister0Error {
 
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: &str) -> Result<models::ConnectionResponse, Error<FilesCreateConnectionError>> {
+pub async fn files_create_connection(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: models::ConnectionMode) -> Result<models::ConnectionResponse, Error<FilesCreateConnectionError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_connection_request = connection_request;
     let p_query_mode = mode;
@@ -292,7 +292,7 @@ pub async fn files_create_connection(configuration: &configuration::Configuratio
 }
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection_0(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: &str) -> Result<models::ConnectionResponse, Error<FilesCreateConnection0Error>> {
+pub async fn files_create_connection_0(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: models::ConnectionMode) -> Result<models::ConnectionResponse, Error<FilesCreateConnection0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_connection_request = connection_request;
     let p_query_mode = mode;

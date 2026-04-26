@@ -1,3 +1,5 @@
+pub mod connection_mode;
+pub use self::connection_mode::ConnectionMode;
 pub mod connection_request;
 pub use self::connection_request::ConnectionRequest;
 pub mod connection_response;

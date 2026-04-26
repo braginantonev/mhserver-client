@@ -41,7 +41,7 @@ Method | HTTP request | Description
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
-**mode** | **String** | Тип подключения.  `RDWR` - подключение для создания, редактирования и чтения файлов. При использовании - обязательно указывать размер файла в теле запроса. `RDONLY` - подключение только для чтения фаилов. При использовании - указывать размер файла не обязательно.  | [required] |
+**mode** | [**ConnectionMode**](ConnectionMode.md) |  | [required] |
 
 ### Return type
 
@@ -72,7 +72,7 @@ Name | Type | Description  | Required | Notes
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
-**mode** | **String** | Тип подключения.  `RDWR` - подключение для создания, редактирования и чтения файлов. При использовании - обязательно указывать размер файла в теле запроса. `RDONLY` - подключение только для чтения фаилов. При использовании - указывать размер файла не обязательно.  | [required] |
+**mode** | [**ConnectionMode**](ConnectionMode.md) |  | [required] |
 
 ### Return type
 
