@@ -409,7 +409,7 @@ pub async fn files_get_available_space_0(configuration: &configuration::Configur
 }
 
 /// Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
-pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Vec<i32>, Error<FilesGetChunkError>> {
+pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<String, Error<FilesGetChunkError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -441,8 +441,8 @@ pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;i32&gt;`"))),
-            ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
+            ContentType::Text => return Ok(content),
+            ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
         let content = resp.text().await?;
@@ -452,7 +452,7 @@ pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_
 }
 
 /// Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
-pub async fn files_get_chunk_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Vec<i32>, Error<FilesGetChunk0Error>> {
+pub async fn files_get_chunk_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<String, Error<FilesGetChunk0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -484,8 +484,8 @@ pub async fn files_get_chunk_0(configuration: &configuration::Configuration, con
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;i32&gt;`"))),
-            ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
+            ContentType::Text => return Ok(content),
+            ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
         let content = resp.text().await?;

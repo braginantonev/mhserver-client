@@ -16,18 +16,18 @@ pub struct ConnectionResponse {
     #[serde(rename = "UUID")]
     pub uuid: uuid::Uuid,
     /// Размер части файла в байтах для записи или чтения
-    #[serde(rename = "chunksSize")]
-    pub chunks_size: i32,
+    #[serde(rename = "chunkSize")]
+    pub chunk_size: i32,
     /// Количество частей файлов доступных для записи
     #[serde(rename = "chunksCount")]
     pub chunks_count: i32,
 }
 
 impl ConnectionResponse {
-    pub fn new(uuid: uuid::Uuid, chunks_size: i32, chunks_count: i32) -> ConnectionResponse {
+    pub fn new(uuid: uuid::Uuid, chunk_size: i32, chunks_count: i32) -> ConnectionResponse {
         ConnectionResponse {
             uuid,
-            chunks_size,
+            chunk_size,
             chunks_count,
         }
     }

@@ -12,6 +12,7 @@ tokio = { version = "1.49.0", features = ["full"] }
 serde = "1.0.228"
 toml = "0.9.11"
 uuid = "1.23.1"
+system-interface = "0.27.3"
 
 [build-dependencies]
 slint-build = "1.15.1"

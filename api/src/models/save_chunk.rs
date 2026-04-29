@@ -11,18 +11,22 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
+use serde_with::serde_as;
+
+#[serde_as]
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SaveChunk {
-    /// Массив байт, представляющий собой часть файла для записи
+    /// base64 байтовая запись чанка файла
+    #[serde_as(as = "serde_with::base64::Base64")]
     #[serde(rename = "chunk")]
-    pub chunk: Vec<i32>,
+    pub chunk: Vec<u8>,
     /// Отступ от начала файла, после которого будет сохранён чанк
     #[serde(rename = "offset")]
     pub offset: i32,
 }
 
 impl SaveChunk {
-    pub fn new(chunk: Vec<i32>, offset: i32) -> SaveChunk {
+    pub fn new(chunk: Vec<u8>, offset: i32) -> SaveChunk {
         SaveChunk {
             chunk,
             offset,

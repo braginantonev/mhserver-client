@@ -142,7 +142,7 @@ This endpoint does not need any parameter.
 
 ## files_get_chunk
 
-> Vec<i32> files_get_chunk(conn_id, chunk_id)
+> String files_get_chunk(conn_id, chunk_id)
 Получить часть файла
 
 Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
@@ -157,7 +157,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-**Vec<i32>**
+**String**
 
 ### Authorization
 
@@ -173,7 +173,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_get_chunk_0
 
-> Vec<i32> files_get_chunk_0(conn_id, chunk_id)
+> String files_get_chunk_0(conn_id, chunk_id)
 Получить часть файла
 
 Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
@@ -188,7 +188,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-**Vec<i32>**
+**String**
 
 ### Authorization
 
