@@ -243,13 +243,14 @@ export component FilesServiceField inherits FieldBackground {
 
     callback update_showed_files([File]);
 
-    callback change_dir(string);
-    callback make_dir(string);
-    callback remove_dir(string);
-    callback download_dir(string);
+    callback change_dir(string); // directory name
+    callback make_dir(string); // directory name
+    callback remove_dir(string); // directory name
+    callback download_dir(string); // directory name
 
-    callback download_file(string);
-    callback delete_file(string);
+    callback download_file(string); // filename
+    callback upload_file(string); // file path on computer
+    callback delete_file(string); // filename
 
     TouchArea {
         width: parent.width;

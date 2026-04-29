@@ -4,7 +4,7 @@ use {
         actions::UiActions, 
         app::Application, 
         service
-    }, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
+    }, slint::ComponentHandle, std::{path::PathBuf, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
@@ -102,6 +102,31 @@ impl Application {
                     }.run_in_event_loop(win);
                 });
 
+            }
+        });
+
+        self.ui_window.on_files_upload_file( {
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move |filepath| {
+                let win = win.clone();
+                let service = service.clone();
+
+                let os_file_path = match PathBuf::try_from(filepath.to_string()) {
+                    Ok(path) => path,
+                    Err(_) => {
+                        UiActions::ShowNotification("bad file path syntax".to_owned(), crate::NotificationType::Error);
+                        return
+                    } 
+                };
+
+                tokio::spawn(async move {
+                    match service.write().await.upload_file(os_file_path.as_path()).await {
+                        Ok(_con_uuid) => println!("upload started"),
+                        Err(err) => err.run_in_event_loop(win),
+                    }
+                });
             }
         });
     }
