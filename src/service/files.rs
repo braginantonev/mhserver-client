@@ -3,19 +3,18 @@ use {
         NotificationType, 
         actions::UiActions, 
         config::files::FileServiceConfig
-    }, 
-    openapi::{
+    }, openapi::{
         apis::{ 
             Error, default_api::{
-                files_make_directory, files_remove_directory, get_files_list
+                files_create_connection, files_make_directory, files_remove_directory, files_save_chunk, get_files_list
             }
         },
-        models::FilesListInner,
-    }, std::ops::Index,
+        models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
+    }, std::{collections::HashMap, fs::File, path::Path, sync::{Arc, Mutex}, thread, time}, system_interface::fs::FileIoExt, uuid::Uuid
 };
 
 #[derive(Clone)]
-pub struct ServerPath {
+struct ServerPath {
     buff: Vec<String>,
 }
 
@@ -54,7 +53,7 @@ impl ToString for ServerPath {
 }
 
 #[derive(Clone)]
-pub struct FilesList(Vec<FilesListInner>);
+struct FilesList(Vec<FilesListInner>);
 
 impl FilesList {
     pub fn new() -> Self {
@@ -80,14 +79,61 @@ impl FilesList {
 
 impl Default for FilesList {
     fn default() -> Self {
-        FilesList(Vec::new())
+        FilesList::new()
+    }
+}
+
+// pub enum ConnectionState {
+//     Active,
+//     Completed,
+//     Dropped
+// }
+
+struct ConnectionInner {
+    chunk_size: i32,
+    chunks_count: i32,
+    loaded: i32, // count of saved or loaded chunks  
+}
+
+impl ConnectionInner {
+    pub fn new(chunk_size: i32, chunks_count: i32) -> Self {
+        Self { chunk_size, chunks_count, loaded: 0 }
+    }
+}
+
+#[derive(Clone)]
+struct Connections {
+    inner: Arc<Mutex<HashMap<Uuid, ConnectionInner>>>
+}
+
+impl Connections {
+    pub fn new() -> Self {
+        Self { inner: Arc::new(Mutex::new(HashMap::new())) }
+    }
+
+    pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
+        self.inner.lock().unwrap().insert(key, val);
+    }
+
+    pub fn progress(&self, id: Uuid) -> f32 {
+        let lock = self.inner.lock().unwrap();
+        lock[&id].loaded as f32 / lock[&id].chunks_count as f32
+    }
+
+    pub fn increase_progress(&mut self, id: Uuid) -> bool {
+        if let Some(conn) = self.inner.lock().unwrap().get_mut(&id) {
+            conn.loaded += 1;
+            return true;
+        }
+        false
     }
 }
 
 pub struct FileManager {
     cfg: FileServiceConfig,
     active_dir: ServerPath,
-    cached_files: FilesList,
+    cached_files: FilesList, // for files in active dir
+    connections: Connections
 }
 
 impl FileManager {
@@ -96,6 +142,7 @@ impl FileManager {
             cfg,
             active_dir: ServerPath::new(),
             cached_files: FilesList::new(),
+            connections: Connections::new(),
         }
     }
 
@@ -173,6 +220,63 @@ impl FileManager {
                 _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
             }
         }
+    }
+
+    /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
+    pub async fn send_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
+        let file = match File::open(os_file_path) {
+            Ok(f) => Arc::new(f),
+            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+        };
+
+        let file_meta = match file.metadata() {
+            Ok(m) => m,
+            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+        };
+
+        let conn_req = ConnectionRequest {
+            directory: self.active_dir.to_string(),
+            filename: os_file_path.file_name().unwrap().display().to_string(),
+            size: Some(file_meta.len() as i32),
+        };
+        
+        let save_info = match files_create_connection(&self.cfg.api_conf, conn_req, ConnectionMode::Rdwr).await {
+            Ok(conn) => conn,
+            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+        };
+
+        self.connections.add(save_info.uuid, ConnectionInner::new(save_info.chunks_size, save_info.chunks_count));
+        let connections = self.connections.clone();
+
+        let http_cfg = Arc::new(self.cfg.api_conf.clone());
+
+        thread::spawn(move || {
+            for ch_idx in 0..save_info.chunks_count {
+                let mut connections = connections.clone();
+                let file = file.clone();
+                let http_cfg = http_cfg.clone();
+                
+                tokio::spawn(async move {
+                    let offset = save_info.chunks_size as u64 * ch_idx as u64;
+                    let mut save_chunk = vec![0u8; save_info.chunks_size as usize];
+                    let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
+                    match files_save_chunk(http_cfg.as_ref(), SaveChunk::new(save_chunk[..read].to_vec(), offset as i32), save_info.uuid.to_string().as_str()).await {
+                        Ok(_) => {
+                            connections.increase_progress(save_info.uuid);
+                            println!("save {}", ch_idx);
+                        },
+                        Err(err) => panic!("failed save chunk to http: {err}")
+                    }
+                });
+
+                // Todo: Check in prod
+                if ch_idx % 100 == 0 {
+                    thread::sleep(time::Duration::from_secs(1));
+                }
+            }
+        });
+
+        todo!()
     }
 }
 
