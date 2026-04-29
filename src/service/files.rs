@@ -223,7 +223,7 @@ impl FileManager {
     }
 
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
-    pub async fn send_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
+    pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
         let file = match File::open(os_file_path) {
             Ok(f) => Arc::new(f),
             Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
@@ -239,44 +239,58 @@ impl FileManager {
             filename: os_file_path.file_name().unwrap().display().to_string(),
             size: Some(file_meta.len() as i32),
         };
+
+        println!("connection request: {:?}", conn_req);
         
         let save_info = match files_create_connection(&self.cfg.api_conf, conn_req, ConnectionMode::Rdwr).await {
             Ok(conn) => conn,
             Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
         };
 
-        self.connections.add(save_info.uuid, ConnectionInner::new(save_info.chunks_size, save_info.chunks_count));
+        println!("create connection: {:?}", save_info);
+
+        self.connections.add(save_info.uuid, ConnectionInner::new(save_info.chunk_size, save_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
 
-        thread::spawn(move || {
+        tokio::spawn(async move {
             for ch_idx in 0..save_info.chunks_count {
-                let mut connections = connections.clone();
+                let offset = save_info.chunk_size as u64 * ch_idx as u64;
                 let file = file.clone();
+
+                let chunk = tokio::task::spawn_blocking(move || {
+                    let mut save_chunk = vec![0u8; save_info.chunk_size as usize];
+                    let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
+                    save_chunk[..read].to_vec()
+                }).await.expect("blocking file read failed");
+
+                let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
+
+                println!("gg: {}", save_info.uuid.to_string());
                 
                 tokio::spawn(async move {
-                    let offset = save_info.chunks_size as u64 * ch_idx as u64;
-                    let mut save_chunk = vec![0u8; save_info.chunks_size as usize];
-                    let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
-                    match files_save_chunk(http_cfg.as_ref(), SaveChunk::new(save_chunk[..read].to_vec(), offset as i32), save_info.uuid.to_string().as_str()).await {
+                    match files_save_chunk(http_cfg.as_ref(), SaveChunk::new(chunk, offset as i32), save_info.uuid.to_string().as_str()).await {
                         Ok(_) => {
                             connections.increase_progress(save_info.uuid);
                             println!("save {}", ch_idx);
                         },
-                        Err(err) => panic!("failed save chunk to http: {err}")
+                        Err(err) =>  match err {
+                            Error::ResponseError(c) => println!("resp err: {}", c.content),
+                            _ => println!("err: {}", err),
+                        }
                     }
                 });
-
+                
                 // Todo: Check in prod
                 if ch_idx % 100 == 0 {
-                    thread::sleep(time::Duration::from_secs(1));
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 }
             }
         });
 
-        todo!()
+        Ok(save_info.uuid)
     }
 }
 
