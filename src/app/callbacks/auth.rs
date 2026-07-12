@@ -26,7 +26,7 @@ impl Application {
 
                 tokio::spawn(async move {
                     let (jwt, act) = service.read().await.login(
-                        openapi::models::UserLoginRequest::new(username.to_string(), password.to_string())
+                        api::models::UserLoginRequest::new(username.to_string(), password.to_string())
                     ).await;
 
                     if let Some(jwt) = jwt {
@@ -51,7 +51,7 @@ impl Application {
                         return
                     }
 
-                    service.read().await.register(openapi::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())).await.run_in_event_loop(win);
+                    service.read().await.register(api::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())).await.run_in_event_loop(win);
                 });
             }
         });

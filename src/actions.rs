@@ -22,11 +22,11 @@ pub enum UiActions {
     ShowNotification(String, NotificationType),
 
     /// Update files in data service. Required the files, and server path, where is this files located. 
-    DataUpdateFilesList(Vec<openapi::models::FilesListInner>, String),
+    DataUpdateFilesList(Vec<api::models::FilesListInner>, String),
 }
 
 impl UiActions {
-    pub fn run(self, win: MainWindow) {
+    fn run(self, win: MainWindow) {
         match self {
             UiActions::ChangeAppState(next) => win.set_state(next),
             UiActions::ChangePreparingState(next) => {

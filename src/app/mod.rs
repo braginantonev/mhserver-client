@@ -36,7 +36,7 @@ impl Application {
                 Ok(cl) => cl,
                 Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateHttpClient(err.to_string())))
             };
-            
+
         let cfg = Arc::new(RwLock::new(match ApplicationConfig::from_file() {
             Ok(res) => res,
             Err(_) => ApplicationConfig::default()
@@ -51,7 +51,7 @@ impl Application {
     }
 
     pub async fn run(&mut self) -> Result<(), ApplicationError> {
-        let mut api_conf = openapi::apis::configuration::Configuration::new();
+        let mut api_conf = api::apis::configuration::Configuration::new();
         api_conf.client = self.http_client.clone();
 
         {

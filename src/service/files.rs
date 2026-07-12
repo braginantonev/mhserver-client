@@ -1,9 +1,9 @@
 use {
     crate::{
         NotificationType, 
-        actions::UiActions, 
+        actions::*, 
         config::files::FileServiceConfig
-    }, openapi::{
+    }, api::{
         apis::{ 
             Error, default_api::{
                 files_create_connection, files_make_directory, files_remove_directory, files_save_chunk, get_files_list
@@ -239,26 +239,27 @@ impl FileManager {
             filename: os_file_path.file_name().unwrap().display().to_string(),
             size: Some(file_meta.len() as i32),
         };
-
-        println!("connection request: {:?}", conn_req);
         
-        let save_info = match files_create_connection(&self.cfg.api_conf, conn_req, ConnectionMode::Rdwr).await {
+        let save_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdwr, conn_req).await {
             Ok(conn) => conn,
-            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            Err(err) => return Err(match err {
+                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
+                _ => UiActions::ShowNotification(err.to_string(), crate::NotificationType::Error),
+            }),
         };
-
-        println!("create connection: {:?}", save_info);
 
         self.connections.add(save_info.uuid, ConnectionInner::new(save_info.chunk_size, save_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
 
+        // save file
         tokio::spawn(async move {
             for ch_idx in 0..save_info.chunks_count {
                 let offset = save_info.chunk_size as u64 * ch_idx as u64;
                 let file = file.clone();
 
+                // read file part (chunk) to upload
                 let chunk = tokio::task::spawn_blocking(move || {
                     let mut save_chunk = vec![0u8; save_info.chunk_size as usize];
                     let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
@@ -268,15 +269,14 @@ impl FileManager {
                 let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
 
-                println!("gg: {}", save_info.uuid.to_string());
+                //let mut wait
                 
                 tokio::spawn(async move {
-                    match files_save_chunk(http_cfg.as_ref(), SaveChunk::new(chunk, offset as i32), save_info.uuid.to_string().as_str()).await {
+                    match files_save_chunk(http_cfg.as_ref(), save_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset as i32)).await {
                         Ok(_) => {
                             connections.increase_progress(save_info.uuid);
-                            println!("save {}", ch_idx);
                         },
-                        Err(err) =>  match err {
+                        Err(err) => match err {
                             Error::ResponseError(c) => println!("resp err: {}", c.content),
                             _ => println!("err: {}", err),
                         }
@@ -289,7 +289,7 @@ impl FileManager {
                 }
             }
         });
-
+        
         Ok(save_info.uuid)
     }
 }

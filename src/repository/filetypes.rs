@@ -1,6 +1,6 @@
 use {
     std::path::Path,
-    openapi::models::FilesListInner,
+    api::models::FilesListInner,
 };
 
 pub enum FileTypes {

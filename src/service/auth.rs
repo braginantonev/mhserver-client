@@ -2,7 +2,7 @@ use {
     crate::{
         NotificationType, PreparingStates, actions::UiActions,
     },
-    openapi::{
+    api::{
         apis::configuration::Configuration,
         apis::default_api::{users_login, users_register},
         models::{UserLoginRequest, UserRegisterRequest},
