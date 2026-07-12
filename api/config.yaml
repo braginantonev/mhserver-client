@@ -1,0 +1,7 @@
+generatorName: rust
+outputDir: ./gen
+inputSpec: ./openapi.yml
+templateDir: ./templates
+additionalProperties:
+  packageName: api
+  supportAsync: true

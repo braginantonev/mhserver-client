@@ -22,6 +22,7 @@ pub enum FilesCreateConnectionError {
     Status400(String),
     Status401(String),
     Status413(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -34,6 +35,7 @@ pub enum FilesCreateConnection0Error {
     Status400(String),
     Status401(String),
     Status413(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -45,6 +47,7 @@ pub enum FilesCreateConnection0Error {
 pub enum FilesGetAvailableSpaceError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -56,6 +59,7 @@ pub enum FilesGetAvailableSpaceError {
 pub enum FilesGetAvailableSpace0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -67,6 +71,7 @@ pub enum FilesGetAvailableSpace0Error {
 pub enum FilesGetChunkError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -78,6 +83,7 @@ pub enum FilesGetChunkError {
 pub enum FilesGetChunk0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -89,6 +95,7 @@ pub enum FilesGetChunk0Error {
 pub enum FilesGetSumError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -100,6 +107,7 @@ pub enum FilesGetSumError {
 pub enum FilesGetSum0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -111,6 +119,7 @@ pub enum FilesGetSum0Error {
 pub enum FilesMakeDirectoryError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -122,6 +131,7 @@ pub enum FilesMakeDirectoryError {
 pub enum FilesMakeDirectory0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -133,6 +143,7 @@ pub enum FilesMakeDirectory0Error {
 pub enum FilesRemoveDirectoryError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -144,6 +155,7 @@ pub enum FilesRemoveDirectoryError {
 pub enum FilesRemoveDirectory0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -156,6 +168,7 @@ pub enum FilesSaveChunkError {
     Status400(String),
     Status401(String),
     Status403(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -168,6 +181,7 @@ pub enum FilesSaveChunk0Error {
     Status400(String),
     Status401(String),
     Status403(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -179,6 +193,7 @@ pub enum FilesSaveChunk0Error {
 pub enum GetFilesListError {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -190,6 +205,7 @@ pub enum GetFilesListError {
 pub enum GetFilesList0Error {
     Status400(String),
     Status401(String),
+    Status429(String),
     Status500(String),
     Status503(String),
     UnknownValue(serde_json::Value),
@@ -209,6 +225,7 @@ pub enum PingError {
 pub enum UsersLoginError {
     Status400(String),
     Status404(),
+    Status429(String),
     Status500(String),
     UnknownValue(serde_json::Value),
 }
@@ -219,6 +236,7 @@ pub enum UsersLoginError {
 pub enum UsersLogin0Error {
     Status400(String),
     Status404(),
+    Status429(String),
     Status500(String),
     UnknownValue(serde_json::Value),
 }
@@ -231,6 +249,7 @@ pub enum UsersRegisterError {
     Status403(String),
     Status404(),
     Status409(String),
+    Status429(String),
     Status500(String),
     UnknownValue(serde_json::Value),
 }
@@ -243,16 +262,17 @@ pub enum UsersRegister0Error {
     Status403(String),
     Status404(),
     Status409(String),
+    Status429(String),
     Status500(String),
     UnknownValue(serde_json::Value),
 }
 
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: models::ConnectionMode) -> Result<models::ConnectionResponse, Error<FilesCreateConnectionError>> {
+pub async fn files_create_connection(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<models::ConnectionResponse, Error<FilesCreateConnectionError>> {
     // add a prefix to parameters to efficiently prevent name collisions
-    let p_body_connection_request = connection_request;
     let p_query_mode = mode;
+    let p_body_connection_request = connection_request;
 
     let uri_str = format!("{}/files/connect", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);
@@ -292,10 +312,10 @@ pub async fn files_create_connection(configuration: &configuration::Configuratio
 }
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection_0(configuration: &configuration::Configuration, connection_request: models::ConnectionRequest, mode: models::ConnectionMode) -> Result<models::ConnectionResponse, Error<FilesCreateConnection0Error>> {
+pub async fn files_create_connection_0(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<models::ConnectionResponse, Error<FilesCreateConnection0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
-    let p_body_connection_request = connection_request;
     let p_query_mode = mode;
+    let p_body_connection_request = connection_request;
 
     let uri_str = format!("{}/files/connect", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);
@@ -697,10 +717,10 @@ pub async fn files_remove_directory_0(configuration: &configuration::Configurati
 }
 
 /// Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
-pub async fn files_save_chunk(configuration: &configuration::Configuration, save_chunk: models::SaveChunk, conn_id: &str) -> Result<(), Error<FilesSaveChunkError>> {
+pub async fn files_save_chunk(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<(), Error<FilesSaveChunkError>> {
     // add a prefix to parameters to efficiently prevent name collisions
-    let p_body_save_chunk = save_chunk;
     let p_query_conn_id = conn_id;
+    let p_body_save_chunk = save_chunk;
 
     let uri_str = format!("{}/files/save", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);
@@ -729,10 +749,10 @@ pub async fn files_save_chunk(configuration: &configuration::Configuration, save
 }
 
 /// Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
-pub async fn files_save_chunk_0(configuration: &configuration::Configuration, save_chunk: models::SaveChunk, conn_id: &str) -> Result<(), Error<FilesSaveChunk0Error>> {
+pub async fn files_save_chunk_0(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<(), Error<FilesSaveChunk0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
-    let p_body_save_chunk = save_chunk;
     let p_query_conn_id = conn_id;
+    let p_body_save_chunk = save_chunk;
 
     let uri_str = format!("{}/files/save", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);

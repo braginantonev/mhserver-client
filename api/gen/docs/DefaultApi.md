@@ -30,7 +30,7 @@ Method | HTTP request | Description
 
 ## files_create_connection
 
-> models::ConnectionResponse files_create_connection(connection_request, mode)
+> models::ConnectionResponse files_create_connection(mode, connection_request)
 Получение параметров получения или отправки чанков
 
 \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
@@ -40,8 +40,8 @@ Method | HTTP request | Description
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
 **mode** | [**ConnectionMode**](ConnectionMode.md) |  | [required] |
+**connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
 
 ### Return type
 
@@ -61,7 +61,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_create_connection_0
 
-> models::ConnectionResponse files_create_connection_0(connection_request, mode)
+> models::ConnectionResponse files_create_connection_0(mode, connection_request)
 Получение параметров получения или отправки чанков
 
 \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
@@ -71,8 +71,8 @@ Name | Type | Description  | Required | Notes
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
 **mode** | [**ConnectionMode**](ConnectionMode.md) |  | [required] |
+**connection_request** | [**ConnectionRequest**](ConnectionRequest.md) |  | [required] |
 
 ### Return type
 
@@ -378,7 +378,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_save_chunk
 
-> files_save_chunk(save_chunk, conn_id)
+> files_save_chunk(conn_id, save_chunk)
 Сохранить часть файла
 
 Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
@@ -388,8 +388,8 @@ Name | Type | Description  | Required | Notes
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**save_chunk** | [**SaveChunk**](SaveChunk.md) |  | [required] |
 **conn_id** | **uuid::Uuid** | UUID соединения, созданного с помощью `/files/connect` | [required] |
+**save_chunk** | [**SaveChunk**](SaveChunk.md) |  | [required] |
 
 ### Return type
 
@@ -409,7 +409,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_save_chunk_0
 
-> files_save_chunk_0(save_chunk, conn_id)
+> files_save_chunk_0(conn_id, save_chunk)
 Сохранить часть файла
 
 Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
@@ -419,8 +419,8 @@ Name | Type | Description  | Required | Notes
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**save_chunk** | [**SaveChunk**](SaveChunk.md) |  | [required] |
 **conn_id** | **uuid::Uuid** | UUID соединения, созданного с помощью `/files/connect` | [required] |
+**save_chunk** | [**SaveChunk**](SaveChunk.md) |  | [required] |
 
 ### Return type
 
