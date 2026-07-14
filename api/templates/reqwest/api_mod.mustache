@@ -167,6 +167,16 @@ enum ContentType {
     Unsupported(String)
 }
 
+impl fmt::Display for ContentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ContentType::Json => write!(f, "application/json"),
+            ContentType::Text => write!(f, "text/plain"),
+            ContentType::Unsupported(c) => write!(f, "{c}"),
+        }
+    }
+}
+
 impl From<&str> for ContentType {
     fn from(content_type: &str) -> Self {
         if content_type.starts_with("application") && content_type.contains("json") {

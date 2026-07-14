@@ -601,21 +601,21 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
     {{/isResponseFile}}
     {{/supportMultipleResponses}}
 
-    let x_rate_limit_limit = headers
+    let x_rate_limit_limit = resp
+        .headers()
         .get("X-RateLimit-Limit")
         .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-    let x_rate_limit_remaining = headers
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
         .get("X-RateLimit-Remaining")
         .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-    let x_rate_limit_reset = headers
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
         .get("X-RateLimit-Reset")
         .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
+        .unwrap_or("");
 
     if !status.is_client_error() && !status.is_server_error() {
         {{^supportMultipleResponses}}
@@ -635,12 +635,19 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
             {{#useSerdePathToError}}
             ContentType::Json => serde_path_to_error::deserialize(&mut serde_json::Deserializer::from_str(&content)).map_err(Error::from),
             {{/useSerdePathToError}}
-            {{#vendorExtensions.x-supports-plain-text}}
-            ContentType::Text => return Ok(content),
-            {{/vendorExtensions.x-supports-plain-text}}
-            {{^vendorExtensions.x-supports-plain-text}}
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `{{returnType}}`"))),
-            {{/vendorExtensions.x-supports-plain-text}}
+            {{#responses}}
+            {{#is2xx}}
+            {{#isPrimitiveType}}
+            {{^isArray}}
+            ContentType::Text => match content.parse::<{{returnType}}>() {
+                Ok(v) => Ok(v),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `{{returnType}}`"))))
+            },
+            {{/isArray}}
+            {{/isPrimitiveType}}
+            {{#isPrimitiveType}}{{^isArray}}// {{/isArray}}{{/isPrimitiveType}}ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `{{returnType}}`")))),
+            {{/is2xx}}
+            {{/responses}}
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `{{returnType}}`")))),
         }
         {{/returnType}}
