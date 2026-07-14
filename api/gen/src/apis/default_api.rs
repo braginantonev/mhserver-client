@@ -12,7 +12,7 @@
 use reqwest;
 use serde::{Deserialize, Serialize, de::Error as _};
 use crate::{apis::ResponseContent, models};
-use super::{Error, configuration, ContentType};
+use super::{Error, configuration, ContentType, Response, RateLimit};
 
 
 /// struct for typed errors of method [`files_create_connection`]
@@ -269,7 +269,7 @@ pub enum UsersRegister0Error {
 
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<models::ConnectionResponse, Error<FilesCreateConnectionError>> {
+pub async fn files_create_connection(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<Response<models::ConnectionResponse>, Error<FilesCreateConnectionError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_mode = mode;
     let p_body_connection_request = connection_request;
@@ -297,11 +297,31 @@ pub async fn files_create_connection(configuration: &configuration::Configuratio
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `models::ConnectionResponse`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `models::ConnectionResponse`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `models::ConnectionResponse`")))),
         }
     } else {
@@ -312,7 +332,7 @@ pub async fn files_create_connection(configuration: &configuration::Configuratio
 }
 
 /// \"Пропуск\" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.  Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.  Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла) 
-pub async fn files_create_connection_0(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<models::ConnectionResponse, Error<FilesCreateConnection0Error>> {
+pub async fn files_create_connection_0(configuration: &configuration::Configuration, mode: models::ConnectionMode, connection_request: models::ConnectionRequest) -> Result<Response<models::ConnectionResponse>, Error<FilesCreateConnection0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_mode = mode;
     let p_body_connection_request = connection_request;
@@ -340,11 +360,31 @@ pub async fn files_create_connection_0(configuration: &configuration::Configurat
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `models::ConnectionResponse`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `models::ConnectionResponse`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `models::ConnectionResponse`")))),
         }
     } else {
@@ -354,7 +394,7 @@ pub async fn files_create_connection_0(configuration: &configuration::Configurat
     }
 }
 
-pub async fn files_get_available_space(configuration: &configuration::Configuration, ) -> Result<i32, Error<FilesGetAvailableSpaceError>> {
+pub async fn files_get_available_space(configuration: &configuration::Configuration, ) -> Result<Response<i32>, Error<FilesGetAvailableSpaceError>> {
 
     let uri_str = format!("{}/files/space", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::GET, &uri_str);
@@ -377,11 +417,35 @@ pub async fn files_get_available_space(configuration: &configuration::Configurat
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `i32`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `i32`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `i32`")))),
         }
     } else {
@@ -391,7 +455,7 @@ pub async fn files_get_available_space(configuration: &configuration::Configurat
     }
 }
 
-pub async fn files_get_available_space_0(configuration: &configuration::Configuration, ) -> Result<i32, Error<FilesGetAvailableSpace0Error>> {
+pub async fn files_get_available_space_0(configuration: &configuration::Configuration, ) -> Result<Response<i32>, Error<FilesGetAvailableSpace0Error>> {
 
     let uri_str = format!("{}/files/space", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::GET, &uri_str);
@@ -414,11 +478,35 @@ pub async fn files_get_available_space_0(configuration: &configuration::Configur
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `i32`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `i32`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `i32`")))),
         }
     } else {
@@ -429,7 +517,7 @@ pub async fn files_get_available_space_0(configuration: &configuration::Configur
 }
 
 /// Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
-pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<String, Error<FilesGetChunkError>> {
+pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Response<String>, Error<FilesGetChunkError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -457,11 +545,35 @@ pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Ok(content),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -472,7 +584,7 @@ pub async fn files_get_chunk(configuration: &configuration::Configuration, conn_
 }
 
 /// Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
-pub async fn files_get_chunk_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<String, Error<FilesGetChunk0Error>> {
+pub async fn files_get_chunk_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Response<String>, Error<FilesGetChunk0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -500,11 +612,35 @@ pub async fn files_get_chunk_0(configuration: &configuration::Configuration, con
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Ok(content),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -515,7 +651,7 @@ pub async fn files_get_chunk_0(configuration: &configuration::Configuration, con
 }
 
 /// Используется проверки целлостности сохранённого файла.   Возвращает контрольную сумму чанка (не файла!),  поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения.  Контрольная сумма считается по алгоритму SHA-256. 
-pub async fn files_get_sum(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Vec<i32>, Error<FilesGetSumError>> {
+pub async fn files_get_sum(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Response<Vec<i32>>, Error<FilesGetSumError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -543,11 +679,31 @@ pub async fn files_get_sum(configuration: &configuration::Configuration, conn_id
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;i32&gt;`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
         }
     } else {
@@ -558,7 +714,7 @@ pub async fn files_get_sum(configuration: &configuration::Configuration, conn_id
 }
 
 /// Используется проверки целлостности сохранённого файла.   Возвращает контрольную сумму чанка (не файла!),  поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения.  Контрольная сумма считается по алгоритму SHA-256. 
-pub async fn files_get_sum_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Vec<i32>, Error<FilesGetSum0Error>> {
+pub async fn files_get_sum_0(configuration: &configuration::Configuration, conn_id: &str, chunk_id: i32) -> Result<Response<Vec<i32>>, Error<FilesGetSum0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_query_chunk_id = chunk_id;
@@ -586,11 +742,31 @@ pub async fn files_get_sum_0(configuration: &configuration::Configuration, conn_
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;i32&gt;`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;i32&gt;`")))),
         }
     } else {
@@ -600,7 +776,7 @@ pub async fn files_get_sum_0(configuration: &configuration::Configuration, conn_
     }
 }
 
-pub async fn files_make_directory(configuration: &configuration::Configuration, dir: &str) -> Result<(), Error<FilesMakeDirectoryError>> {
+pub async fn files_make_directory(configuration: &configuration::Configuration, dir: &str) -> Result<Response<()>, Error<FilesMakeDirectoryError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -620,8 +796,25 @@ pub async fn files_make_directory(configuration: &configuration::Configuration, 
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesMakeDirectoryError> = serde_json::from_str(&content).ok();
@@ -629,7 +822,7 @@ pub async fn files_make_directory(configuration: &configuration::Configuration, 
     }
 }
 
-pub async fn files_make_directory_0(configuration: &configuration::Configuration, dir: &str) -> Result<(), Error<FilesMakeDirectory0Error>> {
+pub async fn files_make_directory_0(configuration: &configuration::Configuration, dir: &str) -> Result<Response<()>, Error<FilesMakeDirectory0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -649,8 +842,25 @@ pub async fn files_make_directory_0(configuration: &configuration::Configuration
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesMakeDirectory0Error> = serde_json::from_str(&content).ok();
@@ -658,7 +868,7 @@ pub async fn files_make_directory_0(configuration: &configuration::Configuration
     }
 }
 
-pub async fn files_remove_directory(configuration: &configuration::Configuration, dir: &str) -> Result<(), Error<FilesRemoveDirectoryError>> {
+pub async fn files_remove_directory(configuration: &configuration::Configuration, dir: &str) -> Result<Response<()>, Error<FilesRemoveDirectoryError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -678,8 +888,25 @@ pub async fn files_remove_directory(configuration: &configuration::Configuration
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesRemoveDirectoryError> = serde_json::from_str(&content).ok();
@@ -687,7 +914,7 @@ pub async fn files_remove_directory(configuration: &configuration::Configuration
     }
 }
 
-pub async fn files_remove_directory_0(configuration: &configuration::Configuration, dir: &str) -> Result<(), Error<FilesRemoveDirectory0Error>> {
+pub async fn files_remove_directory_0(configuration: &configuration::Configuration, dir: &str) -> Result<Response<()>, Error<FilesRemoveDirectory0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -707,8 +934,25 @@ pub async fn files_remove_directory_0(configuration: &configuration::Configurati
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesRemoveDirectory0Error> = serde_json::from_str(&content).ok();
@@ -717,7 +961,7 @@ pub async fn files_remove_directory_0(configuration: &configuration::Configurati
 }
 
 /// Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
-pub async fn files_save_chunk(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<(), Error<FilesSaveChunkError>> {
+pub async fn files_save_chunk(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<Response<()>, Error<FilesSaveChunkError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_body_save_chunk = save_chunk;
@@ -739,8 +983,25 @@ pub async fn files_save_chunk(configuration: &configuration::Configuration, conn
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesSaveChunkError> = serde_json::from_str(&content).ok();
@@ -749,7 +1010,7 @@ pub async fn files_save_chunk(configuration: &configuration::Configuration, conn
 }
 
 /// Сохраняет часть файла (чанк) на сервере.   Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения. 
-pub async fn files_save_chunk_0(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<(), Error<FilesSaveChunk0Error>> {
+pub async fn files_save_chunk_0(configuration: &configuration::Configuration, conn_id: &str, save_chunk: models::SaveChunk) -> Result<Response<()>, Error<FilesSaveChunk0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_conn_id = conn_id;
     let p_body_save_chunk = save_chunk;
@@ -771,8 +1032,25 @@ pub async fn files_save_chunk_0(configuration: &configuration::Configuration, co
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<FilesSaveChunk0Error> = serde_json::from_str(&content).ok();
@@ -780,7 +1058,7 @@ pub async fn files_save_chunk_0(configuration: &configuration::Configuration, co
     }
 }
 
-pub async fn get_files_list(configuration: &configuration::Configuration, dir: &str) -> Result<Vec<models::FilesListInner>, Error<GetFilesListError>> {
+pub async fn get_files_list(configuration: &configuration::Configuration, dir: &str) -> Result<Response<Vec<models::FilesListInner>>, Error<GetFilesListError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -806,11 +1084,31 @@ pub async fn get_files_list(configuration: &configuration::Configuration, dir: &
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`")))),
         }
     } else {
@@ -820,7 +1118,7 @@ pub async fn get_files_list(configuration: &configuration::Configuration, dir: &
     }
 }
 
-pub async fn get_files_list_0(configuration: &configuration::Configuration, dir: &str) -> Result<Vec<models::FilesListInner>, Error<GetFilesList0Error>> {
+pub async fn get_files_list_0(configuration: &configuration::Configuration, dir: &str) -> Result<Response<Vec<models::FilesListInner>>, Error<GetFilesList0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_query_dir = dir;
 
@@ -846,11 +1144,31 @@ pub async fn get_files_list_0(configuration: &configuration::Configuration, dir:
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`"))),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `Vec&lt;models::FilesListInner&gt;`")))),
         }
     } else {
@@ -861,7 +1179,7 @@ pub async fn get_files_list_0(configuration: &configuration::Configuration, dir:
 }
 
 /// Используется для пинга сервера
-pub async fn ping(configuration: &configuration::Configuration, ) -> Result<String, Error<PingError>> {
+pub async fn ping(configuration: &configuration::Configuration, ) -> Result<Response<String>, Error<PingError>> {
 
     let uri_str = format!("{}/tools/ping", configuration.base_path);
     let mut req_builder = configuration.client.request(reqwest::Method::POST, &uri_str);
@@ -881,11 +1199,35 @@ pub async fn ping(configuration: &configuration::Configuration, ) -> Result<Stri
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Ok(content),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -895,7 +1237,7 @@ pub async fn ping(configuration: &configuration::Configuration, ) -> Result<Stri
     }
 }
 
-pub async fn users_login(configuration: &configuration::Configuration, user_login_request: models::UserLoginRequest) -> Result<String, Error<UsersLoginError>> {
+pub async fn users_login(configuration: &configuration::Configuration, user_login_request: models::UserLoginRequest) -> Result<Response<String>, Error<UsersLoginError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_user_login_request = user_login_request;
 
@@ -918,11 +1260,35 @@ pub async fn users_login(configuration: &configuration::Configuration, user_logi
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Ok(content),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -932,7 +1298,7 @@ pub async fn users_login(configuration: &configuration::Configuration, user_logi
     }
 }
 
-pub async fn users_login_0(configuration: &configuration::Configuration, user_login_request: models::UserLoginRequest) -> Result<String, Error<UsersLogin0Error>> {
+pub async fn users_login_0(configuration: &configuration::Configuration, user_login_request: models::UserLoginRequest) -> Result<Response<String>, Error<UsersLogin0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_user_login_request = user_login_request;
 
@@ -955,11 +1321,35 @@ pub async fn users_login_0(configuration: &configuration::Configuration, user_lo
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Ok(content),
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+            },
+            // ContentType::Text => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`")))),
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `String`")))),
         }
     } else {
@@ -969,7 +1359,7 @@ pub async fn users_login_0(configuration: &configuration::Configuration, user_lo
     }
 }
 
-pub async fn users_register(configuration: &configuration::Configuration, user_register_request: models::UserRegisterRequest) -> Result<(), Error<UsersRegisterError>> {
+pub async fn users_register(configuration: &configuration::Configuration, user_register_request: models::UserRegisterRequest) -> Result<Response<()>, Error<UsersRegisterError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_user_register_request = user_register_request;
 
@@ -986,8 +1376,25 @@ pub async fn users_register(configuration: &configuration::Configuration, user_r
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<UsersRegisterError> = serde_json::from_str(&content).ok();
@@ -995,7 +1402,7 @@ pub async fn users_register(configuration: &configuration::Configuration, user_r
     }
 }
 
-pub async fn users_register_0(configuration: &configuration::Configuration, user_register_request: models::UserRegisterRequest) -> Result<(), Error<UsersRegister0Error>> {
+pub async fn users_register_0(configuration: &configuration::Configuration, user_register_request: models::UserRegisterRequest) -> Result<Response<()>, Error<UsersRegister0Error>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_user_register_request = user_register_request;
 
@@ -1012,8 +1419,25 @@ pub async fn users_register_0(configuration: &configuration::Configuration, user
 
     let status = resp.status();
 
+    let x_rate_limit_limit = resp
+        .headers()
+        .get("X-RateLimit-Limit")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_remaining = resp
+        .headers()
+        .get("X-RateLimit-Remaining")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let x_rate_limit_reset = resp
+        .headers()
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
+
     if !status.is_client_error() && !status.is_server_error() {
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
     } else {
         let content = resp.text().await?;
         let entity: Option<UsersRegister0Error> = serde_json::from_str(&content).ok();

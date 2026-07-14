@@ -3,7 +3,7 @@
 use reqwest;
 use serde::{Deserialize, Serialize, de::Error as _};
 use crate::{apis::ResponseContent, models};
-use super::{Error, configuration, ContentType};
+use super::{Error, configuration, ContentType, Response, RateLimit};
 {{#operations}}
 {{#operation}}
 {{#vendorExtensions.useAsyncFileStream}}
@@ -107,7 +107,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
 ### Params
 }}params: {{{operationIdCamelCase}}}Params{{/-first}}{{/allParams}}{{!
 ### Function return type
-}}) -> Result<{{!
+}}) -> Result<Response<{{!
 ### Response File Support
 }}{{#isResponseFile}}{{#supportAsync}}reqwest::Response{{/supportAsync}}{{^supportAsync}}reqwest::blocking::Response{{/supportAsync}}{{/isResponseFile}}{{!
 ### Regular Responses
@@ -117,7 +117,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
 ### Regular return type
 }}{{^supportMultipleResponses}}{{^returnType}}(){{/returnType}}{{{returnType}}}{{/supportMultipleResponses}}{{/isResponseFile}}{{!
 ### Error Type
-}}, Error<{{{operationIdCamelCase}}}Error>> {
+}}>, Error<{{{operationIdCamelCase}}}Error>> {
 {{/vendorExtensions.x-group-parameters}}
 {{^vendorExtensions.x-group-parameters}}
 pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: &configuration::Configuration, {{#allParams}}{{{paramName}}}: {{!
@@ -134,7 +134,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
 ### Comma for next arguement
 }}{{^-last}}, {{/-last}}{{/allParams}}{{!
 ### Function return type
-}}) -> Result<{{!
+}}) -> Result<Response<{{!
 ### Response File Support
 }}{{#isResponseFile}}{{#supportAsync}}reqwest::Response{{/supportAsync}}{{^supportAsync}}reqwest::blocking::Response{{/supportAsync}}{{/isResponseFile}}{{!
 ### Regular Responses
@@ -144,7 +144,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
 ### Regular return type
 }}{{^supportMultipleResponses}}{{^returnType}}(){{/returnType}}{{{returnType}}}{{/supportMultipleResponses}}{{/isResponseFile}}{{!
 ### Error Type
-}}, Error<{{{operationIdCamelCase}}}Error>> {
+}}>, Error<{{{operationIdCamelCase}}}Error>> {
     {{#allParams.0}}
     // add a prefix to parameters to efficiently prevent name collisions
     {{/allParams.0}}
@@ -616,32 +616,31 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
         .get("X-RateLimit-Reset")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
+    let ratelimit = RateLimit::from_str(x_rate_limit_limit, x_rate_limit_remaining, x_rate_limit_reset);
 
     if !status.is_client_error() && !status.is_server_error() {
         {{^supportMultipleResponses}}
         {{#isResponseFile}}
-        Ok(resp)
+        Ok(Response::new(resp).with_ratelimit(ratelimit))
         {{/isResponseFile}}
         {{^isResponseFile}}
         {{^returnType}}
-        Ok(())
+        Ok(Response::<()>::new(None).with_ratelimit(ratelimit))
         {{/returnType}}
         {{#returnType}}
         let content = resp.text(){{#supportAsync}}.await{{/supportAsync}}?;
         match content_type {
-            {{^useSerdePathToError}}
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            {{/useSerdePathToError}}
-            {{#useSerdePathToError}}
-            ContentType::Json => serde_path_to_error::deserialize(&mut serde_json::Deserializer::from_str(&content)).map_err(Error::from),
-            {{/useSerdePathToError}}
+            ContentType::Json => match serde_json::from_str(&content) {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(err) => Err(Error::from(err)),
+            },
             {{#responses}}
             {{#is2xx}}
             {{#isPrimitiveType}}
             {{^isArray}}
-            ContentType::Text => match content.parse::<{{returnType}}>() {
-                Ok(v) => Ok(v),
-                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `{{returnType}}`"))))
+            ContentType::Text => match content.parse() {
+                Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
             },
             {{/isArray}}
             {{/isPrimitiveType}}
@@ -655,12 +654,12 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
         {{/supportMultipleResponses}}
         {{#supportMultipleResponses}}
         {{#isResponseFile}}
-        Ok(resp)
+        Ok(Response::new(resp).with_ratelimit(ratelimit))
         {{/isResponseFile}}
         {{^isResponseFile}}
         let content = resp.text(){{#supportAsync}}.await{{/supportAsync}}?;
         let entity: Option<{{{operationIdCamelCase}}}Success> = serde_json::from_str(&content).ok();
-        Ok(ResponseContent { status, content, entity })
+        Ok(Response::new(ResponseContent { status, content, entity }).with_ratelimit(ratelimit))
         {{/isResponseFile}}
         {{/supportMultipleResponses}}
     } else {
