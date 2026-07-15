@@ -3,9 +3,9 @@ use std::fmt;
 use std::collections::HashMap;
 
 pub struct RateLimit {
-    pub limit: u32,
-    pub remaining: u32,
-    pub reset: u32,
+    limit: u32,
+    remaining: u32,
+    reset: u32,
 }
 
 impl RateLimit {
@@ -15,22 +15,34 @@ impl RateLimit {
 
     pub fn from_str<'a>(l: &'a str, rem: &'a str, res: &'a str) -> Self {
         Self {
-            limit: l.parse().unwrap_or(0),
-            remaining: rem.parse().unwrap_or(0),
-            reset: res.parse().unwrap_or(0),
+            limit: l.parse().unwrap_or_default(),
+            remaining: rem.parse().unwrap_or_default(),
+            reset: res.parse().unwrap_or_default(),
         }
+    }
+
+    pub fn limit(&self) -> u32 {
+        self.limit
+    }
+
+    pub fn remaining(&self) -> u32 {
+        self.remaining
+    }
+
+    pub fn reset(&self) -> u32 {
+        self.reset
     }
 }
 
 pub struct Response<T> {
-    pub inner: Option<T>,
+    pub content: Option<T>,
     pub ratelimit: Option<RateLimit>
 }
 
 impl<T> Response<T> {
     pub fn new(content: Option<T>) -> Self {
         Self {
-            inner: content,
+            content: content,
             ratelimit: None
         }
     }
