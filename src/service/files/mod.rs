@@ -1,54 +1,17 @@
+mod connections;
+mod path;
+mod queue;
+
 use {
-    crate::{
-        NotificationType, 
-        actions::*, 
-        config::files::FileServiceConfig
-    }, api::{
-        apis::{ 
-            Error, default_api::*
-        },
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig}, 
+    api::{
+        apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, std::{collections::HashMap, fs::File, path::Path, sync::{Arc, Mutex}}, system_interface::fs::FileIoExt, tokio::{sync::mpsc, time::Duration}, uuid::Uuid,
+    }, 
+    std::{fs::File, path::Path, sync::Arc}, 
+    system_interface::fs::FileIoExt, 
+    uuid::Uuid,
 };
-
-#[derive(Clone)]
-struct ServerPath {
-    buff: Vec<String>,
-}
-
-impl ServerPath {
-    pub fn new() -> Self {
-        Self { buff: Vec::new() }
-    }
-
-    /// Push a single directory.
-    #[allow(dead_code)] // Todo: Remove in prod
-    pub fn push(&mut self, path: &str) {
-        self.buff.push(path.to_owned());
-    }
-
-    /// Pop a singe directory.
-    pub fn pop(&mut self) -> bool {
-        self.buff.pop().is_some()
-    }
-
-    pub fn with(&self, element: &str) -> Self {
-        let mut res = self.buff.clone();
-        res.push(element.to_owned());
-        Self { buff: res }
-    }
-}
-
-impl ToString for ServerPath {
-    fn to_string(&self) -> String {
-        let mut s = String::from("/");
-        for element in &self.buff {
-            s.push_str(element);
-            s.push('/');
-        }
-        s
-    }
-}
 
 #[derive(Clone)]
 struct FilesList(Vec<FilesListInner>);
@@ -81,96 +44,24 @@ impl Default for FilesList {
     }
 }
 
-// pub enum ConnectionState {
-//     Active,
-//     Completed,
-//     Dropped
-// }
-
-struct ConnectionInner {
-    chunk_size: i64,
-    chunks_count: i32,
-    loaded: i32, // count of saved or loaded chunks  
-}
-
-impl ConnectionInner {
-    pub fn new(chunk_size: i64, chunks_count: i32) -> Self {
-        Self { chunk_size, chunks_count, loaded: 0 }
-    }
-}
-
-#[derive(Clone)]
-struct Connections {
-    inner: Arc<Mutex<HashMap<Uuid, ConnectionInner>>>
-}
-
-impl Connections {
-    pub fn new() -> Self {
-        Self { inner: Arc::new(Mutex::new(HashMap::new())) }
-    }
-
-    pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
-        self.inner.lock().unwrap().insert(key, val);
-    }
-
-    pub fn progress(&self, id: Uuid) -> f32 {
-        let lock = self.inner.lock().unwrap();
-        lock[&id].loaded as f32 / lock[&id].chunks_count as f32
-    }
-
-    pub fn increase_progress(&mut self, id: Uuid) -> bool {
-        if let Some(conn) = self.inner.lock().unwrap().get_mut(&id) {
-            conn.loaded += 1;
-            return true;
-        }
-        false
-    }
-}
-
-struct RequestQueue {
-    rx: Arc<tokio::sync::Mutex<mpsc::Receiver<()>>>,
-}
-
-impl RequestQueue {
-    pub fn new(pass_interval: Duration) -> Self {
-        let (tx, rx) = mpsc::channel::<()>(1);
-        let queue = Self { rx: Arc::new(tokio::sync::Mutex::new(rx)) };
-        queue.start_passing(tx, pass_interval);
-        queue
-    }
-
-    fn start_passing(&self, tx: mpsc::Sender<()>, interval: Duration) {
-        tokio::spawn(async move {
-            loop {
-                tx.send(()).await.unwrap();
-                tokio::time::sleep(interval).await;
-            }
-        });
-    }
-
-    pub async fn wait(&self) {
-        let rx = self.rx.clone();
-        rx.lock().await.recv().await;
-    }
-}
 
 pub struct FileManager {
     cfg: FileServiceConfig,
-    active_dir: ServerPath,
+    active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
-    connections: Connections,
+    connections: connections::Connections,
 
-    queue: Arc<RequestQueue>
+    queue: Arc<queue::RequestQueue>
 }
 
 impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
         Self { 
             cfg,
-            active_dir: ServerPath::new(),
+            active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
-            connections: Connections::new(),
-            queue: Arc::new(RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
+            connections: connections::Connections::new(),
+            queue: Arc::new(queue::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
         }
     }
 
@@ -184,7 +75,7 @@ impl FileManager {
     }
 
     /// Change file manager active directory. Client the guarantees that new_dir is exist on the server.
-    async fn change_dir(&mut self, new_dir: ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
+    async fn change_dir(&mut self, new_dir: path::ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
         self.active_dir = new_dir;
         self.get_files().await
     }
@@ -294,7 +185,7 @@ impl FileManager {
 
         let conn_info = save_info.content.unwrap();
 
-        self.connections.add(conn_info.uuid, ConnectionInner::new(conn_info.chunk_size, conn_info.chunks_count));
+        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(conn_info.chunk_size, conn_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
