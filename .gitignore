@@ -1,1 +1,4 @@
 target/
+.vscode/
+api/openapi.yml
+api/examples/

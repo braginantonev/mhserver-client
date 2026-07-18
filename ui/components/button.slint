@@ -1,0 +1,37 @@
+export component SimpleButton inherits TouchArea {
+    in property <image> icon <=> image.source;
+    in property <brush> icon-color <=> image.colorize;
+    
+    in property <brush> hover-color <=> cover.background;
+    in property <length> hover-border-radius <=> cover.border-radius;
+    in property <length> hover-additional-width;
+    in property <float> hover-max-opacity: 1.0;
+    in property <float> hover-min-opacity: 0.0;
+
+    in property <string> text <=> text.text;
+    in property <length> font-size <=> text.font-size;
+    out property <length> text-length <=> text.width;
+
+    in property <bool> use-native-scale: false;
+    private property <length> components-width: use-native-scale ? self.width : self.preferred-width;
+    private property <length> components-height: use-native-scale ? self.height : self.preferred-height;
+
+    cover := Rectangle {
+        width: components-width + hover-additional-width;
+        height: components-height + hover-additional-width;
+        border-radius: self.width / 4;
+
+        opacity: parent.has-hover ? hover-max-opacity : hover-min-opacity;
+        animate opacity { duration: 150ms; }
+    }
+
+    text := Text {
+        color: parent.enabled ? white : gray;
+    }
+
+    image := Image {
+        image-rendering: smooth;
+        height: components-height;
+        width: components-width;    
+    }
+}

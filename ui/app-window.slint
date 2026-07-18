@@ -1,4 +1,140 @@
+import { Notification, NotificationInfo, NotificationType } from "components/notification.slint";
+export { NotificationInfo }
+
+//* Fields import
+import { ConnectionFiled } from "fields/connection.slint";
+import { LoginField, RegisterField } from "fields/authorization.slint";
+import { FieldBackground } from "fields/base.slint";
+import { Button } from "std-widgets.slint";
+import { ServiceField, Services } from "fields/service.slint";
+
+// Services
+import { FilesServiceField, File } from "fields/services/files.slint";
+
+export enum PreparingStates { Normal, End, CheckConn, CheckAuth, Connection, Login, Register }
+export enum AppStates { Preparing, Main }
+
 export component MainWindow inherits Window {
-    width: 500px;
-    height: 400px;
+    in-out property <AppStates> state: Preparing;
+    in-out property <PreparingStates> prepare-state: Normal;
+    in-out property <Services> active-service: Empty;
+
+    private property <duration> show-hide-duration: 400ms;
+
+    title: "mhserver-client";
+    width: 1280px;
+    height: 720px;
+    background: #2d2a29;
+
+    // Fields
+    Rectangle {
+        width: 300px;
+
+        field_back := FieldBackground {
+            field-color: #0b0b0b80;
+            enabled: false;
+            change-duration: show-hide-duration;
+        }
+
+        conn_field := ConnectionFiled {
+            showed: false;
+            change-duration: show-hide-duration;
+        }
+
+        log_field := LoginField {
+            showed: false;
+            change-duration: show-hide-duration;
+            register_request => { prepare-state = PreparingStates.Register };
+        }
+
+        reg_field := RegisterField {
+            showed: false;
+            change-duration: show-hide-duration;
+            login_request => { prepare-state = PreparingStates.Login };
+        }
+    }
+
+    service_field := ServiceField {
+        x: 0px;
+        enabled: false;
+    }
+
+    files_service_field := FilesServiceField {
+        width: root.width - service_field.width - 20px;
+        x: service_field.width + 20px;
+        enabled: false;
+    }
+
+    main_notification := Notification {
+        x: root.width - self.width - 20px;
+        y: root.height - self.height - 20px;
+        hided: true;
+    }
+
+    // For a smooth startup
+    Timer {
+        interval: 250ms;
+        running: true;
+        triggered => {
+            self.running = false;
+
+            // Use this callback to start preparing logic
+            change_preparing_state(PreparingStates.Normal);
+        }
+    }
+
+    callback change_preparing_state(PreparingStates);
+    callback update_service_configs();
+
+    // Main notification
+    callback update_main_notification <=> main_notification.update;
+
+    // Connection field
+    callback connect <=> conn_field.connect;
+
+    // Authorization field
+    callback login <=> log_field.login;
+    callback register <=> reg_field.register;
+
+    // Service field
+    callback show_service <=> service_field.service_triggered;
+
+    // Data service
+    callback files_update_showed_files <=> files_service_field.update_showed_files;
+    callback files_change_directory <=> files_service_field.change_dir;
+    callback files_make_directory <=> files_service_field.make_dir;
+    callback files_remove_directory <=> files_service_field.remove_dir;
+    callback files_download_directory <=> files_service_field.download_dir;
+    callback files_download_file <=> files_service_field.download_file;
+    callback files_upload_files <=> files_service_field.upload_files;
+    callback files_delete_file <=> files_service_field.delete_file;
+
+    states [
+        conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
+            field_back.enabled: true;
+            field_back.height: conn_field.height;
+            conn_field.showed: true;
+        }
+
+        login when state == AppStates.Preparing && prepare-state == PreparingStates.Login: {
+            field_back.enabled: true;
+            field_back.height: log_field.height;
+            log_field.showed: true;
+        }
+
+        reg when state == AppStates.Preparing && prepare-state == PreparingStates.Register: {
+            field_back.enabled: true;
+            field_back.height: reg_field.height;
+            reg_field.showed: true;
+        }
+        
+        main_empty when state == AppStates.Main && active-service == Services.Empty: {
+            service_field.enabled: true;
+        }
+
+        main_files when state == AppStates.Main && active-service == Services.Files: {
+            service_field.enabled: true;
+            files_service_field.enabled: true;
+        }
+    ]
 }

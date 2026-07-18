@@ -1,0 +1,60 @@
+export component FieldBackground inherits Rectangle {
+    in property <bool> enabled;
+    in property <duration> change-duration;
+    in property <brush> field-color <=> self.background;
+
+    border-radius: 15px;
+
+    animate opacity, height, width {
+        duration: change-duration;
+        easing: ease-in-quart;
+    }
+
+    states [
+        enabled when enabled: {
+            opacity: 1.0;
+            visible: true;
+        }
+
+        enabled when !enabled: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+        }
+    ]
+}
+
+export component BaseGridField inherits GridLayout {
+    in-out property <bool> showed;
+    in property <duration> change-duration;
+
+    spacing: 20px;
+    padding: 50px;
+
+    states [
+        showed when showed: {
+            opacity: 1.0;
+            visible: true;
+
+            in {
+                animate opacity {
+                    delay: change-duration;
+                    duration: change-duration;
+                }
+            }
+        }
+
+        hided when !showed: {
+            opacity: 0.0;
+            visible: self.opacity > 0;
+
+            in {
+                animate opacity  {
+                    delay: 0;
+                    duration: change-duration;
+                }
+            }
+        }
+    ]
+
+    @children
+}
