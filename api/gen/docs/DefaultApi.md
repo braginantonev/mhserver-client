@@ -92,7 +92,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_get_available_space
 
-> i32 files_get_available_space()
+> i64 files_get_available_space()
 Получить количество свободного места
 
 ### Parameters
@@ -101,7 +101,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**i32**
+**i64**
 
 ### Authorization
 
@@ -117,7 +117,7 @@ This endpoint does not need any parameter.
 
 ## files_get_available_space_0
 
-> i32 files_get_available_space_0()
+> i64 files_get_available_space_0()
 Получить количество свободного места
 
 ### Parameters
@@ -126,7 +126,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**i32**
+**i64**
 
 ### Authorization
 

@@ -5,11 +5,11 @@ use std::collections::HashMap;
 pub struct RateLimit {
     limit: u32,
     remaining: u32,
-    reset: u32,
+    reset: u64,
 }
 
 impl RateLimit {
-    pub fn new(l: u32, rem: u32, res: u32) -> Self {
+    pub fn new(l: u32, rem: u32, res: u64) -> Self {
         Self { limit: l, remaining: rem, reset: res }
     }
 
@@ -29,7 +29,7 @@ impl RateLimit {
         self.remaining
     }
 
-    pub fn reset(&self) -> u32 {
+    pub fn reset(&self) -> u64 {
         self.reset
     }
 }

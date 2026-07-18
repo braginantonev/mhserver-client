@@ -640,7 +640,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
             {{^isArray}}
             ContentType::Text => match content.parse() {
                 Ok(v) => Ok(Response::new(Some(v)).with_ratelimit(ratelimit)),
-                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `String`"))))
+                Err(_) => return Err(Error::from(serde_json::Error::custom(format!("Received `{content_type}` content type response that cannot be converted to `{{{returnType}}}`"))))
             },
             {{/isArray}}
             {{/isPrimitiveType}}
