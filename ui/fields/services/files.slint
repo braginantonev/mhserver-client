@@ -179,6 +179,7 @@ component ContextMenu inherits PopupWindow {
     callback open_triggered <=> act_open.clicked;
 
     callback download_triggered <=> act_download.clicked;
+    callback upload_triggered <=> act_upload.clicked;
     callback delete_triggered <=> act_delete.clicked;
     callback create_folder_triggered <=> act_mkdir.clicked;
 
@@ -206,6 +207,12 @@ component ContextMenu inherits PopupWindow {
             height: element-height;
             hover-border-radius: back.border-radius;
             text: @tr("Download");
+        }
+
+        act_upload := MenuItem {
+            height: element-height;
+            hover-border-radius: back.border-radius;
+            text: @tr("Upload files");
         }
 
         // Delete action
@@ -446,6 +453,10 @@ export component FilesServiceField inherits FieldBackground {
 
         download_triggered => {
             active-file.is-dir ? download_dir(active-file.name) : download_file(active-file.name);
+        }
+
+        upload_triggered => {
+            upload_files();
         }
 
         delete_triggered => { 

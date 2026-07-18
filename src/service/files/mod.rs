@@ -169,9 +169,11 @@ impl FileManager {
             Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
         };
 
+        let filename = os_file_path.file_name().unwrap().display().to_string();
+
         let conn_req = ConnectionRequest {
             directory: self.active_dir.to_string(),
-            filename: os_file_path.file_name().unwrap().display().to_string(),
+            filename: filename.clone(),
             size: Some(file_meta.len() as i64),
         };
         
@@ -190,6 +192,8 @@ impl FileManager {
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
         let rl_queue = self.queue.clone();
+
+        println!("start upload `{filename}` file");
 
         // save file
         tokio::spawn(async move {
@@ -219,9 +223,8 @@ impl FileManager {
                         }
                     }
                 });
-                
-                //todo: ratelimit
             }
+            println!("upload `{filename}` file ended");
         });
         
         Ok(conn_info.uuid)
