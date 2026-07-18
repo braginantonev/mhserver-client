@@ -4,7 +4,7 @@ use {
         actions::UiActions, 
         app::Application, 
         service
-    }, slint::ComponentHandle, std::{path::PathBuf, sync::Arc}, tokio::sync::RwLock
+    }, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 
 impl Application {
@@ -105,27 +105,34 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_upload_file( {
+        self.ui_window.on_files_upload_files( {
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
-            move |filepath| {
+            move || {
                 let win = win.clone();
                 let service = service.clone();
 
-                let os_file_path = match PathBuf::try_from(filepath.to_string()) {
-                    Ok(path) => path,
-                    Err(_) => {
-                        UiActions::ShowNotification("bad file path syntax".to_owned(), crate::NotificationType::Error);
-                        return
-                    } 
-                };
-
                 tokio::spawn(async move {
-                    match service.write().await.upload_file(os_file_path.as_path()).await {
-                        Ok(_con_uuid) => println!("upload started"),
-                        Err(err) => err.run_in_event_loop(win),
+                    let files = rfd::AsyncFileDialog::new()
+                        .set_directory("/")
+                        .pick_files()
+                        .await;
+                    
+                    if files.is_none() {
+                        return;
                     }
+
+                    let files = files.unwrap();
+                    let mut uuids = Vec::<String>::with_capacity(files.len()); // 10 - reserve
+
+                    for f in files {
+                        match service.write().await.upload_file(f.path()).await {
+                            Ok(id) => uuids.push(id.to_string()),
+                            Err(act) => act.run_in_event_loop(win.clone()), 
+                        }
+                    }
+                    
                 });
             }
         });

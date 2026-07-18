@@ -1,5 +1,57 @@
 use std::error;
 use std::fmt;
+use std::collections::HashMap;
+
+pub struct RateLimit {
+    limit: u32,
+    remaining: u32,
+    reset: u64,
+}
+
+impl RateLimit {
+    pub fn new(l: u32, rem: u32, res: u64) -> Self {
+        Self { limit: l, remaining: rem, reset: res }
+    }
+
+    pub fn from_str<'a>(l: &'a str, rem: &'a str, res: &'a str) -> Self {
+        Self {
+            limit: l.parse().unwrap_or_default(),
+            remaining: rem.parse().unwrap_or_default(),
+            reset: res.parse().unwrap_or_default(),
+        }
+    }
+
+    pub fn limit(&self) -> u32 {
+        self.limit
+    }
+
+    pub fn remaining(&self) -> u32 {
+        self.remaining
+    }
+
+    pub fn reset(&self) -> u64 {
+        self.reset
+    }
+}
+
+pub struct Response<T> {
+    pub content: Option<T>,
+    pub ratelimit: Option<RateLimit>
+}
+
+impl<T> Response<T> {
+    pub fn new(content: Option<T>) -> Self {
+        Self {
+            content: content,
+            ratelimit: None
+        }
+    }
+
+    pub fn with_ratelimit(mut self, rl: RateLimit) -> Self {
+        self.ratelimit = Some(rl);
+        self
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ResponseContent<T> {
@@ -97,6 +149,16 @@ enum ContentType {
     Json,
     Text,
     Unsupported(String)
+}
+
+impl fmt::Display for ContentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ContentType::Json => write!(f, "application/json"),
+            ContentType::Text => write!(f, "text/plain"),
+            ContentType::Unsupported(c) => write!(f, "{c}"),
+        }
+    }
 }
 
 impl From<&str> for ContentType {

@@ -1,4 +1,4 @@
-use openapi::apis::configuration::Configuration;
+use api::apis::configuration::Configuration;
 
 #[derive(Default, Debug)]
 pub struct FileServiceConfig {

@@ -1,56 +1,17 @@
+mod connections;
+mod path;
+mod queue;
+
 use {
-    crate::{
-        NotificationType, 
-        actions::UiActions, 
-        config::files::FileServiceConfig
-    }, openapi::{
-        apis::{ 
-            Error, default_api::{
-                files_create_connection, files_make_directory, files_remove_directory, files_save_chunk, get_files_list
-            }
-        },
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig}, 
+    api::{
+        apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, std::{collections::HashMap, fs::File, path::Path, sync::{Arc, Mutex}, thread, time}, system_interface::fs::FileIoExt, uuid::Uuid
+    }, 
+    std::{fs::File, path::Path, sync::Arc}, 
+    system_interface::fs::FileIoExt, 
+    uuid::Uuid,
 };
-
-#[derive(Clone)]
-struct ServerPath {
-    buff: Vec<String>,
-}
-
-impl ServerPath {
-    pub fn new() -> Self {
-        Self { buff: Vec::new() }
-    }
-
-    /// Push a single directory.
-    #[allow(dead_code)] // Todo: Remove in prod
-    pub fn push(&mut self, path: &str) {
-        self.buff.push(path.to_owned());
-    }
-
-    /// Pop a singe directory.
-    pub fn pop(&mut self) -> bool {
-        self.buff.pop().is_some()
-    }
-
-    pub fn with(&self, element: &str) -> Self {
-        let mut res = self.buff.clone();
-        res.push(element.to_owned());
-        Self { buff: res }
-    }
-}
-
-impl ToString for ServerPath {
-    fn to_string(&self) -> String {
-        let mut s = String::from("/");
-        for element in &self.buff {
-            s.push_str(element);
-            s.push('/');
-        }
-        s
-    }
-}
 
 #[derive(Clone)]
 struct FilesList(Vec<FilesListInner>);
@@ -83,102 +44,40 @@ impl Default for FilesList {
     }
 }
 
-// pub enum ConnectionState {
-//     Active,
-//     Completed,
-//     Dropped
-// }
-
-struct ConnectionInner {
-    chunk_size: i32,
-    chunks_count: i32,
-    loaded: i32, // count of saved or loaded chunks  
-}
-
-impl ConnectionInner {
-    pub fn new(chunk_size: i32, chunks_count: i32) -> Self {
-        Self { chunk_size, chunks_count, loaded: 0 }
-    }
-}
-
-#[derive(Clone)]
-struct Connections {
-    inner: Arc<Mutex<HashMap<Uuid, ConnectionInner>>>
-}
-
-impl Connections {
-    pub fn new() -> Self {
-        Self { inner: Arc::new(Mutex::new(HashMap::new())) }
-    }
-
-    pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
-        self.inner.lock().unwrap().insert(key, val);
-    }
-
-    pub fn progress(&self, id: Uuid) -> f32 {
-        let lock = self.inner.lock().unwrap();
-        lock[&id].loaded as f32 / lock[&id].chunks_count as f32
-    }
-
-    pub fn increase_progress(&mut self, id: Uuid) -> bool {
-        if let Some(conn) = self.inner.lock().unwrap().get_mut(&id) {
-            conn.loaded += 1;
-            return true;
-        }
-        false
-    }
-}
 
 pub struct FileManager {
     cfg: FileServiceConfig,
-    active_dir: ServerPath,
+    active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
-    connections: Connections
+    connections: connections::Connections,
+
+    queue: Arc<queue::RequestQueue>
 }
 
 impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
         Self { 
             cfg,
-            active_dir: ServerPath::new(),
+            active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
-            connections: Connections::new(),
+            connections: connections::Connections::new(),
+            queue: Arc::new(queue::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
         }
-    }
-
-    /// Change file manager active directory. Client the guarantees that new_dir is exist on the server.
-    async fn change_dir(&mut self, new_dir: ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
-        self.active_dir = new_dir;
-        self.get_files().await
     }
 
     pub fn current_dir(&self) -> String {
         self.active_dir.to_string()
     }
 
-    /// Get a cached files list
+    /// Get a cached files list 
     pub fn cached_files(&self) -> Vec<FilesListInner> {
         if self.current_dir() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
     }
 
-    /// Get files list from server and save to local cache
-    pub async fn get_files(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
-        match get_files_list(&self.cfg.api_conf, self.current_dir().as_str()).await {
-            Ok(res ) => {
-                self.cached_files = FilesList(res);
-                Ok(self.cached_files())
-            },
-            Err(err) => {
-                match err {
-                    Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
-                    Error::Serde(_) => { // Null response
-                        self.cached_files = FilesList::default();
-                        Ok(self.cached_files())
-                    }, 
-                    _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
-                }
-            }
-        }
+    /// Change file manager active directory. Client the guarantees that new_dir is exist on the server.
+    async fn change_dir(&mut self, new_dir: path::ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
+        self.active_dir = new_dir;
+        self.get_files().await
     }
 
     /// Go to next folder, and return files list
@@ -193,7 +92,21 @@ impl FileManager {
         self.change_dir(target).await
     }
 
+    //* API requests
+
+    pub async fn available_space(&self) -> Result<i64, UiActions> {
+        self.queue.wait().await;
+        match files_get_available_space(&self.cfg.api_conf).await {
+            Ok(v) => Ok(v.content.unwrap()),
+            Err(err) => match err {
+                Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
+                _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            }
+        }
+    }
+
     pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), UiActions> {
+        self.queue.wait().await;
         match files_make_directory(&self.cfg.api_conf, self.active_dir.with(new_dir).to_string().as_str()).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
@@ -210,6 +123,7 @@ impl FileManager {
     }
 
     pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), UiActions> {
+        self.queue.wait().await;
         match files_remove_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
             Ok(_) => {
                 self.cached_files.remove(target_dir, true);
@@ -218,6 +132,27 @@ impl FileManager {
             Err(err) => match err {
                 Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
                 _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            }
+        }
+    }
+
+    /// Get files list from server and save to local cache
+    pub async fn get_files(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
+        self.queue.wait().await;
+        match get_files_list(&self.cfg.api_conf, self.current_dir().as_str()).await {
+            Ok(res ) => {
+                self.cached_files = FilesList(res.content.unwrap());
+                Ok(self.cached_files())
+            },
+            Err(err) => {
+                match err {
+                    Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
+                    Error::Serde(_) => { // Null response
+                        self.cached_files = FilesList::default();
+                        Ok(self.cached_files())
+                    }, 
+                    _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
+                }
             }
         }
     }
@@ -237,60 +172,59 @@ impl FileManager {
         let conn_req = ConnectionRequest {
             directory: self.active_dir.to_string(),
             filename: os_file_path.file_name().unwrap().display().to_string(),
-            size: Some(file_meta.len() as i32),
+            size: Some(file_meta.len() as i64),
         };
-
-        println!("connection request: {:?}", conn_req);
         
-        let save_info = match files_create_connection(&self.cfg.api_conf, conn_req, ConnectionMode::Rdwr).await {
+        let save_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdwr, conn_req).await {
             Ok(conn) => conn,
-            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            Err(err) => return Err(match err {
+                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
+                _ => UiActions::ShowNotification(err.to_string(), crate::NotificationType::Error),
+            }),
         };
 
-        println!("create connection: {:?}", save_info);
+        let conn_info = save_info.content.unwrap();
 
-        self.connections.add(save_info.uuid, ConnectionInner::new(save_info.chunk_size, save_info.chunks_count));
+        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(conn_info.chunk_size, conn_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
+        let rl_queue = self.queue.clone();
 
+        // save file
         tokio::spawn(async move {
-            for ch_idx in 0..save_info.chunks_count {
-                let offset = save_info.chunk_size as u64 * ch_idx as u64;
+            for ch_idx in 0..conn_info.chunks_count {
+                let offset = conn_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
+                // read file part (chunk) to upload
                 let chunk = tokio::task::spawn_blocking(move || {
-                    let mut save_chunk = vec![0u8; save_info.chunk_size as usize];
-                    let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
+                    let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];
+                    let read = file.read_at(save_chunk.as_mut_slice(), offset as u64).expect("failed read chunk from file");
                     save_chunk[..read].to_vec()
                 }).await.expect("blocking file read failed");
 
                 let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
 
-                println!("gg: {}", save_info.uuid.to_string());
-                
+                rl_queue.wait().await;
                 tokio::spawn(async move {
-                    match files_save_chunk(http_cfg.as_ref(), SaveChunk::new(chunk, offset as i32), save_info.uuid.to_string().as_str()).await {
+                    match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
-                            connections.increase_progress(save_info.uuid);
-                            println!("save {}", ch_idx);
+                            connections.increase_progress(conn_info.uuid);
                         },
-                        Err(err) =>  match err {
+                        Err(err) => match err {
                             Error::ResponseError(c) => println!("resp err: {}", c.content),
                             _ => println!("err: {}", err),
                         }
                     }
                 });
                 
-                // Todo: Check in prod
-                if ch_idx % 100 == 0 {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                }
+                //todo: ratelimit
             }
         });
-
-        Ok(save_info.uuid)
+        
+        Ok(conn_info.uuid)
     }
 }
 

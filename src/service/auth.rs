@@ -2,7 +2,7 @@ use {
     crate::{
         NotificationType, PreparingStates, actions::UiActions,
     },
-    openapi::{
+    api::{
         apis::configuration::Configuration,
         apis::default_api::{users_login, users_register},
         models::{UserLoginRequest, UserRegisterRequest},
@@ -20,7 +20,7 @@ impl Authenticator {
 
     pub async fn login(&self, user: UserLoginRequest) -> (Option<String>, UiActions) {
         match users_login(&self.api_conf, user).await {
-            Ok(jwt) => (Some(jwt), UiActions::ChangePreparingState(PreparingStates::Login.next())),
+            Ok(resp) => (Some(resp.content.unwrap()), UiActions::ChangePreparingState(PreparingStates::Login.next())),
             Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
         }
     }

@@ -1,5 +1,4 @@
-
-use openapi::{
+use api::{
     apis::configuration::Configuration,
     apis::default_api,
 };
