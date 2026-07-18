@@ -46,7 +46,7 @@ impl UiActions {
                         name: f.name.to_shared_string(),
                         server_path: from.to_shared_string(),
                         is_dir: f.is_dir.unwrap_or(false),
-                        size: f.size.unwrap_or(0),
+                        size: f.size.unwrap_or(0) as i32,
                     }
                 });
 

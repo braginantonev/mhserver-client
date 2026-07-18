@@ -20,7 +20,7 @@ impl Authenticator {
 
     pub async fn login(&self, user: UserLoginRequest) -> (Option<String>, UiActions) {
         match users_login(&self.api_conf, user).await {
-            Ok(jwt) => (Some(jwt), UiActions::ChangePreparingState(PreparingStates::Login.next())),
+            Ok(resp) => (Some(resp.content.unwrap()), UiActions::ChangePreparingState(PreparingStates::Login.next())),
             Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
         }
     }
