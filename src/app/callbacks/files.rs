@@ -33,7 +33,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_change_directory({
+        self.ui_window.on_files_req_change_directory({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -56,7 +56,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_make_directory({
+        self.ui_window.on_files_req_make_directory({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -80,7 +80,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_remove_directory({
+        self.ui_window.on_files_req_remove_directory({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -105,7 +105,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_upload_files( {
+        self.ui_window.on_files_req_upload_files( {
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 

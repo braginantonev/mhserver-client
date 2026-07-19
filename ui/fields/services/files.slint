@@ -376,19 +376,19 @@ export component FilesServiceField inherits FieldBackground {
 
     callback update_showed_files([File]);
 
-    callback change_dir(string); // directory name
-    callback make_dir(string); // directory name
-    callback remove_dir(string); // directory name
-    callback download_dir(string); // directory name
+    callback req_change_dir(string); // directory name
+    callback req_make_dir(string); // directory name
+    callback req_remove_dir(string); // directory name
+    callback req_download_dir(string); // directory name
 
-    callback download_file(string); // filename
-    callback delete_file(string); // filename
+    callback req_download_file(string); // filename
+    callback req_delete_file(string); // filename
 
-    callback upload_files();
-    callback upload_folders();
+    callback req_upload_files();
+    callback req_upload_folders();
 
     callback update_load_data <=> data_loader.update;
-    callback update_load_require <=> data_loader.update_require;
+    callback req_update_load_data <=> data_loader.update_require;
 
     TouchArea {
         width: parent.width;
@@ -429,7 +429,7 @@ export component FilesServiceField inherits FieldBackground {
 
             opened => {
                 if file.is-dir {
-                    change_dir(file.name);
+                    req_change_dir(file.name);
                 } // Todo: Add on else - preview file
             }
 
@@ -446,21 +446,21 @@ export component FilesServiceField inherits FieldBackground {
     context_menu := ContextMenu {
         open_triggered => {
             if active_file.is-dir {
-                change_dir(active_file.name);
+                req_change_dir(active_file.name);
             }
             // Todo: Add preview file, if active file is not dir
         }
 
         download_triggered => {
-            active-file.is-dir ? download_dir(active-file.name) : download_file(active-file.name);
+            active-file.is-dir ? req_download_dir(active-file.name) : req_download_file(active-file.name);
         }
 
         upload_triggered => {
-            upload_files();
+            req_upload_files();
         }
 
         delete_triggered => { 
-            active-file.is-dir ? remove_dir(active-file.name) : delete_file(active-file.name);
+            active-file.is-dir ? req_remove_dir(active-file.name) : req_delete_file(active-file.name);
         }            
 
         create_folder_triggered => {
@@ -476,7 +476,7 @@ export component FilesServiceField inherits FieldBackground {
         x: parent.width / 2 - self.width / 2;
         y: parent.height / 2 - self.height / 2;
         accepted(name) => {
-            make_dir(name);
+            req_make_dir(name);
         }
     }
 
