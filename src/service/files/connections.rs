@@ -1,4 +1,3 @@
-
 use {
     std::{collections::HashMap, sync::{Arc, Mutex}},
     uuid::Uuid,
@@ -43,8 +42,13 @@ impl Connections {
     }
 
     pub fn increase_progress(&mut self, id: Uuid) -> bool {
-        if let Some(conn) = self.inner.lock().unwrap().get_mut(&id) {
-            conn.loaded += 1;
+        let mut lock = self.inner.lock().unwrap();
+        if let Some(conn) = lock.get_mut(&id) {
+            if conn.loaded + 1 >= conn.chunks_count {
+                lock.remove(&id);
+            } else {
+                conn.loaded += 1;
+            }
             return true;
         }
         false
