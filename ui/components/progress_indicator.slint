@@ -1,0 +1,22 @@
+export component ProgressIndicator {
+    in property <float> progress: 0.0;
+    in property <brush> color: blue;
+    in property <length> border-radius: self.height / 2;
+
+    height: 10px;
+
+    // Background
+    Rectangle {
+        border-radius: root.border-radius;
+        background: #333030;
+    }
+
+    // Progress
+    Rectangle {
+        x: 0px;
+        width: parent.width * progress;
+        border-radius: root.border-radius;
+        background: color;
+        animate width { duration: 500ms; easing: ease-in-out; }
+    }
+}

@@ -1,6 +1,7 @@
 import { FieldBackground } from "../base.slint";
 import { SimpleButton } from "../../components/button.slint";
-import { LineEdit, ScrollView, ProgressIndicator } from "std-widgets.slint";
+import { LineEdit, ScrollView } from "std-widgets.slint";
+import { ProgressIndicator } from "../../components/progress_indicator.slint";
 
 //* ----------------- General ----------------- *//
 
@@ -243,8 +244,9 @@ component ContextMenu inherits PopupWindow {
 
 //* ------------------- Loader ----------------- *//
 
-struct UploadDataInfo {
+struct LoadDataInfo {
     connID: string,
+    is_upload: bool,
     name: string,
     load_to: string,
     progress: float,
@@ -254,6 +256,7 @@ component LoadData inherits HorizontalLayout {
     in property <string> connID;
     in property <string> name <=> dataname.text;
     in property <float> progress <=> progress_indicator.progress;
+    in property <bool> upload;
 
     callback cancel_upload(string);
 
@@ -272,13 +275,16 @@ component LoadData inherits HorizontalLayout {
     }
 
     dataname := Text {
-        width: parent.width / 3;
+        width: parent.width / 2;
         overflow: elide;
         vertical-alignment: center;
         horizontal-alignment: center;
     }
 
-    progress_indicator := ProgressIndicator {}
+    progress_indicator := ProgressIndicator {
+        y: parent.height / 2 - self.height / 2;
+        color: parent.upload ? green : blue;
+    }
 }
 
 // To fix border radius changes
@@ -290,12 +296,12 @@ component DataLoaderBackground inherits PopupBackground {
 component DataLoader {
     in property <length> start_y;
 
-    out property <[UploadDataInfo]> upload_data;
+    out property <[LoadDataInfo]> upload_data;
 
     private property <length> element_height: 50px;
     private property <bool> collapsed: true;
 
-    callback update([UploadDataInfo]);
+    callback update([LoadDataInfo]);
     callback update_require();
 
     width: 300px;
@@ -335,6 +341,7 @@ component DataLoader {
                     height: element_height;
                     connID: data.connID;
                     name: data.name;
+                    upload: data.is_upload;
                     progress: data.progress;
                 }
             }
