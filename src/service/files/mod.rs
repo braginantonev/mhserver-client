@@ -1,9 +1,8 @@
 mod connections;
 mod path;
-mod queue;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig}, 
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, 
     api::{
         apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
@@ -51,7 +50,7 @@ pub struct FileManager {
     cached_files: FilesList, // for files in active dir
     connections: connections::Connections,
 
-    queue: Arc<queue::RequestQueue>
+    queue: Arc<ratelimit::RequestQueue>
 }
 
 impl FileManager {
@@ -61,7 +60,7 @@ impl FileManager {
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
-            queue: Arc::new(queue::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
+            queue: Arc::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
         }
     }
 
