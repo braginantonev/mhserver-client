@@ -190,7 +190,7 @@ impl FileManager {
 
         let conn_info = save_info.content.unwrap();
 
-        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(filename, conn_info.chunk_size, conn_info.chunks_count));
+        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(true, filename, conn_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());

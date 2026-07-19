@@ -4,19 +4,19 @@ use {
 };
 
 pub struct ConnectionInner {
+    is_upload: bool,
     filename: String,
-    chunk_size: i64,
     chunks_count: i32,
     loaded: i32, // count of saved or loaded chunks  
 }
 
 impl ConnectionInner {
-    pub fn new(filename: String, chunk_size: i64, chunks_count: i32) -> Self {
-        Self { filename, chunk_size, chunks_count, loaded: 0 }
+    pub fn new(is_upload: bool, filename: String, chunks_count: i32) -> Self {
+        Self { is_upload, filename, chunks_count, loaded: 0 }
     }
 }
 
-pub type FileProgress = (Uuid, String, f32);
+pub type FileProgress = (Uuid, bool, String, f32);
 
 #[derive(Clone)]
 pub struct Connections {
@@ -32,7 +32,7 @@ impl Connections {
         let lock = self.inner.lock().unwrap();
         let mut list = Vec::<FileProgress>::with_capacity(lock.len());
         for (id, v) in lock.iter() {
-            list.push((id.clone(), v.filename.clone(), v.loaded as f32 / v.chunks_count as f32));
+            list.push((id.clone(), v.is_upload, v.filename.clone(), v.loaded as f32 / v.chunks_count as f32));
         }
         list
     }

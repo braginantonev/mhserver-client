@@ -1,6 +1,6 @@
 use {
     super::{
-        AppStates, File, MainWindow, NotificationType, PreparingStates, Services, repository::filetypes::FileTypes, UploadDataInfo
+        AppStates, File, MainWindow, NotificationType, PreparingStates, Services, repository::filetypes::FileTypes, LoadDataInfo
     }, crate::{notification}, slint::{ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
@@ -21,7 +21,7 @@ pub enum UiActions {
     /// Update files in data service. Required the files, and server path, where is this files located. 
     DataUpdateFilesList(Vec<api::models::FilesListInner>, String),
 
-    DataUpdateLoadFiles(Vec<(uuid::Uuid, String, f32)>),
+    DataUpdateLoadFiles(Vec<(uuid::Uuid, bool, String, f32)>),
 }
 
 impl UiActions {
@@ -52,7 +52,7 @@ impl UiActions {
             },
             UiActions::DataUpdateLoadFiles(files) => {
                 let slint_files = files.iter().map(|f| {
-                    UploadDataInfo { connID: f.0.to_shared_string(), load_to: "".to_shared_string(), name: f.1.to_shared_string(), progress: f.2 }
+                    LoadDataInfo { connID: f.0.to_shared_string(), is_upload: f.1, load_to: "".to_shared_string(), name: f.2.to_shared_string(), progress: f.3 }
                 });
                 win.invoke_files_update_load_data(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
             },
