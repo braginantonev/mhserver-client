@@ -5,16 +5,19 @@ use {
 };
 
 pub struct ConnectionInner {
+    filename: String,
     chunk_size: i64,
     chunks_count: i32,
     loaded: i32, // count of saved or loaded chunks  
 }
 
 impl ConnectionInner {
-    pub fn new(chunk_size: i64, chunks_count: i32) -> Self {
-        Self { chunk_size, chunks_count, loaded: 0 }
+    pub fn new(filename: String, chunk_size: i64, chunks_count: i32) -> Self {
+        Self { filename, chunk_size, chunks_count, loaded: 0 }
     }
 }
+
+pub type FileProgress = (Uuid, String, f32);
 
 #[derive(Clone)]
 pub struct Connections {
@@ -26,13 +29,17 @@ impl Connections {
         Self { inner: Arc::new(Mutex::new(HashMap::new())) }
     }
 
-    pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
-        self.inner.lock().unwrap().insert(key, val);
+    pub fn progress_list(&self) -> Vec<FileProgress> {
+        let lock = self.inner.lock().unwrap();
+        let mut list = Vec::<FileProgress>::with_capacity(lock.len());
+        for (id, v) in lock.iter() {
+            list.push((id.clone(), v.filename.clone(), v.loaded as f32 / v.chunks_count as f32));
+        }
+        list
     }
 
-    pub fn progress(&self, id: Uuid) -> f32 {
-        let lock = self.inner.lock().unwrap();
-        lock[&id].loaded as f32 / lock[&id].chunks_count as f32
+    pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
+        self.inner.lock().unwrap().insert(key, val);
     }
 
     pub fn increase_progress(&mut self, id: Uuid) -> bool {

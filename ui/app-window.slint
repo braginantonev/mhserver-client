@@ -108,6 +108,8 @@ export component MainWindow inherits Window {
     callback files_req_download_file <=> files_service_field.req_download_file;
     callback files_req_upload_files <=> files_service_field.req_upload_files;
     callback files_req_delete_file <=> files_service_field.req_delete_file;
+    callback files_req_update_load_data <=> files_service_field.req_update_load_data;
+    callback files_update_load_data <=> files_service_field.update_load_data;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {

@@ -156,6 +156,10 @@ impl FileManager {
         }
     }
 
+    pub fn get_load_files(&self) -> Vec<connections::FileProgress> {
+        self.connections.progress_list()
+    }
+
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
     pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
         let file = match File::open(os_file_path) {
@@ -186,13 +190,11 @@ impl FileManager {
 
         let conn_info = save_info.content.unwrap();
 
-        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(conn_info.chunk_size, conn_info.chunks_count));
+        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(filename, conn_info.chunk_size, conn_info.chunks_count));
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
         let rl_queue = self.queue.clone();
-
-        println!("start upload `{filename}` file");
 
         // save file
         tokio::spawn(async move {
@@ -223,7 +225,6 @@ impl FileManager {
                     }
                 });
             }
-            println!("upload `{filename}` file ended");
         });
         
         Ok(conn_info.uuid)

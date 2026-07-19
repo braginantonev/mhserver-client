@@ -105,7 +105,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_upload_files( {
+        self.ui_window.on_files_req_upload_files({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -124,7 +124,7 @@ impl Application {
                     }
 
                     let files = files.unwrap();
-                    let mut uuids = Vec::<String>::with_capacity(files.len()); // 10 - reserve
+                    let mut uuids = Vec::<String>::with_capacity(files.len());
 
                     for f in files {
                         match service.write().await.upload_file(f.path()).await {
@@ -132,7 +132,22 @@ impl Application {
                             Err(act) => act.run_in_event_loop(win.clone()), 
                         }
                     }
-                    
+
+                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
+                });
+            }
+        });
+
+        self.ui_window.on_files_req_update_load_data({
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move || {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
                 });
             }
         });
