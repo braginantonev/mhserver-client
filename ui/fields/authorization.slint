@@ -44,10 +44,7 @@ export component LoginField inherits BaseGridField {
             vertical-stretch: 0;
             text: @tr("Don't have account?");
 
-            hover-color: #36454F;
             hover-additional-width: 10px;
-            hover-border-radius: 8px;
-            hover-max-opacity: 0.35;
 
             preferred-width: self.text-length;
             preferred-height: 12px;
@@ -61,7 +58,7 @@ export component RegisterField inherits BaseGridField {
     callback register(string, string, string, string);
     callback login_request();
 
-    height: 360px;
+    height: 410px;
 
     Row {
         Text {
@@ -113,10 +110,7 @@ export component RegisterField inherits BaseGridField {
             vertical-stretch: 0;
             text: @tr("Have account?");
 
-            hover-color: #36454F;
             hover-additional-width: 10px;
-            hover-border-radius: 8px;
-            hover-max-opacity: 0.35;
 
             preferred-width: self.text-length;
             preferred-height: 12px;

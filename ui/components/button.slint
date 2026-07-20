@@ -1,12 +1,13 @@
-export component SimpleButton inherits TouchArea {
+export component SimpleButton {
+    in property <bool> enabled: true;
     in property <image> icon <=> image.source;
     in property <brush> icon-color <=> image.colorize;
     
-    in property <brush> hover-color <=> cover.background;
-    in property <length> hover-border-radius <=> cover.border-radius;
-    in property <length> hover-additional-width;
-    in property <float> hover-max-opacity: 1.0;
-    in property <float> hover-min-opacity: 0.0;
+    in property <brush> hover-color <=> hover.background;
+    in property <length> hover-additional-width: 5px;
+    in-out property <length> border-radius <=> hover.border-radius;
+    in property <percent> hover-max-opacity: 15%;
+    in property <percent> hover-min-opacity: 0%;
 
     in property <string> text <=> text.text;
     in property <length> font-size <=> text.font-size;
@@ -16,22 +17,39 @@ export component SimpleButton inherits TouchArea {
     private property <length> components-width: use-native-scale ? self.width : self.preferred-width;
     private property <length> components-height: use-native-scale ? self.height : self.preferred-height;
 
-    cover := Rectangle {
+    // Touch area fields provide
+    out property <bool> has-hover <=> touch.has-hover;
+    out property <length> pressed-x <=> touch.pressed-x;
+    out property <length> pressed-y <=> touch.pressed-y;
+    callback clicked <=> touch.clicked;
+    callback pointer-event <=> touch.pointer-event;
+    callback double-clicked <=> touch.double-clicked;
+
+    touch := TouchArea {
         width: components-width + hover-additional-width;
         height: components-height + hover-additional-width;
-        border-radius: self.width / 4;
+    }
 
-        opacity: parent.has-hover ? hover-max-opacity : hover-min-opacity;
+    hover := Rectangle {
+        background: whitesmoke;
+        width: components-width + hover-additional-width;
+        height: components-height + hover-additional-width;
+        border-radius: components-height / 2;
+
+        opacity: touch.has-hover ? hover-max-opacity : hover-min-opacity;
         animate opacity { duration: 150ms; }
     }
 
     text := Text {
+        overflow: elide;
+        horizontal-alignment: center;
+        vertical-alignment: center;
         color: parent.enabled ? white : gray;
     }
 
     image := Image {
         image-rendering: smooth;
         height: components-height;
-        width: components-width;    
+        width: components-width;
     }
 }

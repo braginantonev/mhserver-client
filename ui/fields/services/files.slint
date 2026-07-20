@@ -61,8 +61,8 @@ struct ExtendFileInfo {
 
 component FileCeil {
     out property <bool> has-hover <=> butt.has-hover;
-    out property <length> mouse-x <=> butt.mouse-x;
-    out property <length> mouse-y <=> butt.mouse-y;
+    out property <length> mouse-x <=> butt.pressed-x;
+    out property <length> mouse-y <=> butt.pressed-y;
 
     in property <image> file-icon <=> file-icon.source;
     in property <string> name <=> text.text;
@@ -72,10 +72,8 @@ component FileCeil {
     callback context-triggered();
 
     butt := SimpleButton {
-        hover-color: #36454F;
         hover-additional-width: 10px;
-        hover-border-radius: 8px;
-        hover-max-opacity: 0.25;
+        border-radius: 15px;
 
         preferred-height: parent.height;
         preferred-width: parent.width;
@@ -157,8 +155,6 @@ global ContextMenuInfo {
 component MenuItem inherits SimpleButton {
     use-native-scale: true;
     hover-additional-width: -2px; // * Change with ContextMenuBackground border-width 
-    hover-color: whitesmoke;
-    hover-max-opacity: 0.3;
 }
 
 component MenuSeparator {
@@ -197,7 +193,6 @@ component ContextMenu inherits PopupWindow {
         act_open := MenuItem {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Open");
         }
 
@@ -206,13 +201,11 @@ component ContextMenu inherits PopupWindow {
         // Download action
         act_download := MenuItem {
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Download");
         }
 
         act_upload := MenuItem {
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Upload files");
         }
 
@@ -220,14 +213,12 @@ component ContextMenu inherits PopupWindow {
         act_delete := MenuItem {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Delete");
         }
 
         // Create folder action
         act_mkdir := MenuItem {
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Create folder");
         }
 
@@ -236,7 +227,6 @@ component ContextMenu inherits PopupWindow {
         // Properties action
         act_properties := MenuItem {
             height: element-height;
-            hover-border-radius: back.border-radius;
             text: @tr("Properties");
         }
     }
@@ -265,8 +255,6 @@ component LoadData inherits HorizontalLayout {
         icon-color: whitesmoke;
 
         hover-additional-width: 10px;
-        hover-color: #36454F;
-        hover-max-opacity: 0.8;
 
         preferred-width: 12px;
         preferred-height: 12px;
@@ -318,7 +306,6 @@ component DataLoader {
 
     main_layout := VerticalLayout {
         label := MenuItem {
-            hover-border-radius: back.border-radius;
             text: @tr("Load data");
             font-size: 14pt;
             clicked => { collapsed = !collapsed; }
