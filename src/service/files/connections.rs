@@ -1,18 +1,32 @@
 use {
-    std::{collections::HashMap, sync::{Arc, Mutex}},
-    uuid::Uuid,
+    std::{collections::HashMap, sync::{Arc, Mutex}}, tokio::sync::broadcast::{Receiver, Sender, channel}, uuid::Uuid,
 };
 
 pub struct ConnectionInner {
     is_upload: bool,
     filename: String,
     chunks_count: i32,
-    loaded: i32, // count of saved or loaded chunks  
+    loaded: i32, // count of saved or loaded chunks
+    cancel: Sender<()>,
 }
 
 impl ConnectionInner {
-    pub fn new(is_upload: bool, filename: String, chunks_count: i32) -> Self {
-        Self { is_upload, filename, chunks_count, loaded: 0 }
+    pub fn new(filename: String, chunks_count: i32) -> Self {
+        Self { is_upload: false, filename, chunks_count, loaded: 0, cancel: channel::<()>(1).0 }
+    }
+
+    pub fn upload_conn(mut self) -> Self {
+        self.is_upload = true;
+        self
+    }
+
+    pub fn cancel_receiver(&self) -> Receiver<()> {
+        self.cancel.subscribe()
+    } 
+
+    pub fn cancel(&self) {
+        let _ = self.cancel.send(());
+        println!("cancel sended");
     }
 }
 
@@ -39,6 +53,12 @@ impl Connections {
 
     pub fn add(&mut self, key: Uuid, val: ConnectionInner) {
         self.inner.lock().unwrap().insert(key, val);
+    }
+
+    pub fn cancel(&mut self, key: Uuid) {
+        let mut lock = self.inner.lock().unwrap();
+        lock.get(&key).unwrap().cancel();
+        lock.remove(&key);
     }
 
     pub fn increase_progress(&mut self, id: Uuid) -> bool {

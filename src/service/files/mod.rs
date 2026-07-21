@@ -91,6 +91,10 @@ impl FileManager {
         self.change_dir(target).await
     }
 
+    pub fn cancel_load(&mut self, id: Uuid) {
+        self.connections.cancel(id);
+    }
+
     //* API requests
 
     pub async fn available_space(&self) -> Result<i64, UiActions> {
@@ -189,8 +193,10 @@ impl FileManager {
         };
 
         let conn_info = save_info.content.unwrap();
+        let conn_record = connections::ConnectionInner::new(filename, conn_info.chunks_count).upload_conn();
+        let mut cancel_channel = conn_record.cancel_receiver();
 
-        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(true, filename, conn_info.chunks_count));
+        self.connections.add(conn_info.uuid, conn_record);
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
@@ -199,6 +205,10 @@ impl FileManager {
         // save file
         tokio::spawn(async move {
             for ch_idx in 0..conn_info.chunks_count {
+                if cancel_channel.try_recv().is_ok() {
+                    return
+                }
+
                 let offset = conn_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
@@ -211,9 +221,14 @@ impl FileManager {
 
                 let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
+                let mut cancel = cancel_channel.resubscribe();
 
                 rl_queue.wait().await;
                 tokio::spawn(async move {
+                    if cancel.try_recv().is_ok() {
+                        return
+                    }
+
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
                             connections.increase_progress(conn_info.uuid);
