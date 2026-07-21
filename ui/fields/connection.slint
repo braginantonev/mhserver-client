@@ -1,29 +1,28 @@
 import { Button, LineEdit } from "std-widgets.slint";
-import { BaseGridField } from "base.slint";
+import { FieldBase } from "base.slint";
 
-export component ConnectionFiled inherits BaseGridField {
+export component ConnectionFiled inherits FieldBase {
     callback connect(string); 
 
-    height: 235px;
+    rows: 3;
+    height: self.calculate_height(layout.spacing, layout.padding);
 
-    Row {
+    layout := VerticalLayout {
+        spacing: 20px;
+        padding: 30px;
+
         Text {
-            height: 35px;
+            height: 50px;
+            vertical-alignment: center;
             horizontal-alignment: center;
             text: @tr("Enter your server address");
             font-size: 16px;
         }
-    }
-    Row {
         server_addr_line := LineEdit {
-            height: 30px;
             placeholder-text: @tr("e.g. localhost:8080");
         }
-    }
-    Row {
         Button {
             enabled: root.showed;
-            height: 30px;
             text: @tr("Connect");
             clicked => {
                 connect(server_addr_line.text)
