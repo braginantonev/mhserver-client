@@ -288,10 +288,10 @@ component DataLoaderBackground inherits PopupBackground {
 
 component DataLoader {
     in property <length> start_y;
-
     out property <[LoadDataInfo]> upload_data;
 
     private property <length> element_height: 50px;
+    private property <int> loads;
     private property <bool> collapsed: true;
 
     callback update([LoadDataInfo]);
@@ -300,11 +300,14 @@ component DataLoader {
 
     width: 300px;
     height: 200px;
-    opacity: 1.0;
+
+    opacity: 0.0;
+    visible: self.opacity > 0;
+
     y: collapsed ? start_y + main_layout.height - label.height : start_y;
 
-    animate y { duration: 750ms; easing: ease-out-quint; }
-    animate opacity { duration: 500ms; }
+    animate opacity { duration: 400ms; }
+    animate y { delay: 200ms; duration: 500ms; easing: ease-out-quint; }
 
     back := DataLoaderBackground {
         height: parent.height + 4px;
@@ -347,23 +350,26 @@ component DataLoader {
     
     upd_timer := Timer {
         interval: 1s;
-        running: true;
+        running: false;
         triggered => {
             update_require();
         }
     }
 
-    update(data) => {
-        upload_data = data;
+    function change_showed() {
+        collapsed = !collapsed;
+        self.opacity = self.opacity == 1.0 ? 0.0 : 1.0;
+        upd_timer.running ? upd_timer.stop() : upd_timer.start();
     }
 
-    states [
-        hided when upload_data.length == 0: {
-            opacity: 0.0;
-            collapsed: true;
-            upd_timer.running: false;
+    update(data) => {
+        upload_data = data;
+        let len = data.length;
+        if len != loads && (len == 0 || loads == 0) {
+            change_showed();
         }
-    ]
+        loads = len;
+    }
 }
 
 //* ----------------- Service ----------------- *//
