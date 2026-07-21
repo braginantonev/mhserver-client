@@ -26,7 +26,6 @@ impl ConnectionInner {
 
     pub fn cancel(&self) {
         let _ = self.cancel.send(());
-        println!("cancel sended");
     }
 }
 
@@ -57,7 +56,9 @@ impl Connections {
 
     pub fn cancel(&mut self, key: Uuid) {
         let mut lock = self.inner.lock().unwrap();
-        lock.get(&key).unwrap().cancel();
+        if let Some(conn) = lock.get(&key) {
+            conn.cancel()
+        };
         lock.remove(&key);
     }
 

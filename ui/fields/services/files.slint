@@ -250,6 +250,8 @@ component LoadData inherits HorizontalLayout {
 
     callback cancel_load(string);
 
+    spacing: 10px;
+
     SimpleButton {
         icon: @image-url("../../assets/close.png");
         icon-color: whitesmoke;
@@ -259,7 +261,10 @@ component LoadData inherits HorizontalLayout {
         preferred-width: 12px;
         preferred-height: 12px;
 
-        clicked => { cancel_load(connID); }
+        clicked => { 
+            self.enabled = false;
+            cancel_load(connID);
+        }
     }
 
     dataname := Text {
@@ -271,7 +276,7 @@ component LoadData inherits HorizontalLayout {
 
     progress_indicator := ProgressIndicator {
         y: parent.height / 2 - self.height / 2;
-        color: parent.upload ? green : blue;
+        color: parent.upload ? aqua : green;
     }
 }
 
