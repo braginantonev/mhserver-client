@@ -1,9 +1,8 @@
 mod connections;
 mod path;
-mod queue;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig}, 
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, 
     api::{
         apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
@@ -51,7 +50,7 @@ pub struct FileManager {
     cached_files: FilesList, // for files in active dir
     connections: connections::Connections,
 
-    queue: Arc<queue::RequestQueue>
+    queue: Arc<ratelimit::RequestQueue>
 }
 
 impl FileManager {
@@ -61,7 +60,7 @@ impl FileManager {
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
-            queue: Arc::new(queue::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
+            queue: Arc::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(50))), // tmp
         }
     }
 
@@ -90,6 +89,10 @@ impl FileManager {
         let mut target = self.active_dir.clone();
         target.pop();
         self.change_dir(target).await
+    }
+
+    pub fn cancel_load(&mut self, id: Uuid) {
+        self.connections.cancel(id);
     }
 
     //* API requests
@@ -157,6 +160,10 @@ impl FileManager {
         }
     }
 
+    pub fn get_load_files(&self) -> Vec<connections::FileProgress> {
+        self.connections.progress_list()
+    }
+
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
     pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
         let file = match File::open(os_file_path) {
@@ -186,18 +193,22 @@ impl FileManager {
         };
 
         let conn_info = save_info.content.unwrap();
+        let conn_record = connections::ConnectionInner::new(filename, conn_info.chunks_count).upload_conn();
+        let mut cancel_channel = conn_record.cancel_receiver();
 
-        self.connections.add(conn_info.uuid, connections::ConnectionInner::new(conn_info.chunk_size, conn_info.chunks_count));
+        self.connections.add(conn_info.uuid, conn_record);
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
         let rl_queue = self.queue.clone();
 
-        println!("start upload `{filename}` file");
-
         // save file
         tokio::spawn(async move {
             for ch_idx in 0..conn_info.chunks_count {
+                if cancel_channel.try_recv().is_ok() {
+                    return
+                }
+
                 let offset = conn_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
@@ -206,13 +217,18 @@ impl FileManager {
                     let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];
                     let read = file.read_at(save_chunk.as_mut_slice(), offset as u64).expect("failed read chunk from file");
                     save_chunk[..read].to_vec()
-                }).await.expect("blocking file read failed");
+                });
 
                 let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
+                let mut cancel = cancel_channel.resubscribe();
 
                 rl_queue.wait().await;
                 tokio::spawn(async move {
+                    if cancel.try_recv().is_ok() { return }
+                    let chunk = chunk.await.expect("blocking file read failed"); // temp, hope
+                    if cancel.try_recv().is_ok() { return }
+
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
                             connections.increase_progress(conn_info.uuid);
@@ -224,7 +240,6 @@ impl FileManager {
                     }
                 });
             }
-            println!("upload `{filename}` file ended");
         });
         
         Ok(conn_info.uuid)

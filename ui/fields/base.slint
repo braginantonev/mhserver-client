@@ -23,12 +23,15 @@ export component FieldBackground inherits Rectangle {
     ]
 }
 
-export component BaseGridField inherits GridLayout {
-    in-out property <bool> showed;
+export component FieldBase {
+    in property <bool> showed: false;
     in property <duration> change-duration;
+    in property <int> rows;
+    in property <length> header-height: 50px;
 
-    spacing: 20px;
-    padding: 50px;
+    public pure function calculate_height(padding: length, spacing: length) -> length {
+        return header-height + 30px * (rows - 1) + padding * 2 + spacing * (rows - 1); // 30 - default row size
+    }
 
     states [
         showed when showed: {

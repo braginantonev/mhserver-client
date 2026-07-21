@@ -1,53 +1,44 @@
 import { Button, LineEdit } from "std-widgets.slint";
-import { BaseGridField } from "base.slint";
+import { FieldBase } from "base.slint";
 import { SimpleButton } from "../components/button.slint";
 
-export component LoginField inherits BaseGridField {
+export component LoginField inherits FieldBase {
     callback login(string, string);
     callback register_request();
 
-    height: 310px;
+    rows: 5;
+    height: self.calculate_height(layout.spacing, layout.padding);
 
-    Row {
+    layout := VerticalLayout {
+        spacing: 20px;
+        padding: 25px;
+
         Text {
             height: 50px;
+            vertical-alignment: center;
             horizontal-alignment: center;
             text: @tr("Login");
             font-size: 18px;
         }
-    }
-    Row {
         username := LineEdit {
-            height: 30px;
             placeholder-text: @tr("Username");
         }
-    }
-    Row {
         pass := LineEdit {
-            input-type: password;
-            height: 30px;
+            input-type: InputType.password;
             placeholder-text: @tr("Password");
         }
-    }
-    Row {
         Button {
             enabled: root.showed;
-            height: 30px;
             text: @tr("Login");
             clicked => {
                 login(username.text, pass.text);
             }
         }
-    }
-    Row {
         SimpleButton {
             vertical-stretch: 0;
             text: @tr("Don't have account?");
 
-            hover-color: #36454F;
             hover-additional-width: 10px;
-            hover-border-radius: 8px;
-            hover-max-opacity: 0.35;
 
             preferred-width: self.text-length;
             preferred-height: 12px;
@@ -57,66 +48,50 @@ export component LoginField inherits BaseGridField {
     }
 }
 
-export component RegisterField inherits BaseGridField {
+export component RegisterField inherits FieldBase {
     callback register(string, string, string, string);
     callback login_request();
 
-    height: 360px;
+    rows: 7;
+    height: self.calculate_height(layout.spacing, layout.padding);
 
-    Row {
+    layout := VerticalLayout {
+        spacing: 20px;
+        padding: 25px;
+
         Text {
             height: 50px;
+            vertical-alignment: center;
             horizontal-alignment: center;
             text: @tr("Registration");
             font-size: 18px;
         }
-    }
-    Row {
         username := LineEdit {
-            height: 30px;
             placeholder-text: @tr("Username");
         }
-    }
-    Row {
         pass := LineEdit {
-            input-type: password;
-            height: 30px;
+            input-type: InputType.password;
             placeholder-text: @tr("Password");
         }
-    }
-    Row {
         verify := LineEdit {
             input-type: password;
-            height: 30px;
             placeholder-text: @tr("Verify password");
         }
-    }
-    Row {
         key := LineEdit {
             input-type: password;
-            height: 30px;
             placeholder-text: @tr("Secret key");
         }
-    }
-    Row {
         Button {
             enabled: root.showed;
-            height: 30px;
             text: @tr("Register");
             clicked => {
                 register(username.text, pass.text, verify.text, key.text);
             }
         }
-    }
-    Row {
         SimpleButton {
-            vertical-stretch: 0;
             text: @tr("Have account?");
 
-            hover-color: #36454F;
             hover-additional-width: 10px;
-            hover-border-radius: 8px;
-            hover-max-opacity: 0.35;
 
             preferred-width: self.text-length;
             preferred-height: 12px;

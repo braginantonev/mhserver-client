@@ -28,7 +28,7 @@ export component MainWindow inherits Window {
 
     // Fields
     Rectangle {
-        width: 300px;
+        width: 270px;
 
         field_back := FieldBackground {
             field-color: #0b0b0b80;
@@ -101,13 +101,16 @@ export component MainWindow inherits Window {
 
     // Data service
     callback files_update_showed_files <=> files_service_field.update_showed_files;
-    callback files_change_directory <=> files_service_field.change_dir;
-    callback files_make_directory <=> files_service_field.make_dir;
-    callback files_remove_directory <=> files_service_field.remove_dir;
-    callback files_download_directory <=> files_service_field.download_dir;
-    callback files_download_file <=> files_service_field.download_file;
-    callback files_upload_files <=> files_service_field.upload_files;
-    callback files_delete_file <=> files_service_field.delete_file;
+    callback files_req_change_directory <=> files_service_field.req_change_dir;
+    callback files_req_make_directory <=> files_service_field.req_make_dir;
+    callback files_req_remove_directory <=> files_service_field.req_remove_dir;
+    callback files_req_download_directory <=> files_service_field.req_download_dir;
+    callback files_req_download_file <=> files_service_field.req_download_file;
+    callback files_req_upload_files <=> files_service_field.req_upload_files;
+    callback files_req_delete_file <=> files_service_field.req_delete_file;
+    callback files_req_update_load_data <=> files_service_field.req_update_load_data;
+    callback files_update_load_data <=> files_service_field.update_load_data;
+    callback files_req_cancel_load <=> files_service_field.req_cancel_load;
 
     states [
         conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
