@@ -6,15 +6,18 @@ export component ProgressIndicator {
     height: 10px;
 
     // Background
-    Rectangle {
+    back := Rectangle {
         border-radius: root.border-radius;
-        background: #333030;
+        border-width: 2px;
+        border-color: gray;
+        background: #222020;
     }
 
     // Progress
     Rectangle {
-        x: 0px;
-        width: parent.width * progress;
+        x: back.border-width;
+        height: parent.height - 2 * back.border-width;
+        width: parent.width * progress - 2 * back.border-width;
         border-radius: root.border-radius;
         background: color;
         animate width { duration: 500ms; easing: ease-in-out; }
