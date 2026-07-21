@@ -248,7 +248,7 @@ component LoadData inherits HorizontalLayout {
     in property <float> progress <=> progress_indicator.progress;
     in property <bool> upload;
 
-    callback cancel_upload(string);
+    callback cancel_load(string);
 
     SimpleButton {
         icon: @image-url("../../assets/close.png");
@@ -259,7 +259,7 @@ component LoadData inherits HorizontalLayout {
         preferred-width: 12px;
         preferred-height: 12px;
 
-        clicked => { cancel_upload(connID); }
+        clicked => { cancel_load(connID); }
     }
 
     dataname := Text {
@@ -291,6 +291,7 @@ component DataLoader {
 
     callback update([LoadDataInfo]);
     callback update_require();
+    callback cancel_load(string); // uuid
 
     width: 300px;
     height: 200px;
@@ -330,6 +331,10 @@ component DataLoader {
                     name: data.name;
                     upload: data.is_upload;
                     progress: data.progress;
+
+                    cancel_load(id) => {
+                        root.cancel_load(id);
+                    }
                 }
             }
         }
@@ -380,9 +385,10 @@ export component FilesServiceField inherits FieldBackground {
 
     callback req_upload_files();
     callback req_upload_folders();
-
+    
     callback update_load_data <=> data_loader.update;
     callback req_update_load_data <=> data_loader.update_require;
+    callback req_cancel_load <=> data_loader.cancel_load;
 
     TouchArea {
         width: parent.width;

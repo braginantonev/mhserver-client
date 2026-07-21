@@ -4,7 +4,7 @@ use {
         actions::UiActions, 
         app::Application, 
         service
-    }, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
+    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
@@ -134,6 +134,17 @@ impl Application {
                     }
 
                     UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
+                });
+            }
+        });
+
+        self.ui_window.on_files_req_cancel_load({
+            let service = files_service.clone();
+
+            move |uuid| {
+                let service = service.clone();
+                tokio::spawn(async move {
+                    service.write().await.cancel_load(uuid::Uuid::from_str(uuid.as_str()).unwrap());
                 });
             }
         });
