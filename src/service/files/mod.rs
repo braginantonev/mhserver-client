@@ -217,7 +217,7 @@ impl FileManager {
                     let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];
                     let read = file.read_at(save_chunk.as_mut_slice(), offset as u64).expect("failed read chunk from file");
                     save_chunk[..read].to_vec()
-                }).await.expect("blocking file read failed");
+                });
 
                 let mut connections = connections.clone();
                 let http_cfg = http_cfg.clone();
@@ -225,9 +225,9 @@ impl FileManager {
 
                 rl_queue.wait().await;
                 tokio::spawn(async move {
-                    if cancel.try_recv().is_ok() {
-                        return
-                    }
+                    if cancel.try_recv().is_ok() { return }
+                    let chunk = chunk.await.expect("blocking file read failed"); // temp, hope
+                    if cancel.try_recv().is_ok() { return }
 
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
