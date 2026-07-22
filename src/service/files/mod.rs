@@ -280,22 +280,22 @@ impl FileManager {
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
         let rl_queue = self.queue.clone();
 
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
+
+        // download stage
         tokio::spawn(async move {
-            let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
             for ch_idx in 0..download_info.chunks_count {
                 rl_queue.wait().await;
                 if cancel_channel.try_recv().is_ok() { return }
 
                 let http_cfg = http_cfg.clone();
                 let tx = tx.clone();
-                let mut connections = connections.clone();
                 
                 if cancel_channel.try_recv().is_ok() { return }
                 tokio::spawn(async move {
                     let offset = download_info.chunk_size * ch_idx as i64;
                     match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
                         Ok(v) => {
-                            connections.increase_progress(download_info.uuid);
                             let _ = tx.send((Some(v.content.unwrap().bytes().await.unwrap().to_vec()), offset)).await;
                         },
                         Err(err) => {
@@ -309,10 +309,14 @@ impl FileManager {
                 });
                 if cancel_channel.try_recv().is_ok() { return }
             }
+        });
 
+        // save stage
+        tokio::spawn(async move {
             let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
             for _ in 0..download_info.chunks_count {
                 let v = rx.recv().await.unwrap();
+                let mut connections = connections.clone();
                 let f = file.clone();
                 
                 handles.push(tokio::task::spawn_blocking(move || {
@@ -320,6 +324,7 @@ impl FileManager {
                         if let Err(err) = f.write_at(&chunk, v.1 as u64) {
                             eprintln!("failed write chunk to file ({err})")
                         }
+                        connections.increase_progress(download_info.uuid);
                     } else {
                         eprintln!("return a null chunk to write")
                     }
@@ -333,7 +338,6 @@ impl FileManager {
             if std::fs::rename(path.as_path(), path.with_file_name(filename)).is_err() {
                 eprintln!("failed rename download file");
             };
-
         });
 
         Ok(download_info.uuid)
