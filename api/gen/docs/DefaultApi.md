@@ -142,7 +142,7 @@ This endpoint does not need any parameter.
 
 ## files_get_chunk
 
-> String files_get_chunk(conn_id, chunk_id)
+> std::path::PathBuf files_get_chunk(conn_id, chunk_id)
 Получить часть файла
 
 Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
@@ -157,7 +157,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-**String**
+[**std::path::PathBuf**](std::path::PathBuf.md)
 
 ### Authorization
 
@@ -173,7 +173,7 @@ Name | Type | Description  | Required | Notes
 
 ## files_get_chunk_0
 
-> String files_get_chunk_0(conn_id, chunk_id)
+> std::path::PathBuf files_get_chunk_0(conn_id, chunk_id)
 Получить часть файла
 
 Запрос возвращает файл по чанкам.   Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения 
@@ -188,7 +188,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-**String**
+[**std::path::PathBuf**](std::path::PathBuf.md)
 
 ### Authorization
 
