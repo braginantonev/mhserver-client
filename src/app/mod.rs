@@ -54,12 +54,16 @@ impl Application {
         let mut api_conf = api::apis::configuration::Configuration::new();
         api_conf.client = self.http_client.clone();
 
+        let download_dir: Option<std::path::PathBuf>;
+
         {
             let lock = self.cfg.read().await;
-            let server_api_conf = lock.server_api_config();
 
+            let server_api_conf = lock.server_api_config();
             api_conf.base_path = server_api_conf.base_path().to_owned();
             api_conf.bearer_access_token = Some(server_api_conf.jwt().to_owned());
+
+            download_dir = lock.download_dir();
         }
 
         let tools_service = Arc::new(RwLock::new(tools::ServerTools::new(api_conf.clone())));
@@ -68,7 +72,7 @@ impl Application {
         let auth_service = Arc::new(RwLock::new(auth::Authenticator::new(api_conf.clone())));
         self.add_service(auth_service.clone());
 
-        let files_service = Arc::new(RwLock::new(files::FileManager::new(config::files::FileServiceConfig::new(api_conf.clone()))));
+        let files_service = Arc::new(RwLock::new(files::FileManager::new(config::files::FileServiceConfig::new(api_conf.clone(), download_dir))));
         self.add_service(files_service.clone());
 
         self.init_preparing_callbacks(tools_service.clone());

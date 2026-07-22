@@ -2,14 +2,10 @@ mod connections;
 mod path;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, 
-    api::{
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, 
-    std::{fs::File, path::Path, sync::Arc}, 
-    system_interface::fs::FileIoExt, 
-    uuid::Uuid,
+    }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
 
 #[derive(Clone)]
@@ -55,6 +51,7 @@ pub struct FileManager {
 
 impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
+        let _ = std::fs::create_dir(cfg.download_dir());
         Self { 
             cfg,
             active_dir: path::ServerPath::new(),
@@ -212,6 +209,7 @@ impl FileManager {
                 let offset = conn_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
+                //todo: add semaphore to restrict a ram usage
                 // read file part (chunk) to upload
                 let chunk = tokio::task::spawn_blocking(move || {
                     let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];
@@ -243,6 +241,120 @@ impl FileManager {
         });
         
         Ok(conn_info.uuid)
+    }
+
+    pub async fn download_file(&mut self, filename: String) -> Result<Uuid, UiActions> {
+        let path = self.cfg.download_dir().join(filename.clone() + ".part");
+        let file = match File::create(path.as_path()) {
+            Ok(f) => Arc::new(f),
+            Err(err) => {
+                eprintln!("failed create file for download ({err})");
+                return Err(UiActions::ShowNotification("failed download file".to_owned(), NotificationType::Error));
+            }
+        };
+
+        let conn_req = ConnectionRequest {
+            directory: self.active_dir.to_string(),
+            filename: filename.clone(),
+            size: None,
+        };
+        
+        let download_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdonly, conn_req).await {
+            Ok(conn) => conn,
+            Err(err) => return Err(match err {
+                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
+                _ => {
+                    eprintln!("{err}");
+                    UiActions::ShowNotification("failed download file".to_owned(), crate::NotificationType::Error)
+                }
+            }),
+        };
+
+        let download_info = download_info.content.unwrap();
+        let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
+        let mut save_cancel = conn_record.cancel_receiver();
+        let mut download_cancel = conn_record.cancel_receiver();
+
+        self.connections.add(download_info.uuid, conn_record);
+        let connections = self.connections.clone();
+
+        let http_cfg = Arc::new(self.cfg.api_conf.clone());
+        let rl_queue = self.queue.clone();
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
+
+        // download stage
+        tokio::spawn(async move {
+            for ch_idx in 0..download_info.chunks_count {
+                rl_queue.wait().await;
+                if download_cancel.try_recv().is_ok() { return }
+
+                let http_cfg = http_cfg.clone();
+                let tx = tx.clone();
+                
+                if download_cancel.try_recv().is_ok() { return }
+                tokio::spawn(async move {
+                    let offset = download_info.chunk_size * ch_idx as i64;
+                    match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
+                        Ok(v) => {
+                            let _ = tx.send((Some(v.content.unwrap().bytes().await.unwrap().to_vec()), offset)).await;
+                        },
+                        Err(err) => {
+                            match err {
+                                Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
+                                _ => eprintln!("err: {}", err),
+                            }
+                            let _ = tx.send((None, offset)).await;
+                        }
+                    }
+                });
+                if download_cancel.try_recv().is_ok() { return }
+            }
+        });
+
+        // save stage
+        tokio::spawn(async move {
+            let mut canceled = false;
+            let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
+            for _ in 0..download_info.chunks_count {
+                let v = rx.recv().await.unwrap_or_default();
+                let mut connections = connections.clone();
+                let f = file.clone();
+
+                if save_cancel.try_recv().is_ok() {
+                    canceled = true;
+                    break
+                }
+                
+                handles.push(tokio::task::spawn_blocking(move || {
+                    if let Some(chunk) = v.0 {
+                        if let Err(err) = f.write_at(&chunk, v.1 as u64) {
+                            eprintln!("failed write chunk to file ({err})")
+                        }
+                        connections.increase_progress(download_info.uuid);
+                    } else {
+                        eprintln!("return a null chunk to write")
+                    }
+                }));
+            };
+
+            for h in handles {
+                let _ = h.await;
+            }
+
+            if canceled {
+                if std::fs::remove_file(path.as_path()).is_err() {
+                    eprintln!("failed remove canceled download file");
+                }
+                return
+            }
+
+            if std::fs::rename(path.as_path(), path.with_file_name(filename)).is_err() {
+                eprintln!("failed rename download file");
+            };
+        });
+
+        Ok(download_info.uuid)
     }
 }
 

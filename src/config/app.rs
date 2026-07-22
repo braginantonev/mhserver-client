@@ -17,6 +17,7 @@ fn config_file() -> PathBuf {
 
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ApplicationConfig {
+    download_directory: Option<String>,
     server_api: ServerApiConfiguration,
 }
 
@@ -49,5 +50,12 @@ impl ApplicationConfig {
 
     pub fn server_api_config_mut(&mut self) -> &mut ServerApiConfiguration {
         &mut self.server_api
+    }
+
+    pub fn download_dir(&self) -> Option<PathBuf> {
+        if let Some(dir) = self.download_directory.clone() {
+            return Some(PathBuf::from(dir));
+        }
+        None
     }
 }
