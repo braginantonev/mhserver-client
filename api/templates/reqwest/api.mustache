@@ -621,7 +621,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
     if !status.is_client_error() && !status.is_server_error() {
         {{^supportMultipleResponses}}
         {{#isResponseFile}}
-        Ok(Response::new(resp).with_ratelimit(ratelimit))
+        Ok(Response::new(Some(resp)).with_ratelimit(ratelimit))
         {{/isResponseFile}}
         {{^isResponseFile}}
         {{^returnType}}
