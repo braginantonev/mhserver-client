@@ -272,7 +272,8 @@ impl FileManager {
 
         let download_info = download_info.content.unwrap();
         let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
-        let mut cancel_channel = conn_record.cancel_receiver();
+        let mut save_cancel = conn_record.cancel_receiver();
+        let mut download_cancel = conn_record.cancel_receiver();
 
         self.connections.add(download_info.uuid, conn_record);
         let connections = self.connections.clone();
@@ -286,12 +287,12 @@ impl FileManager {
         tokio::spawn(async move {
             for ch_idx in 0..download_info.chunks_count {
                 rl_queue.wait().await;
-                if cancel_channel.try_recv().is_ok() { return }
+                if download_cancel.try_recv().is_ok() { return }
 
                 let http_cfg = http_cfg.clone();
                 let tx = tx.clone();
                 
-                if cancel_channel.try_recv().is_ok() { return }
+                if download_cancel.try_recv().is_ok() { return }
                 tokio::spawn(async move {
                     let offset = download_info.chunk_size * ch_idx as i64;
                     match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
@@ -307,17 +308,23 @@ impl FileManager {
                         }
                     }
                 });
-                if cancel_channel.try_recv().is_ok() { return }
+                if download_cancel.try_recv().is_ok() { return }
             }
         });
 
         // save stage
         tokio::spawn(async move {
+            let mut canceled = false;
             let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
             for _ in 0..download_info.chunks_count {
-                let v = rx.recv().await.unwrap();
+                let v = rx.recv().await.unwrap_or_default();
                 let mut connections = connections.clone();
                 let f = file.clone();
+
+                if save_cancel.try_recv().is_ok() {
+                    canceled = true;
+                    break
+                }
                 
                 handles.push(tokio::task::spawn_blocking(move || {
                     if let Some(chunk) = v.0 {
@@ -333,6 +340,13 @@ impl FileManager {
 
             for h in handles {
                 let _ = h.await;
+            }
+
+            if canceled {
+                if std::fs::remove_file(path.as_path()).is_err() {
+                    eprintln!("failed remove canceled download file");
+                }
+                return
             }
 
             if std::fs::rename(path.as_path(), path.with_file_name(filename)).is_err() {
