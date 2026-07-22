@@ -242,6 +242,102 @@ impl FileManager {
         
         Ok(conn_info.uuid)
     }
+
+        pub async fn download_file(&mut self, filename: String) -> Result<Uuid, UiActions> {
+        let path = self.cfg.download_dir().join(filename.clone() + ".part");
+        let file = match File::create_new(path.as_path()) {
+            Ok(f) => Arc::new(f),
+            Err(err) => {
+                eprintln!("failed create file for download ({err})");
+                return Err(UiActions::ShowNotification("failed download file".to_owned(), NotificationType::Error));
+            }
+        };
+
+        let conn_req = ConnectionRequest {
+            directory: self.active_dir.to_string(),
+            filename: filename.clone(),
+            size: None,
+        };
+        
+        let download_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdonly, conn_req).await {
+            Ok(conn) => conn,
+            Err(err) => return Err(match err {
+                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
+                _ => {
+                    eprintln!("{err}");
+                    UiActions::ShowNotification("failed download file".to_owned(), crate::NotificationType::Error)
+                }
+            }),
+        };
+
+        let download_info = download_info.content.unwrap();
+        let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
+        let mut cancel_channel = conn_record.cancel_receiver();
+
+        self.connections.add(download_info.uuid, conn_record);
+        let connections = self.connections.clone();
+
+        let http_cfg = Arc::new(self.cfg.api_conf.clone());
+        let rl_queue = self.queue.clone();
+
+        tokio::spawn(async move {
+            let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<String>, i64)>(5); // tmp
+            for ch_idx in 0..download_info.chunks_count {
+                rl_queue.wait().await;
+                if cancel_channel.try_recv().is_ok() { return }
+
+                let http_cfg = http_cfg.clone();
+                let tx = tx.clone();
+                
+                if cancel_channel.try_recv().is_ok() { return }
+                tokio::spawn(async move {
+                    let offset = download_info.chunk_size * ch_idx as i64;
+                    match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
+                        Ok(v) => {
+                            let _ = tx.send((Some(v.content.unwrap()), offset)).await;
+                        },
+                        Err(err) => {
+                            match err {
+                                Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
+                                _ => eprintln!("err: {}", err),
+                            }
+                            let _ = tx.send((None, offset)).await;
+                        }
+                    }
+                });
+                if cancel_channel.try_recv().is_ok() { return }
+            }
+            
+            let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
+            for _ in 0..download_info.chunks_count {
+                let v = rx.recv().await.unwrap();
+                let f = file.clone();
+                let mut connections = connections.clone();
+                
+                handles.push(tokio::task::spawn_blocking(move || {
+                    if let Some(chunk) = v.0 {
+                        match f.write_at(chunk.as_bytes(), v.1 as u64) {
+                            Ok(_) => { connections.increase_progress(download_info.uuid); },
+                            Err(err) => eprintln!("failed write chunk to file ({err})")
+                        }
+                    } else {
+                        eprintln!("return a null chunk to write")
+                    }
+                }));
+            }
+
+            for h in handles {
+                let _ = h.await;
+            }
+
+            if std::fs::rename(path.as_path(), path.with_file_name(filename)).is_err() {
+                eprintln!("failed rename download file");
+            };
+
+        });
+
+        Ok(download_info.uuid)
+    }
 }
 
 impl super::Service for FileManager {
