@@ -2,14 +2,10 @@ mod connections;
 mod path;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, 
-    api::{
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, default_api::*},
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, 
-    std::{fs::File, path::Path, sync::Arc}, 
-    system_interface::fs::FileIoExt, 
-    uuid::Uuid,
+    }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
 
 #[derive(Clone)]
@@ -55,6 +51,7 @@ pub struct FileManager {
 
 impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
+        let _ = std::fs::create_dir(cfg.download_dir());
         Self { 
             cfg,
             active_dir: path::ServerPath::new(),
@@ -212,6 +209,7 @@ impl FileManager {
                 let offset = conn_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
+                //todo: add semaphore to restrict a ram usage
                 // read file part (chunk) to upload
                 let chunk = tokio::task::spawn_blocking(move || {
                     let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];

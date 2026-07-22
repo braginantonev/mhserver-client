@@ -14,7 +14,7 @@ pub struct FileServiceConfig {
 
 impl FileServiceConfig {
     pub fn new(api_conf: Configuration, download_dir: Option<PathBuf>) -> Self {
-        Self { api_conf, download_dir: download_dir.unwrap_or(default_download_dir()) };
+        Self { api_conf, download_dir: download_dir.unwrap_or(default_download_dir()) }
     }
 
     pub fn download_dir(&self) -> PathBuf {
