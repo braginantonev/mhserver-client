@@ -165,7 +165,7 @@ impl From<&str> for ContentType {
     fn from(content_type: &str) -> Self {
         if content_type.starts_with("application") && content_type.contains("json") {
             return Self::Json;
-        } else if content_type.starts_with("text/plain") {
+        } else if content_type.starts_with("text/plain") || content_type.starts_with("application/octet-stream") {
             return Self::Text;
         } else {
             return Self::Unsupported(content_type.to_string());
