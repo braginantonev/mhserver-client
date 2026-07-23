@@ -9,7 +9,6 @@ impl ServerPath {
     }
 
     /// Push a single directory.
-    #[allow(dead_code)] // Todo: Remove in prod
     pub fn push(&mut self, path: &str) {
         self.buff.push(path.to_owned());
     }

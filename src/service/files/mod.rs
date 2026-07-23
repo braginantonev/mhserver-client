@@ -70,22 +70,16 @@ impl FileManager {
         if self.current_dir() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
     }
 
-    /// Change file manager active directory. Client the guarantees that new_dir is exist on the server.
-    async fn change_dir(&mut self, new_dir: path::ServerPath) -> Result<Vec<FilesListInner>, UiActions> {
-        self.active_dir = new_dir;
-        self.get_files().await
-    }
-
     /// Go to next folder, and return files list
     pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, UiActions> {
-        self.change_dir(self.active_dir.with(dir_name)).await
+        self.active_dir.push(dir_name);
+        self.get_files().await
     }
 
     /// Go to previous folder, and return files list
     pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
-        let mut target = self.active_dir.clone();
-        target.pop();
-        self.change_dir(target).await
+        self.active_dir.pop();
+        self.get_files().await
     }
 
     pub async fn cancel_load(&mut self, id: Uuid) {
