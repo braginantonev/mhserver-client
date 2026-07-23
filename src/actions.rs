@@ -47,7 +47,7 @@ impl UiActions {
                         size: f.size.unwrap_or(0) as i32,
                     }
                 });
-                win.invoke_files_update_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
+                win.invoke_files_update_showed_files(from.to_shared_string(), ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
             },
             UiActions::DataUpdateLoadFiles(files) => {
                 let slint_files = files.iter().map(|conn| {

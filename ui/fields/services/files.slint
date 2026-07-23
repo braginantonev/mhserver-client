@@ -346,7 +346,7 @@ component DataLoader {
                 width: parent.width - 30px;
                 padding-right: 20px;
 
-                for data[i] in upload_data: loader := LoadData {
+                for data[i] in upload_data: LoadData {
                     spacing: 3px;
                     height: element_height;
                     info: data;
@@ -395,7 +395,7 @@ export component FilesServiceField inherits FieldBackground {
     private property <int> cols-count: self.width / (tile-width + grid-spacing);
     private property <int> rows: Math.ceil(showed_files.length / cols-count);
 
-    callback update_showed_files([File]);
+    callback update_showed_files(string, [File]); // path, files
 
     callback req_change_dir(string); // directory name
     callback req_make_dir(string); // directory name
@@ -428,42 +428,53 @@ export component FilesServiceField inherits FieldBackground {
         }
     }
 
-    GridLayout {
-        spacing: grid-spacing;
-        padding: 20px;
-        y: 0px;
+    VerticalLayout {
+        spacing: 20px;
+        padding-top: 15px;
+        padding-left: 10px;
+        alignment: start;
 
-        height: rows * (tile-height + self.spacing) + self.padding * 2;
+        current-dir := Text {
+            text: "> ";
+            vertical-alignment: center;
+            font-size: 18px;
+        }
 
-        for file[i] in showed_files: FileCeil {
-            col: i.mod(cols-count);
-            row: i / cols-count;
-            
-            height: tile-height;
-            width: tile-width;
-            file-icon: file.icon;
-            name: file.name;
+        GridLayout {
+            spacing: grid-spacing;
+            height: rows * (tile-height + self.spacing) + self.padding * 2;
 
-            selected => {
-                active-file = file;
-                extender.show_file(file);
-            }
+            for file[i] in showed_files: FileCeil {
+                col: i.mod(cols-count);
+                row: i / cols-count;
+                
+                height: tile-height;
+                width: tile-width;
+                file-icon: file.icon;
+                name: file.name;
 
-            opened => {
-                if file.is-dir {
-                    req_change_dir(file.name);
-                } // Todo: Add on else - preview file
-            }
+                selected => {
+                    active-file = file;
+                    extender.show_file(file);
+                }
 
-            context-triggered => {
-                self.selected();
-                if file.name != ".." {
-                    ContextMenuInfo.update_info(false, self.x + self.mouse-x, self.y + self.mouse-y);
-                    context_menu.show();
+                opened => {
+                    if file.is-dir {
+                        req_change_dir(file.name);
+                    } // Todo: Add on else - preview file
+                }
+
+                context-triggered => {
+                    self.selected();
+                    if file.name != ".." {
+                        ContextMenuInfo.update_info(false, self.x + self.mouse-x, self.y + self.mouse-y);
+                        context_menu.show();
+                    }
                 }
             }
         }
     }
+    
 
     context_menu := ContextMenu {
         open_triggered => {
@@ -512,7 +523,8 @@ export component FilesServiceField inherits FieldBackground {
         start_y: parent.height - self.height;
     }
 
-    update_showed_files(files) => {
+    update_showed_files(from, files) => {
+        current-dir.text = "> " + from;
         showed_files = files;
     }
 }
