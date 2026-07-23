@@ -133,7 +133,7 @@ impl Application {
                         }
                     }
 
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
+                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -150,7 +150,7 @@ impl Application {
                     if let Err(act) = service.write().await.download_file(filename.to_string()).await {
                         act.run_in_event_loop(win.clone());
                     };
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
+                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -161,7 +161,7 @@ impl Application {
             move |uuid| {
                 let service = service.clone();
                 tokio::spawn(async move {
-                    service.write().await.cancel_load(uuid::Uuid::from_str(uuid.as_str()).unwrap());
+                    service.write().await.cancel_load(uuid::Uuid::from_str(uuid.as_str()).unwrap()).await;
                 });
             }
         });
@@ -175,7 +175,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files()).run_in_event_loop(win);
+                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });

@@ -88,8 +88,8 @@ impl FileManager {
         self.change_dir(target).await
     }
 
-    pub fn cancel_load(&mut self, id: Uuid) {
-        self.connections.cancel(id);
+    pub async fn cancel_load(&mut self, id: Uuid) {
+        self.connections.cancel(id).await;
     }
 
     //* API requests
@@ -157,8 +157,8 @@ impl FileManager {
         }
     }
 
-    pub fn get_load_files(&self) -> Vec<connections::FileProgress> {
-        self.connections.progress_list()
+    pub async fn get_load_files(&self) -> Vec<connections::FileProgress> {
+        self.connections.progress_list().await
     }
 
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
@@ -193,7 +193,7 @@ impl FileManager {
         let conn_record = connections::ConnectionInner::new(filename, conn_info.chunks_count).upload_conn();
         let mut cancel_channel = conn_record.cancel_receiver();
 
-        self.connections.add(conn_info.uuid, conn_record);
+        self.connections.add(conn_info.uuid, conn_record).await;
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
@@ -225,11 +225,14 @@ impl FileManager {
                 tokio::spawn(async move {
                     if cancel.try_recv().is_ok() { return }
                     let chunk = chunk.await.expect("blocking file read failed"); // temp, hope
+                    println!("read {}", ch_idx);
+
                     if cancel.try_recv().is_ok() { return }
 
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
-                            connections.increase_progress(conn_info.uuid);
+                            connections.increase_progress(conn_info.uuid).await;
+                            println!("sended {}", ch_idx);
                         },
                         Err(err) => match err {
                             Error::ResponseError(c) => println!("resp err: {}", c.content),
@@ -275,12 +278,12 @@ impl FileManager {
         let mut save_cancel = conn_record.cancel_receiver();
         let mut download_cancel = conn_record.cancel_receiver();
 
-        self.connections.add(download_info.uuid, conn_record);
-        let connections = self.connections.clone();
+        self.connections.add(download_info.uuid, conn_record).await;
 
         let http_cfg = Arc::new(self.cfg.api_conf.clone());
         let rl_queue = self.queue.clone();
 
+        let connections = self.connections.clone();
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
 
         // download stage
@@ -291,12 +294,14 @@ impl FileManager {
 
                 let http_cfg = http_cfg.clone();
                 let tx = tx.clone();
+                let mut connections = connections.clone();
                 
                 if download_cancel.try_recv().is_ok() { return }
                 tokio::spawn(async move {
                     let offset = download_info.chunk_size * ch_idx as i64;
                     match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
                         Ok(v) => {
+                            connections.increase_progress(download_info.uuid).await;
                             let _ = tx.send((Some(v.content.unwrap().bytes().await.unwrap().to_vec()), offset)).await;
                         },
                         Err(err) => {
@@ -318,7 +323,6 @@ impl FileManager {
             let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
             for _ in 0..download_info.chunks_count {
                 let v = rx.recv().await.unwrap_or_default();
-                let mut connections = connections.clone();
                 let f = file.clone();
 
                 if save_cancel.try_recv().is_ok() {
@@ -331,7 +335,7 @@ impl FileManager {
                         if let Err(err) = f.write_at(&chunk, v.1 as u64) {
                             eprintln!("failed write chunk to file ({err})")
                         }
-                        connections.increase_progress(download_info.uuid);
+                        
                     } else {
                         eprintln!("return a null chunk to write")
                     }
