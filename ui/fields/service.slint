@@ -25,15 +25,13 @@ export component ServiceField inherits FieldBackground {
     border-bottom-right-radius: 15px;
     border-top-right-radius: 15px;
 
-    field-color: #000907;
+    field-color: black;
 
     VerticalLayout {
-        y: 5px;
+        y: 0px;
         height: (50px + self.spacing) * service_count;
 
-        alignment: space-around;
-
-        padding: 10px;
+        padding: 15px;
         spacing: 15px;
         
         ServiceButton {
@@ -61,7 +59,7 @@ export component ServiceField inherits FieldBackground {
         preferred-width: 30px;
         preferred-height: 30px;
 
-        y: root.height / 2 - self.preferred-height - 5px;
+        y: root.height - self.preferred-height - 15px;
 
         icon: @image-url("../assets/settings.png");
     }
