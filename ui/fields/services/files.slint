@@ -385,16 +385,62 @@ component DataLoader {
 
 //* ----------------- Service ----------------- *//
 
-export component FilesServiceField inherits FieldBackground {
-    out property <[File]> showed_files;
+component FilesWindow {
     out property <File> active-file;
-    in property <length> tile-width: 100px;
-    in property <length> tile-height: 100px;
 
+    private property <[File]> inner;
+    private property <length> tile-width: 100px;
+    private property <length> tile-height: 100px;
     private property <length> grid-spacing: 30px;
     private property <int> cols-count: self.width / (tile-width + grid-spacing);
-    private property <int> rows: Math.ceil(showed_files.length / cols-count);
+    private property <int> rows: Math.ceil(inner.length / cols-count);
 
+    callback context-triggered(string, length, length); // filename, mouse-x, mouse-y
+    callback selected(File); // file
+    callback opened(File); // file
+
+    public function visualize(files: [File]) {
+        inner = files;
+    }
+
+    ScrollView {
+        viewport-width: self.width;
+        viewport-height: files_layout.height;
+        horizontal-scrollbar-policy: always-off;
+
+        files_layout := GridLayout {
+            y: 0px;
+            padding-top: 10px;
+            padding-left: 10px;
+            spacing: 30px;
+            height: rows * (tile-height + self.spacing);
+
+            for file[i] in inner: FileCeil {
+                col: i.mod(cols-count);
+                row: i / cols-count;
+                    
+                height: tile-height;
+                width: tile-width;
+                file-icon: file.icon;
+                name: file.name;
+
+                selected => {
+                    active-file = file;
+                    root.selected(file)
+                }
+
+                opened => { root.opened(file); }
+
+                context-triggered => {
+                    self.selected();
+                    root.context-triggered(self.name, self.x + self.mouse-x, self.y + self.mouse-y);
+                }
+            }
+        }
+    } 
+}
+
+export component FilesServiceField inherits FieldBackground {
     callback update_showed_files(string, [File]); // path, files
 
     callback req_change_dir(string); // directory name
@@ -432,60 +478,40 @@ export component FilesServiceField inherits FieldBackground {
         spacing: 20px;
         padding-top: 15px;
         padding-left: 10px;
-        alignment: start;
 
-        current-dir := Text {
+        current_dir := Text {
             text: "> ";
             vertical-alignment: center;
             font-size: 18px;
         }
 
-        GridLayout {
-            spacing: grid-spacing;
-            height: rows * (tile-height + self.spacing) + self.padding * 2;
-
-            for file[i] in showed_files: FileCeil {
-                col: i.mod(cols-count);
-                row: i / cols-count;
-                
-                height: tile-height;
-                width: tile-width;
-                file-icon: file.icon;
-                name: file.name;
-
-                selected => {
-                    active-file = file;
-                    extender.show_file(file);
-                }
-
-                opened => {
-                    if file.is-dir {
-                        req_change_dir(file.name);
-                    } // Todo: Add on else - preview file
-                }
-
-                context-triggered => {
-                    self.selected();
-                    if file.name != ".." {
-                        ContextMenuInfo.update_info(false, self.x + self.mouse-x, self.y + self.mouse-y);
-                        context_menu.show();
-                    }
+        files_win := FilesWindow {
+            selected(f) => { extender.show_file(f); }
+            opened(f) => { 
+                if f.is-dir {
+                    req_change_dir(f.name);
+                } // Todo: Add on else - preview file
+            }
+            context-triggered(filename, x, y) => {
+                if filename != ".." {
+                    ContextMenuInfo.update_info(false, x, y);
+                    context_menu.show();
                 }
             }
-        }
+        } 
     }
     
 
     context_menu := ContextMenu {
         open_triggered => {
-            if active_file.is-dir {
-                req_change_dir(active_file.name);
+            if files_win.active_file.is-dir {
+                req_change_dir(files_win.active_file.name);
             }
             // Todo: Add preview file, if active file is not dir
         }
 
         download_triggered => {
-            active-file.is-dir ? req_download_dir(active-file.name) : req_download_file(active-file.name);
+            files_win.active-file.is-dir ? req_download_dir(files_win.active-file.name) : req_download_file(files_win.active-file.name);
         }
 
         upload_triggered => {
@@ -493,7 +519,7 @@ export component FilesServiceField inherits FieldBackground {
         }
 
         delete_triggered => { 
-            active-file.is-dir ? req_remove_dir(active-file.name) : req_delete_file(active-file.name);
+            files_win.active-file.is-dir ? req_remove_dir(files_win.active-file.name) : req_delete_file(files_win.active-file.name);
         }            
 
         create_folder_triggered => {
@@ -524,7 +550,7 @@ export component FilesServiceField inherits FieldBackground {
     }
 
     update_showed_files(from, files) => {
-        current-dir.text = "> " + from;
-        showed_files = files;
+        current_dir.text = "> " + from;
+        files_win.visualize(files);
     }
 }
