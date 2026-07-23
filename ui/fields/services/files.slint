@@ -65,8 +65,8 @@ struct ExtendFileInfo {
 
 component FileCeil {
     out property <bool> has-hover <=> butt.has-hover;
-    out property <length> mouse-x <=> butt.pressed-x;
-    out property <length> mouse-y <=> butt.pressed-y;
+    out property <length> mouse-x <=> butt.mouse-x;
+    out property <length> mouse-y <=> butt.mouse-y;
 
     in property <image> file-icon <=> file-icon.source;
     in property <string> name <=> text.text;
@@ -394,6 +394,7 @@ component FilesWindow {
     private property <length> grid-spacing: 30px;
     private property <int> cols-count: self.width / (tile-width + grid-spacing);
     private property <int> rows: Math.ceil(inner.length / cols-count);
+    private property <int> rows-in-win: (files_layout.height - files_layout.padding-top) / (tile-height + files_layout.spacing);
 
     callback context-triggered(string, length, length); // filename, mouse-x, mouse-y
     callback selected(File); // file
@@ -403,7 +404,7 @@ component FilesWindow {
         inner = files;
     }
 
-    ScrollView {
+    scroll := ScrollView {
         viewport-width: self.width;
         viewport-height: files_layout.height;
         horizontal-scrollbar-policy: always-off;
@@ -433,7 +434,7 @@ component FilesWindow {
 
                 context-triggered => {
                     self.selected();
-                    root.context-triggered(self.name, self.x + self.mouse-x, self.y + self.mouse-y);
+                    root.context-triggered(self.name, self.x + self.mouse-x + scroll.viewport-x, self.y + self.mouse-y + scroll.viewport-y);
                 }
             }
         }

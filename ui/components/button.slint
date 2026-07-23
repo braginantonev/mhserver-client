@@ -19,8 +19,8 @@ export component SimpleButton {
 
     // Touch area fields provide
     out property <bool> has-hover <=> touch.has-hover;
-    out property <length> pressed-x <=> touch.pressed-x;
-    out property <length> pressed-y <=> touch.pressed-y;
+    out property <length> mouse-x <=> touch.mouse-x;
+    out property <length> mouse-y <=> touch.mouse-y;
     callback clicked <=> touch.clicked;
     callback pointer-event <=> touch.pointer-event;
     callback double-clicked <=> touch.double-clicked;
