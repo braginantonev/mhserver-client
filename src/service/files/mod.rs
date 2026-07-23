@@ -1,4 +1,4 @@
-mod connections;
+pub mod connections;
 mod path;
 
 use {
@@ -38,7 +38,6 @@ impl Default for FilesList {
         FilesList::new()
     }
 }
-
 
 pub struct FileManager {
     cfg: FileServiceConfig,
@@ -151,7 +150,7 @@ impl FileManager {
         }
     }
 
-    pub async fn get_load_files(&self) -> Vec<connections::FileProgress> {
+    pub async fn get_load_files(&self) -> Vec<connections::ConnectionInfo> {
         self.connections.progress_list().await
     }
 
@@ -219,14 +218,12 @@ impl FileManager {
                 tokio::spawn(async move {
                     if cancel.try_recv().is_ok() { return }
                     let chunk = chunk.await.expect("blocking file read failed"); // temp, hope
-                    println!("read {}", ch_idx);
 
                     if cancel.try_recv().is_ok() { return }
 
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
                             connections.increase_progress(conn_info.uuid).await;
-                            println!("sended {}", ch_idx);
                         },
                         Err(err) => match err {
                             Error::ResponseError(c) => println!("resp err: {}", c.content),

@@ -1,18 +1,21 @@
 use {
-    std::{collections::HashMap, sync::Arc}, tokio::sync::{broadcast::{Receiver, Sender, channel}, RwLock}, uuid::Uuid,
+    std::{collections::HashMap, sync::Arc}, tokio::sync::{RwLock, broadcast::{Receiver, Sender, channel}}, uuid::Uuid,
 };
 
 pub struct ConnectionInner {
     is_upload: bool,
     filename: String,
+
     chunks_count: i32,
     loaded: i32, // count of saved or loaded chunks
+    previous: i32,
+
     cancel: Sender<()>,
 }
 
 impl ConnectionInner {
     pub fn new(filename: String, chunks_count: i32) -> Self {
-        Self { is_upload: false, filename, chunks_count, loaded: 0, cancel: channel::<()>(1).0 }
+        Self { is_upload: false, filename, chunks_count, loaded: 0, previous: 0, cancel: channel::<()>(1).0 }
     }
 
     pub fn upload_conn(mut self) -> Self {
@@ -29,7 +32,20 @@ impl ConnectionInner {
     }
 }
 
-pub type FileProgress = (Uuid, bool, String, f32);
+pub struct ConnectionInfo {
+    pub id: Uuid,
+    pub is_upload: bool,
+    pub filename: String,
+    pub load_progress: f32,
+    pub previous_progress: f32,
+}
+
+impl ConnectionInfo {
+    pub fn new(id: Uuid, conn_inner: &ConnectionInner) -> Self {
+        let chunks_count = conn_inner.chunks_count as f32;
+        Self { id, is_upload: conn_inner.is_upload, filename: conn_inner.filename.clone(), load_progress: conn_inner.loaded as f32 / chunks_count, previous_progress: conn_inner.previous as f32 / chunks_count }
+    }
+}
 
 #[derive(Clone)]
 pub struct Connections {
@@ -47,7 +63,7 @@ impl Connections {
         let conns = self.inner.clone();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
                 let mut end_conns = Vec::<Uuid>::with_capacity(conns.read().await.len());
                 {
                     let r_lock = conns.read().await;
@@ -65,11 +81,12 @@ impl Connections {
         });
     } 
 
-    pub async fn progress_list(&self) -> Vec<FileProgress> {
-        let lock = self.inner.read().await;
-        let mut list = Vec::<FileProgress>::with_capacity(lock.len());
-        for (id, v) in lock.iter() {
-            list.push((id.clone(), v.is_upload, v.filename.clone(), v.loaded as f32 / v.chunks_count as f32));
+    pub async fn progress_list(&self) -> Vec<ConnectionInfo> {
+        let mut lock = self.inner.write().await;
+        let mut list = Vec::<ConnectionInfo>::with_capacity(lock.len());
+        for (id, v) in lock.iter_mut() {
+            list.push(ConnectionInfo::new(id.clone(), v));
+            v.previous = v.loaded;
         }
         list
     }
