@@ -3,6 +3,10 @@ import { SimpleButton } from "../../components/button.slint";
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { ProgressIndicator } from "../../components/progress_indicator.slint";
 
+global LoadDataSettings {
+    out property <duration> UpdateInterval: 1s;
+}
+
 //* ----------------- General ----------------- *//
 
 component PopupBackground inherits Rectangle {
@@ -238,15 +242,12 @@ struct LoadDataInfo {
     connID: string,
     is_upload: bool,
     name: string,
-    load_to: string,
     progress: float,
+    previous: float,
 }
 
 component LoadData inherits HorizontalLayout {
-    in property <string> connID;
-    in property <string> name <=> dataname.text;
-    in property <float> progress <=> progress_indicator.progress;
-    in property <bool> upload;
+    in property <LoadDataInfo> info;
 
     callback cancel_load(string);
 
@@ -263,11 +264,22 @@ component LoadData inherits HorizontalLayout {
 
         clicked => { 
             self.enabled = false;
-            cancel_load(connID);
+            cancel_load(info.connID);
+        }
+    }
+
+    // progress animation timer
+    Timer {
+        interval: 1ms;
+        running: true;
+        triggered => {
+            progress_indicator.progress = info.progress;
+            self.running = false;
         }
     }
 
     dataname := Text {
+        text: info.name;
         width: parent.width / 2;
         overflow: elide;
         vertical-alignment: center;
@@ -276,7 +288,9 @@ component LoadData inherits HorizontalLayout {
 
     progress_indicator := ProgressIndicator {
         y: parent.height / 2 - self.height / 2;
-        color: parent.upload ? #004bbb : green;
+        update_duration: LoadDataSettings.UpdateInterval;
+        progress: info.previous;
+        color: info.is-upload ? #004bbb : green;
     }
 }
 
@@ -332,13 +346,10 @@ component DataLoader {
                 width: parent.width - 30px;
                 padding-right: 20px;
 
-                for data[i] in upload_data: LoadData {
+                for data[i] in upload_data: loader := LoadData {
                     spacing: 3px;
                     height: element_height;
-                    connID: data.connID;
-                    name: data.name;
-                    upload: data.is_upload;
-                    progress: data.progress;
+                    info: data;
 
                     cancel_load(id) => {
                         root.cancel_load(id);
@@ -349,7 +360,7 @@ component DataLoader {
     }
     
     upd_timer := Timer {
-        interval: 1s;
+        interval: LoadDataSettings.UpdateInterval;
         running: false;
         triggered => {
             update_require();
