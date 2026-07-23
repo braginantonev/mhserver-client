@@ -476,7 +476,7 @@ export component FilesServiceField inherits FieldBackground {
     }
 
     VerticalLayout {
-        spacing: 20px;
+        spacing: 10px;
         padding-top: 15px;
         padding-left: 10px;
 
@@ -485,6 +485,8 @@ export component FilesServiceField inherits FieldBackground {
             vertical-alignment: center;
             font-size: 18px;
         }
+
+        MenuSeparator {}
 
         files_win := FilesWindow {
             selected(f) => { extender.show_file(f); }

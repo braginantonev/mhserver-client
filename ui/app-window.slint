@@ -83,6 +83,10 @@ export component MainWindow inherits Window {
         }
     }
 
+    // Menu bar callbacks
+    callback open_downloads <=> service_field.open_downloads_clicked;
+    callback quit <=> service_field.quit_clicked;
+
     callback change_preparing_state(PreparingStates);
     callback update_service_configs();
 

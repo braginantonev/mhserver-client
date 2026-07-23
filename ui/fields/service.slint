@@ -15,16 +15,67 @@ component ServiceButton inherits SimpleButton {
     icon-color: white;
 }
 
+component ManageSeparator {
+    height: 1px;
+    Rectangle {
+        width: parent.width - 2px * 2;
+        background: gray;
+    }
+}
+
+component ManageButton inherits SimpleButton {
+    use-native-scale: true;
+    hover-color: whitesmoke;
+}
+
+component ManageField inherits PopupWindow {
+    private property <int> items: 3;
+    private property <length> item-height: 40px;
+
+    width: 225px;
+    height: item-height * items;
+
+    callback properties-clicked();
+    callback downloads-open-clicked();
+    callback quit-clicked();
+
+    FieldBackground {
+        enabled: true;
+        border-width: 1px;
+        border-color: gray;
+        field-color: black;
+    }
+
+    VerticalLayout {
+        ManageButton {
+            text: @tr("Properties");
+            clicked => { properties-clicked() }
+        }
+
+        ManageSeparator {}
+
+        ManageButton {
+            text: @tr("Downloads directory");
+            clicked => { downloads-open-clicked() }
+        }
+
+        ManageButton {
+            text: @tr("Quit");
+            clicked => { quit-clicked() }
+        }
+    }
+}
+
 export component ServiceField inherits FieldBackground {
     private property <int> service_count: 4;
+
     callback service_triggered(Services);
+    callback properties_clicked();
+    callback open_downloads_clicked();
+    callback quit_clicked();
 
     width: 65px;
-
     border-radius: 0px;
-    border-bottom-right-radius: 15px;
-    border-top-right-radius: 15px;
-
     field-color: black;
 
     VerticalLayout {
@@ -62,5 +113,15 @@ export component ServiceField inherits FieldBackground {
         y: root.height - self.preferred-height - 15px;
 
         icon: @image-url("../assets/settings.png");
+        clicked => { manage.show() }
+    }
+
+    manage := ManageField {
+        x: parent.width + 2px;
+        y: parent.height - self.height - 2px;
+
+        properties-clicked => { properties_clicked() }
+        downloads-open-clicked => { open_downloads_clicked() }
+        quit-clicked => { quit_clicked() }
     }
 }

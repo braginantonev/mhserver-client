@@ -1,10 +1,7 @@
-use std::path::{Path, PathBuf};
-
+use std::path::PathBuf;
 use api::apis::configuration::Configuration;
 
-fn default_download_dir() -> PathBuf {
-    std::env::home_dir().unwrap().join("Downloads/mhserver-client")
-}
+use crate::repository::dirs::default_download_dir;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {

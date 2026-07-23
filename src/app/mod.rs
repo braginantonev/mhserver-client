@@ -75,6 +75,7 @@ impl Application {
         let files_service = Arc::new(RwLock::new(files::FileManager::new(config::files::FileServiceConfig::new(api_conf.clone(), download_dir))));
         self.add_service(files_service.clone());
 
+        self.init_window_callbacks();
         self.init_preparing_callbacks(tools_service.clone());
         self.init_auth_callbacks(auth_service);
         self.init_files_callbacks(files_service);
