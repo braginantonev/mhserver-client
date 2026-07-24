@@ -1,7 +1,7 @@
 import { Page } from "../page.slint";
 import { LoginField, RegisterField, ConnectionField } from "fields.slint";
 import { State, PreparingStates, ApplicationStates } from "../../globals/state.slint";
-import { PreparingSettings } from "../../globals/settings.slint";
+import { PreparingSettings, MainSettings } from "../../globals/settings.slint";
 import { PreparingInternal } from "../../globals/internal/preparing.slint";
 import { FieldBackground } from "../../components/fields.slint";
 
@@ -23,22 +23,19 @@ export component PreparingPage inherits Page {
     field_background := FieldBackground {
         width: 300px;
         height: 300px;
-        enabled: State.preparing != PreparingStates.Greeting;
+        enabled: true;
     }
 
     connection_field := ConnectionField {
         width: field_background.width;
-        enabled: false;
     }
 
     login_field := LoginField {
         width: field_background.width;
-        enabled: false;
     }
 
     register_field := RegisterField {
         width: field_background.width;
-        enabled: false;
     }
 
     states [
@@ -48,13 +45,15 @@ export component PreparingPage inherits Page {
         }
         prepare_login when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Login: {
             login_field.enabled: true;
+            field_background.stretch-delay: MainSettings.object-visible-duration;
             field_background.height: login_field.height;
         }
         prepare_register when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Register: {
             register_field.enabled: true;
             field_background.height: register_field.height;
         }
-        // wait_preparing when !PreparingInternal.prepare-needed: {
-        // }
+        greeting when State.preparing == PreparingStates.Greeting: {
+            field_background.enabled: false;
+        }
     ]
 }
