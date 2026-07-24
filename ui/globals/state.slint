@@ -4,7 +4,8 @@ export enum PreparingStates {
     // Main preparing states
     Greeting, 
     Connection, 
-    Login, 
+    Login,
+    End,
 
     // Additional preparing states
     // By default this states not using in standard state change
@@ -41,6 +42,9 @@ export global State {
             preparing = PreparingStates.Login;
         } 
         else if preparing == PreparingStates.Login {
+            preparing = PreparingStates.End;
+        } 
+        else if preparing == PreparingStates.End {
             end_preparing()
         }
 
@@ -53,6 +57,7 @@ export global State {
     }
 
     function end_preparing() {
+        PreparingInternal.update_services();
         application = ApplicationStates.Main;
         preparing = PreparingStates.Greeting;
     }

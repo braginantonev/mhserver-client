@@ -1,6 +1,6 @@
 use {
     crate::{
-        MainWindow, NotificationType, PreparingInternal, PreparingStates, State, actions::UiActions, app::Application
+        MainWindow, NotificationType, PreparingInternal, PreparingStates, State, actions::UiActions, app::Application, config::app::ApplicationConfig, service::*
     }, slint::{ComponentHandle, Weak}, std::sync::Arc, tokio::sync::RwLock,
 };
 
@@ -9,8 +9,14 @@ fn connection_check() {
 }
 
 impl Application {
-    pub fn init_preparing_callbacks(&self, tools_service: Arc<RwLock<crate::service::tools::ServerTools>>) {
+    pub fn init(&self) {
         let win_weak = self.ui_window.as_weak();
+
+        let cfg = self.cfg.clone();
+
+        // Services
+        let files_service = Arc::new(RwLock::new(files::FileManager::new()));
+        let services: Vec<Arc<RwLock<dyn Service + Send + Sync>>> = vec![files_service.clone()];
 
         let preparing_internal = self.ui_window.global::<PreparingInternal>();
 
@@ -23,6 +29,7 @@ impl Application {
                         PreparingStates::Connection => false,
                         PreparingStates::Login => true,
                         PreparingStates::Register => return,
+                        PreparingStates::End => return,
                     } {
                         win.global::<PreparingInternal>().set_prepare_needed(true);
                     } else {
@@ -30,6 +37,20 @@ impl Application {
                     }
                 });
                 
+            }
+        });
+        
+        preparing_internal.on_update_services({
+            let update_cfg = cfg.clone();
+            move || {
+                let update_cfg = update_cfg.clone();
+                let services = services.clone();
+                tokio::spawn(async move {
+                    let update_cfg = update_cfg.read().await;
+                    for s in services {
+                        s.write().await.update_config(update_cfg.clone());
+                    }
+                });
             }
         });
 
