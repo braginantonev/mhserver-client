@@ -1,0 +1,55 @@
+enum PreparingStates {
+    // Main preparing states
+    Greeting, 
+    Connection, 
+    Login, 
+
+    // Additional preparing states
+    // By default this states not using in standard state change
+    // Use this states only by force change
+    Register
+}
+
+enum ApplicationStates {
+    Preparing, 
+    Main
+}
+
+export global State {
+    out property <ApplicationStates> application: Preparing;
+    out property <PreparingStates> preparing: Greeting;
+
+    // Force preparing state change
+    public function force_preparing_state(new_state: PreparingStates) {
+        preparing = new-state;
+    }
+
+    // Force application state change
+    public function force_application_state(new_state: ApplicationStates) {
+        application = new-state;
+    }
+
+    // Standard state change
+    public function next() {
+        // Main preparing states
+        if preparing == Greeting {
+            preparing = Connection;
+        } 
+        else if preparing == Connection {
+            preparing = Login;
+        } 
+        else if preparing == Login {
+            end_preparing() 
+        }
+
+        // Additional preparing states
+        if preparing == Register {
+            preparing = Login;
+        }
+    }
+
+    function end_preparing() {
+        application = Main;
+        preparing = Greeting;
+    }
+}
