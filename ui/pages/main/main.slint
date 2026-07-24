@@ -1,0 +1,12 @@
+import { Page } from "../page.slint";
+import { State, ApplicationStates } from "../../globals/state.slint";
+import { ServiceField } from "fields.slint";
+
+export component MainPage inherits Page {
+    enabled: State.application == ApplicationStates.Main;
+
+    service_field := ServiceField {
+        x: 0px;
+        enabled: true;
+    }
+}

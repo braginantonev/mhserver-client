@@ -1,0 +1,27 @@
+export enum Services {
+    Empty,
+    Files,
+    Music,
+    Images,
+    AI
+}
+
+export global MainInternal {
+    out property <Services> active-service: Empty;
+
+    callback change-active-service(new_service: Services);
+
+    change-active-service(new_service) => {
+        active-service = new-service;
+    }
+}
+
+export global MainManage {
+    callback properties_clicked();
+    callback open_downloads_clicked();
+    callback quit_clicked();
+}
+
+export global FilesInternal {
+    
+}
