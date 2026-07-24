@@ -11,7 +11,7 @@ use {
 
 pub async fn login(api_cfg: &Configuration, user: UserLoginRequest) -> (Option<String>, UiActions) {
     match users_login(api_cfg, user).await {
-        Ok(resp) => (Some(resp.content.unwrap()), todo!()/*UiActions::ChangePreparingState(PreparingStates::Login.next())*/),
+        Ok(resp) => (Some(resp.content.unwrap()), UiActions::InvokeNextState),
         Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
     }
 }
@@ -25,17 +25,11 @@ pub async fn register(api_cfg: &Configuration, user: UserRegisterRequest) -> UiA
 
 /// Ping server. Return true, if server available, and false, if not available
 /// Use to ping server addr from self, if target is None
-pub async fn ping(api_cfg: &Configuration, target: Option<&str>) -> bool {
-    let mut local_api_conf = api_cfg.clone();
-
-    if let Some(addr) = target {
-        local_api_conf.base_path = addr.to_owned()
-    }
-
-    match tools_ping(&local_api_conf).await {
+pub async fn ping(api_cfg: &Configuration) -> bool {
+    match tools_ping(api_cfg).await {
         Ok(_) => true,
         Err(err) => {
-            println!("Error: {}", err.to_string());
+            eprintln!("Error: {}", err.to_string());
             false
         }
     }

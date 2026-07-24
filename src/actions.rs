@@ -1,18 +1,15 @@
 use {
     super::{
         MainWindow, NotificationType, PreparingStates, repository::filetypes::FileTypes
-    }, crate::{notification, service::files}, slint::{ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{State, notification, service::files}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
-    /*/// Change application state to target
-    ChangeAppState(AppStates),
+    /// Invoke next() method of State global
+    InvokeNextState,
 
-    /// Change preparing state to target
-    ChangePreparingState(PreparingStates),
-
-    /// Change active service to target
-    ChangeActiveService(Services),*/
+    /* /// Change active service to target
+    ChangeActiveService(Services), */
 
     /// Show notification with description and type
     ShowNotification(String, NotificationType),
@@ -26,14 +23,12 @@ pub enum UiActions {
 impl UiActions {
     fn run(self, win: MainWindow) {
         match self {
-            /*UiActions::ChangeAppState(next) => win.set_state(next),
-            UiActions::ChangePreparingState(next) => {
-                win.set_prepare_state(next);
-                win.invoke_change_preparing_state(next);
-            },
-            UiActions::ChangeActiveService(new_service) => {
+            /*UiActions::ChangeActiveService(new_service) => {
                 win.set_active_service(new_service);
             },*/
+            UiActions::InvokeNextState => {
+                win.global::<State>().invoke_next();
+            },
             UiActions::ShowNotification(desc, r#type) => {
                 notification::show(win, desc.as_str(), r#type);
             },/*
