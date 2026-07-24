@@ -6,30 +6,38 @@ import { PreparingInternal } from "../../globals/internal/preparing.slint";
 import { FieldBackground } from "../../components/fields.slint";
 
 export component PreparingPage inherits Page {
+    private property <bool> first-init: true;
     enabled: State.application == ApplicationStates.Preparing;
 
     // Greeting timer
     Timer {
         interval: PreparingSettings.greeting-duration;
-        running: State.preparing == PreparingStates.Greeting;
+        running: first-init && State.preparing == PreparingStates.Greeting;
         triggered => {
+            debug("start preparing");
+            first-init = false;
             State.next();
         }
     }
 
     field_background := FieldBackground {
-        enabled: true;
+        width: 300px;
+        height: 300px;
+        enabled: State.preparing != PreparingStates.Greeting;
     }
 
     connection_field := ConnectionField {
+        width: field_background.width;
         enabled: false;
     }
 
     login_field := LoginField {
+        width: field_background.width;
         enabled: false;
     }
 
     register_field := RegisterField {
+        width: field_background.width;
         enabled: false;
     }
 
@@ -46,9 +54,7 @@ export component PreparingPage inherits Page {
             register_field.enabled: true;
             field_background.height: register_field.height;
         }
-        wait_preparing when !PreparingInternal.prepare-needed: {
-            field_background.width: 200px;
-            field_background.height: 200px;
-        }
+        // wait_preparing when !PreparingInternal.prepare-needed: {
+        // }
     ]
 }

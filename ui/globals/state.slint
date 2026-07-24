@@ -1,3 +1,5 @@
+import { PreparingInternal } from "internal/preparing.slint";
+
 export enum PreparingStates {
     // Main preparing states
     Greeting, 
@@ -39,13 +41,15 @@ export global State {
             preparing = PreparingStates.Login;
         } 
         else if preparing == PreparingStates.Login {
-            end_preparing() 
+            end_preparing()
         }
 
         // Additional preparing states
         if preparing == PreparingStates.Register {
             preparing = PreparingStates.Login;
         }
+        PreparingInternal.handle_state();
+        debug("set next state", preparing);
     }
 
     function end_preparing() {
