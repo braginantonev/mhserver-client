@@ -52,8 +52,10 @@ export global State {
         if preparing == PreparingStates.Register {
             preparing = PreparingStates.Login;
         }
+
+        PreparingInternal.prepare-needed = false;
         PreparingInternal.handle_state();
-        debug("set next state", preparing);
+        debug("handle next state", preparing);
     }
 
     function end_preparing() {

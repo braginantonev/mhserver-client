@@ -42,8 +42,8 @@ impl Application {
                         PreparingStates::Greeting => return,
                         PreparingStates::Connection => !preparing::ping(&api_cfg, None).await,
                         PreparingStates::Login => true,
-                        PreparingStates::Register => return,
-                        PreparingStates::End => return,
+                        PreparingStates::Register => false,
+                        PreparingStates::End => false,
                     } {
                         win.global::<PreparingInternal>().set_prepare_needed(true);
                     } else {
