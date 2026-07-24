@@ -20,14 +20,14 @@ impl Authenticator {
 
     pub async fn login(&self, user: UserLoginRequest) -> (Option<String>, UiActions) {
         match users_login(&self.api_conf, user).await {
-            Ok(resp) => (Some(resp.content.unwrap()), UiActions::ChangePreparingState(PreparingStates::Login.next())),
+            Ok(resp) => (Some(resp.content.unwrap()), todo!()/*UiActions::ChangePreparingState(PreparingStates::Login.next())*/),
             Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
         }
     }
 
     pub async fn register(&self, user: UserRegisterRequest) -> UiActions {
         match users_register(&self.api_conf, user).await {
-            Ok(_) => UiActions::ChangePreparingState(PreparingStates::Login),
+            Ok(_) => todo!()/*UiActions::ChangePreparingState(PreparingStates::Login)*/,
             Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
         }
     }

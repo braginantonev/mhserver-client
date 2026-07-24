@@ -12,7 +12,7 @@ impl Application {
     pub fn init_preparing_callbacks(&self, tools_service: Arc<RwLock<crate::service::tools::ServerTools>>) {
         let win_weak = self.ui_window.as_weak();
 
-        self.ui_window.on_change_preparing_state({
+        /*self.ui_window.on_change_preparing_state({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
             let tools = tools_service.clone();
@@ -106,6 +106,6 @@ impl Application {
                     });
                 }
             }
-        });
+        });*/
     }
 }

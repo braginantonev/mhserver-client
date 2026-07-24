@@ -1,42 +1,42 @@
 use {
     super::{
-        AppStates, File, LoadDataInfo, MainWindow, NotificationType, PreparingStates, Services, repository::filetypes::FileTypes
+        MainWindow, NotificationType, PreparingStates, repository::filetypes::FileTypes
     }, crate::{notification, service::files}, slint::{ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
-    /// Change application state to target
+    /*/// Change application state to target
     ChangeAppState(AppStates),
 
     /// Change preparing state to target
     ChangePreparingState(PreparingStates),
 
     /// Change active service to target
-    ChangeActiveService(Services),
+    ChangeActiveService(Services),*/
 
     /// Show notification with description and type
     ShowNotification(String, NotificationType),
 
-    /// Update files in data service. Required the files, and server path, where is this files located. 
+    /*/// Update files in data service. Required the files, and server path, where is this files located. 
     DataUpdateFilesList(Vec<api::models::FilesListInner>, String),
 
-    DataUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
+    DataUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),*/
 }
 
 impl UiActions {
     fn run(self, win: MainWindow) {
         match self {
-            UiActions::ChangeAppState(next) => win.set_state(next),
+            /*UiActions::ChangeAppState(next) => win.set_state(next),
             UiActions::ChangePreparingState(next) => {
                 win.set_prepare_state(next);
                 win.invoke_change_preparing_state(next);
             },
             UiActions::ChangeActiveService(new_service) => {
                 win.set_active_service(new_service);
-            },
+            },*/
             UiActions::ShowNotification(desc, r#type) => {
                 notification::show(win, desc.as_str(), r#type);
-            },
+            },/*
             UiActions::DataUpdateFilesList(files, from) => {
                 let slint_files = files.iter().map(|f| {
                     File {
@@ -54,7 +54,7 @@ impl UiActions {
                     LoadDataInfo { connID: conn.id.to_shared_string(), is_upload: conn.is_upload, name: conn.filename.to_shared_string(), progress: conn.load_progress, previous: conn.previous_progress }
                 });
                 win.invoke_files_update_load_data(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
-            },
+            },*/
         }
     }
 

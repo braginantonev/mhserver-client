@@ -1,11 +1,38 @@
 import { Button, LineEdit } from "std-widgets.slint";
-import { FieldBase } from "base.slint";
-import { SimpleButton } from "../components/button.slint";
+import { FieldBase } from "../../components/fields.slint";
+import { SimpleButton } from "../../components/button.slint";
+import { PreparingInternal } from "../../globals/internal/preparing.slint";
+import { State, PreparingStates } from "../../globals/state.slint";
+
+export component ConnectionField inherits FieldBase {
+    rows: 3;
+    height: self.calculate_height(layout.spacing, layout.padding);
+
+    layout := VerticalLayout {
+        spacing: 20px;
+        padding: 30px;
+
+        Text {
+            height: 50px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            text: @tr("Enter your server address");
+            font-size: 16px;
+        }
+        server_addr_line := LineEdit {
+            placeholder-text: @tr("e.g. localhost:8080");
+        }
+        Button {
+            enabled: root.enabled;
+            text: @tr("Connect");
+            clicked => {
+                PreparingInternal.connect(server_addr_line.text)
+            }
+        }
+    }
+}
 
 export component LoginField inherits FieldBase {
-    callback login(string, string);
-    callback register_request();
-
     rows: 5;
     height: self.calculate_height(layout.spacing, layout.padding);
 
@@ -28,10 +55,10 @@ export component LoginField inherits FieldBase {
             placeholder-text: @tr("Password");
         }
         Button {
-            enabled: root.showed;
+            enabled: root.enabled;
             text: @tr("Login");
             clicked => {
-                login(username.text, pass.text);
+                PreparingInternal.login(username.text, pass.text);
             }
         }
         SimpleButton {
@@ -43,15 +70,12 @@ export component LoginField inherits FieldBase {
             preferred-width: self.text-length;
             preferred-height: 12px;
 
-            clicked => { register_request(); }
+            clicked => { State.force_preparing_state(PreparingStates.Register); }
         }
     }
 }
 
 export component RegisterField inherits FieldBase {
-    callback register(string, string, string, string);
-    callback login_request();
-
     rows: 7;
     height: self.calculate_height(layout.spacing, layout.padding);
 
@@ -82,10 +106,10 @@ export component RegisterField inherits FieldBase {
             placeholder-text: @tr("Secret key");
         }
         Button {
-            enabled: root.showed;
+            enabled: root.enabled;
             text: @tr("Register");
             clicked => {
-                register(username.text, pass.text, verify.text, key.text);
+                PreparingInternal.register(username.text, pass.text, verify.text, key.text);
             }
         }
         SimpleButton {
@@ -96,7 +120,7 @@ export component RegisterField inherits FieldBase {
             preferred-width: self.text-length;
             preferred-height: 12px;
 
-            clicked => { login_request(); }
+            clicked => { State.next(); }
         }
     }
 }

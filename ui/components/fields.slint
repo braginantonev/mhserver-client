@@ -1,0 +1,22 @@
+import { OpacityObject } from "base.slint";
+import { ColorSettings } from "../globals/settings.slint";
+
+export component FieldBackground inherits OpacityObject {
+    Rectangle {
+        background: ColorSettings.field-color;
+        border-color: ColorSettings.field-border-color;
+        border-width: 1px;
+        border-radius: 20px;
+    }
+}
+
+export component FieldBase inherits OpacityObject {
+    in property <int> rows;
+    in property <length> header-height: 50px;
+
+    public pure function calculate_height(padding: length, spacing: length) -> length {
+        return header-height + 30px * (rows - 1) + padding * 2 + spacing * (rows - 1); // 30 - default row size
+    }
+
+    @children
+}

@@ -1,0 +1,6 @@
+import { Page } from "page.slint";
+import { State, ApplicationStates } from "../globals/state.slint";
+
+export component MainPage inherits Page {
+    enabled: State.application == ApplicationStates.Main;
+}

@@ -1,4 +1,4 @@
-enum PreparingStates {
+export enum PreparingStates {
     // Main preparing states
     Greeting, 
     Connection, 
@@ -10,7 +10,7 @@ enum PreparingStates {
     Register
 }
 
-enum ApplicationStates {
+export enum ApplicationStates {
     Preparing, 
     Main
 }
@@ -32,24 +32,24 @@ export global State {
     // Standard state change
     public function next() {
         // Main preparing states
-        if preparing == Greeting {
-            preparing = Connection;
+        if preparing == PreparingStates.Greeting {
+            preparing = PreparingStates.Connection;
         } 
-        else if preparing == Connection {
-            preparing = Login;
+        else if preparing == PreparingStates.Connection {
+            preparing = PreparingStates.Login;
         } 
-        else if preparing == Login {
+        else if preparing == PreparingStates.Login {
             end_preparing() 
         }
 
         // Additional preparing states
-        if preparing == Register {
-            preparing = Login;
+        if preparing == PreparingStates.Register {
+            preparing = PreparingStates.Login;
         }
     }
 
     function end_preparing() {
-        application = Main;
-        preparing = Greeting;
+        application = ApplicationStates.Main;
+        preparing = PreparingStates.Greeting;
     }
 }
