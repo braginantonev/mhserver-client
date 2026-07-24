@@ -49,10 +49,9 @@ pub struct FileManager {
 }
 
 impl FileManager {
-    pub fn new(cfg: FileServiceConfig) -> Self {
-        let _ = std::fs::create_dir(cfg.download_dir());
+    pub fn new() -> Self {
         Self { 
-            cfg,
+            cfg: FileServiceConfig::default(),
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
@@ -354,7 +353,7 @@ impl FileManager {
 }
 
 impl super::Service for FileManager {
-    fn update_config_from_app(&mut self, app_cfg: crate::config::app::ApplicationConfig) {
+    fn update_config(&mut self, app_cfg: crate::config::app::ApplicationConfig) {
         let server_api_conf = app_cfg.server_api_config();
 
         self.cfg.api_conf.base_path = server_api_conf.base_path().to_owned();
