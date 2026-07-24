@@ -57,13 +57,15 @@ impl Application {
         
         preparing_internal.on_update_services({
             let update_cfg = self.cfg.clone();
+            let client = self.http_client.clone();
             move || {
                 let update_cfg = update_cfg.clone();
                 let services = services.clone();
+                let client = client.clone();
                 tokio::spawn(async move {
                     let update_cfg = update_cfg.read().await;
                     for s in services {
-                        s.write().await.update_config(update_cfg.clone());
+                        s.write().await.update_config(client.clone(), update_cfg.clone());
                     }
                 });
             }
