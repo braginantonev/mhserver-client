@@ -1,16 +1,37 @@
 use {
     crate::{
-        NotificationType, PreparingStates, actions::UiActions, app::Application
-    },
-    slint::ComponentHandle, 
-    std::sync::Arc,
-    tokio::sync::RwLock,
+        MainWindow, NotificationType, PreparingInternal, PreparingStates, State, actions::UiActions, app::Application
+    }, slint::{ComponentHandle, Weak}, std::sync::Arc, tokio::sync::RwLock,
 };
 
+fn connection_check() {
+    todo!()
+}
 
 impl Application {
     pub fn init_preparing_callbacks(&self, tools_service: Arc<RwLock<crate::service::tools::ServerTools>>) {
         let win_weak = self.ui_window.as_weak();
+
+        let preparing_internal = self.ui_window.global::<PreparingInternal>();
+
+        preparing_internal.on_handle_state({
+            let win = win_weak.clone();
+            move || {
+                let _ = win.upgrade_in_event_loop(move |win| {
+                    if match win.global::<State>().get_preparing() {
+                        PreparingStates::Greeting => return,
+                        PreparingStates::Connection => false,
+                        PreparingStates::Login => true,
+                        PreparingStates::Register => return,
+                    } {
+                        win.global::<PreparingInternal>().set_prepare_needed(true);
+                    } else {
+                        win.global::<State>().invoke_next();
+                    }
+                });
+                
+            }
+        });
 
         /*self.ui_window.on_change_preparing_state({
             let win = win_weak.clone();
