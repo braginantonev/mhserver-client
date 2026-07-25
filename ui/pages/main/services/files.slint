@@ -274,23 +274,20 @@ component LoadData inherits HorizontalLayout {
     }
 }
 
-component DataLoader {
+component Loader {
     in property <length> start_y;
 
     private property <length> element_height: 50px;
-    private property <int> loads;
-    private property <bool> collapsed: true;
+    private property <bool> have-loads: FilesInternal.load-files.length > 0;
+    private property <bool> collapsed: false;
 
     width: 300px;
     height: 200px;
 
-    opacity: 0.0;
-    visible: self.opacity > 0;
-
     y: collapsed ? start_y + main_layout.height - label.height : start_y;
 
-    animate opacity { duration: 400ms; }
-    animate y { delay: 200ms; duration: 500ms; easing: ease-out-quint; }
+    animate opacity { delay: 200ms; duration: 400ms; }
+    animate y { duration: 400ms; easing: ease-out-expo; }
 
     back := FieldBackground {
         enabled: true;
@@ -302,7 +299,9 @@ component DataLoader {
         label := MenuItem {
             text: @tr("Load data");
             font-size: 14pt;
-            clicked => { collapsed = !collapsed; }
+            clicked => {
+                collapsed = !collapsed;
+            }
         }
 
         MenuSeparator {}
@@ -332,17 +331,22 @@ component DataLoader {
     
     upd_timer := Timer {
         interval: FilesSettings.loader-update-interval;
-        running: true;
+        running: false;
         triggered => {
             FilesInternal.update_load_files()
         }
     }
 
-    function change_showed() {
-        collapsed = !collapsed;
-        self.opacity = self.opacity == 1.0 ? 0.0 : 1.0;
-        upd_timer.running ? upd_timer.stop() : upd_timer.start();
-    }
+    states [
+        hided when !have-loads: {
+            collapsed: true;
+            opacity: 0;
+            visible: self.opacity > 0;
+        }
+        showed when have-loads: {
+            upd_timer.running: true;
+        }
+    ]
 }
 
 //* ----------------- Service ----------------- *//
@@ -460,7 +464,7 @@ export component FilesServiceField inherits FieldBackground {
         y: parent.height - self.height;
     }
 
-    data_loader := DataLoader {
+    data_loader := Loader {
         x: parent.width - self.width - 50px;
         start_y: parent.height - self.height;
     }
