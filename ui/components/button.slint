@@ -53,3 +53,8 @@ export component SimpleButton {
         width: components-width;
     }
 }
+
+export component MenuButton inherits SimpleButton {
+    use-native-scale: true;
+    hover-additional-width: -2px; // field border width
+}

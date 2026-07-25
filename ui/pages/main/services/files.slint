@@ -1,10 +1,11 @@
 import { FieldBackground } from "../../../components/fields.slint";
-import { SimpleButton } from "../../../components/button.slint";
+import { SimpleButton, MenuButton } from "../../../components/button.slint";
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { ProgressIndicator } from "../../../components/progress_indicator.slint";
 import { FilesSettings } from "../../../globals/settings.slint";
 import { FilesInternal, LoadFile, File } from "../../../globals/internal/main.slint";
 import { Assets } from "../../../assets/assets.slint";
+import { MenuSeparator } from "../../../components/base.slint";
 
 //* ----------------- General ----------------- *//
 
@@ -42,11 +43,6 @@ component FolderNameInput inherits PopupWindow {
 }
 
 //* ----------------- File ----------------- *//
-
-struct ExtendFileInfo {
-    name: string,
-    is_dir: bool
-}
 
 component FileCeil {
     out property <bool> has-hover <=> butt.has-hover;
@@ -91,7 +87,14 @@ component FileCeil {
 }
 
 // Может быть в будущем я вернусь к нему, если захочу. А пока пусть будет так
-/*component FileExtender { 
+/*
+struct ExtendFileInfo {
+    name: string,
+    is_dir: bool
+}
+
+
+component FileExtender { 
     private property <length> text-padding: 15px;
 
     height: 35px;
@@ -124,7 +127,8 @@ component FileCeil {
     public function hide() {
         self.opacity = 0.0;
     }
-}*/
+}
+*/
 
 //* ----------------- Context Menu ----------------- *//
 
@@ -139,19 +143,6 @@ global ContextMenuInfo {
         self.target-empty = target_empty;
         self.target-x = x + mouse-padding;
         self.target-y = y + mouse-padding;
-    }
-}
-
-component MenuItem inherits SimpleButton {
-    use-native-scale: true;
-    hover-additional-width: -2px; // * Change with ContextMenuBackground border-width 
-}
-
-component MenuSeparator {
-    height: 1px;
-    Rectangle {
-        width: parent.width - 2px * 2; // * Change with ContextMenuBackground border-width 
-        background: gray;
     }
 }
 
@@ -172,7 +163,7 @@ component ContextMenu inherits PopupWindow {
 
     VerticalLayout {
         // Open action
-        act_open := MenuItem {
+        act_open := MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Open");
@@ -186,7 +177,7 @@ component ContextMenu inherits PopupWindow {
         MenuSeparator {}
 
         // Download action
-        act_download := MenuItem {
+        act_download := MenuButton {
             height: element-height;
             text: @tr("Download");
             clicked => {
@@ -194,14 +185,14 @@ component ContextMenu inherits PopupWindow {
             }
         }
 
-        act_upload := MenuItem {
+        act_upload := MenuButton {
             height: element-height;
             text: @tr("Upload files");
             clicked => { FilesInternal.upload_files() }
         }
 
         // Delete action
-        act_delete := MenuItem {
+        act_delete := MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Delete");
@@ -209,7 +200,7 @@ component ContextMenu inherits PopupWindow {
         }
 
         // Create folder action
-        act_mkdir := MenuItem {
+        act_mkdir := MenuButton {
             height: element-height;
             text: @tr("Create folder");
         }
@@ -217,7 +208,7 @@ component ContextMenu inherits PopupWindow {
         MenuSeparator {}
 
         // Properties action
-        act_properties := MenuItem {
+        act_properties := MenuButton {
             height: element-height;
             text: @tr("Properties");
             clicked => { debug("properties triggered"); }
@@ -297,7 +288,7 @@ component Loader {
     }
 
     main_layout := VerticalLayout {
-        label := MenuItem {
+        label := MenuButton {
             text: @tr("Load data");
             font-size: 14pt;
             clicked => {

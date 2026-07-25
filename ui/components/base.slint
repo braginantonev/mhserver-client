@@ -1,4 +1,4 @@
-import { MainSettings } from "../globals/settings.slint";
+import { MainSettings, ColorSettings } from "../globals/settings.slint";
 
 export component OpacityObject {
     in property <bool> enabled: false;
@@ -21,4 +21,11 @@ export component OpacityObject {
     ]
 
     @children
+}
+
+export component MenuSeparator {
+    height: 1px;
+    Rectangle {
+        background: ColorSettings.field-border-color;
+    }
 }

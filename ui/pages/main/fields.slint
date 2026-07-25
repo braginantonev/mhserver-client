@@ -1,7 +1,9 @@
-import { SimpleButton } from "../../components/button.slint";
+import { SimpleButton, MenuButton } from "../../components/button.slint";
 import { FieldBackground } from "../../components/fields.slint";
 import { MainInternal, Services } from "../../globals/internal/main.slint";
 import { Assets } from "../../assets/assets.slint";
+import { MenuSeparator } from "../../components/base.slint";
+
 component ServiceButton inherits SimpleButton {
     preferred-height: 45px;
     preferred-width: 45px;
@@ -10,18 +12,6 @@ component ServiceButton inherits SimpleButton {
     border-radius: 10px;
 
     icon-color: white;
-}
-
-component ManageSeparator {
-    height: 1px;
-    Rectangle {
-        background: gray;
-    }
-}
-
-component ManageButton inherits SimpleButton {
-    use-native-scale: true;
-    hover-color: whitesmoke;
 }
 
 component ManageField inherits PopupWindow {
@@ -38,19 +28,19 @@ component ManageField inherits PopupWindow {
     }
 
     VerticalLayout {
-        ManageButton {
+        MenuButton {
             text: @tr("Properties");
             clicked => { MainInternal.open_properties() }
         }
 
-        ManageSeparator {}
+        MenuSeparator {}
 
-        ManageButton {
+        MenuButton {
             text: @tr("Downloads directory");
             clicked => { MainInternal.open_downloads() }
         }
 
-        ManageButton {
+        MenuButton {
             text: @tr("Quit");
             clicked => { MainInternal.quit() }
         }
