@@ -19,7 +19,7 @@ impl Application {
                 tokio::spawn(async move {
                     let files = service.write().await.get_files().await; 
                     match files {
-                        Ok(res) => UiActions::DataUpdateFilesList(res, String::from("/")),
+                        Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")),
                         Err(err_act) => err_act
                     }.run_in_event_loop(win);
                 });
@@ -42,9 +42,10 @@ impl Application {
                     } else {
                         lock.prev().await
                     } {
-                        Ok(files) => UiActions::DataUpdateFilesList(files, lock.current_dir()),
+                        Ok(files) => UiActions::FilesUpdateFilesList(files, lock.current_dir()),
                         Err(act) => act
-                    }.run_in_event_loop(win);
+                    }.run_in_event_loop(win.clone());
+                    UiActions::FilesUpdateCurrentDirectory(lock.current_dir()).run_in_event_loop(win);
                 });
             }
         });
@@ -65,7 +66,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            UiActions::DataUpdateFilesList(files, from)
+                            UiActions::FilesUpdateFilesList(files, from)
                         },
                         Err(err) => err
                     }.run_in_event_loop(win);
@@ -89,7 +90,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            UiActions::DataUpdateFilesList(files, from)
+                            UiActions::FilesUpdateFilesList(files, from)
                         },
                         Err(err) => err
                     }.run_in_event_loop(win);
@@ -126,7 +127,7 @@ impl Application {
                         }
                     }
 
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -143,7 +144,7 @@ impl Application {
                     if let Err(act) = service.write().await.download_file(filename.to_string()).await {
                         act.run_in_event_loop(win.clone());
                     };
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -168,7 +169,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });

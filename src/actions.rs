@@ -12,9 +12,11 @@ pub enum UiActions {
     ShowNotification(String, NotificationType),
 
     /// Update files in data service. Required the files, and server path, where is this files located. 
-    DataUpdateFilesList(Vec<api::models::FilesListInner>, String),
+    FilesUpdateFilesList(Vec<api::models::FilesListInner>, String),
 
-    DataUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
+    FilesUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
+
+    FilesUpdateCurrentDirectory(String),
 }
 
 impl UiActions {
@@ -26,7 +28,7 @@ impl UiActions {
             UiActions::ShowNotification(desc, r#type) => {
                 notification::show(win, desc.as_str(), r#type);
             },
-            UiActions::DataUpdateFilesList(files, from) => {
+            UiActions::FilesUpdateFilesList(files, from) => {
                 win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|f| {
                     File {
                         icon: FileTypes::from(f).to_slint_image().expect("failed load file icon"),
@@ -37,11 +39,14 @@ impl UiActions {
                     }
                 })))));
             },
-            UiActions::DataUpdateLoadFiles(files) => {
+            UiActions::FilesUpdateLoadFiles(files) => {
                 win.global::<FilesInternal>().set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|conn| {
                     LoadFile { connID: conn.id.to_shared_string(), is_upload: conn.is_upload, name: conn.filename.to_shared_string(), progress: conn.load_progress, previous: conn.previous_progress }
                 })))));
             },
+            UiActions::FilesUpdateCurrentDirectory(target) => {
+                win.global::<FilesInternal>().set_current_directory(target.to_shared_string());
+            }
         }
     }
 
