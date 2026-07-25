@@ -285,7 +285,7 @@ component Loader {
     width: 300px;
     height: 200px;
 
-    y: collapsed ? start_y + main_layout.height - label.height : start_y;
+    y: collapsed ? start_y + main_layout.height - label.height : start_y - 10px;
 
     animate opacity { delay: 200ms; duration: 400ms; }
     animate y { duration: 400ms; easing: ease-out-expo; }

@@ -28,6 +28,8 @@ export component MainWindow inherits Window {
         hided: true;
     }
 
+    callback update_main_notification <=> main_notification.update;
+
     PreparingPage {
         width: parent.width;
         height: parent.height;
@@ -36,113 +38,4 @@ export component MainWindow inherits Window {
         width: parent.width;
         height: parent.height;
     }
-
-    // // Fields
-    // Rectangle {
-    //     width: 270px;
-
-        
-
-    //     conn_field := ConnectionFiled {
-    //         showed: false;
-    //         change-duration: show-hide-duration;
-    //     }
-
-    //     log_field := LoginField {
-    //         showed: false;
-    //         change-duration: show-hide-duration;
-    //         register_request => { prepare-state = PreparingStates.Register };
-    //     }
-
-    //     reg_field := RegisterField {
-    //         showed: false;
-    //         change-duration: show-hide-duration;
-    //         login_request => { prepare-state = PreparingStates.Login };
-    //     }
-    // }
-
-    // service_field := ServiceField {
-    //     x: 0px;
-    //     enabled: false;
-    // }
-
-    // files_service_field := FilesServiceField {
-    //     width: root.width - service_field.width - 20px;
-    //     x: service_field.width + 20px;
-    //     enabled: false;
-    // }
-
-    // // For a smooth startup
-    // Timer {
-    //     interval: 250ms;
-    //     running: true;
-    //     triggered => {
-    //         self.running = false;
-
-    //         // Use this callback to start preparing logic
-    //         change_preparing_state(PreparingStates.Normal);
-    //     }
-    // }
-
-    // // Menu bar callbacks
-    // callback open_downloads <=> service_field.open_downloads_clicked;
-    // callback quit <=> service_field.quit_clicked;
-
-    // callback change_preparing_state(PreparingStates);
-    // callback update_service_configs();
-
-    // // Main notification
-    callback update_main_notification <=> main_notification.update;
-
-    // // Connection field
-    // callback connect <=> conn_field.connect;
-
-    // // Authorization field
-    // callback login <=> log_field.login;
-    // callback register <=> reg_field.register;
-
-    // // Service field
-    // callback show_service <=> service_field.service_triggered;
-
-    // // Data service
-    // callback files_update_showed_files <=> files_service_field.update_showed_files;
-    // callback files_req_change_directory <=> files_service_field.req_change_dir;
-    // callback files_req_make_directory <=> files_service_field.req_make_dir;
-    // callback files_req_remove_directory <=> files_service_field.req_remove_dir;
-    // callback files_req_download_directory <=> files_service_field.req_download_dir;
-    // callback files_req_download_file <=> files_service_field.req_download_file;
-    // callback files_req_upload_files <=> files_service_field.req_upload_files;
-    // callback files_req_delete_file <=> files_service_field.req_delete_file;
-    // callback files_req_update_load_data <=> files_service_field.req_update_load_data;
-    // callback files_update_load_data <=> files_service_field.update_load_data;
-    // callback files_req_cancel_load <=> files_service_field.req_cancel_load;
-
-    // states [
-    //     conn when state == AppStates.Preparing && prepare-state == PreparingStates.Connection: {
-    //         field_back.enabled: true;
-    //         field_back.height: conn_field.height;
-    //         conn_field.showed: true;
-    //     }
-
-    //     login when state == AppStates.Preparing && prepare-state == PreparingStates.Login: {
-    //         field_back.enabled: true;
-    //         field_back.height: log_field.height;
-    //         log_field.showed: true;
-    //     }
-
-    //     reg when state == AppStates.Preparing && prepare-state == PreparingStates.Register: {
-    //         field_back.enabled: true;
-    //         field_back.height: reg_field.height;
-    //         reg_field.showed: true;
-    //     }
-        
-    //     main_empty when state == AppStates.Main && active-service == Services.Empty: {
-    //         service_field.enabled: true;
-    //     }
-
-    //     main_files when state == AppStates.Main && active-service == Services.Files: {
-    //         service_field.enabled: true;
-    //         files_service_field.enabled: true;
-    //     }
-    // ]
 }

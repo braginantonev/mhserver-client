@@ -1,6 +1,6 @@
 use {
     crate::{
-        FilesInternal, Services, actions::UiActions, app::Application, service
+        FilesInternal, actions::UiActions, app::Application, service
     }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
