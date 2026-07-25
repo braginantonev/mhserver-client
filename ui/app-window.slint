@@ -5,12 +5,15 @@ export { NotificationInfo }
 import { PreparingPage } from "pages/preparing/preparing.slint";
 import { MainPage } from "pages/main/main.slint";
 
-import { PreparingInternal } from "globals/internal/preparing.slint";
 import { State } from "globals/state.slint";
+import { PreparingInternal } from "globals/internal/preparing.slint";
+import { MainInternal, FilesInternal } from "globals/internal/main.slint";
 
 export {
+    State,
     PreparingInternal,
-    State
+    MainInternal,
+    FilesInternal
 }
 
 export component MainWindow inherits Window {

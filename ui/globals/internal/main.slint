@@ -21,6 +21,16 @@ export global MainInternal {
     }
 }
 
+export struct File {
+    name: string,
+    is_dir: bool,
+    server_path: string,
+    size: int,
+    icon: image,
+}
+
 export global FilesInternal {
+    in-out property <[File]> showed-files;
+    
     callback update_list();
 }
