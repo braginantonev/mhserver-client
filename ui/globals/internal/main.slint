@@ -9,19 +9,18 @@ export enum Services {
 export global MainInternal {
     out property <Services> active-service: Empty;
 
-    callback change-active-service(new_service: Services);
-
-    change-active-service(new_service) => {
-        active-service = new-service;
-    }
-}
-
-export global MainManage {
     callback properties_clicked();
     callback open_downloads_clicked();
     callback quit_clicked();
+
+    public function change_active_service(new_service: Services) {
+        active-service = new-service;
+        if new-service == Services.Files {
+            FilesInternal.update_list();
+        }
+    }
 }
 
 export global FilesInternal {
-    
+    callback update_list();
 }
