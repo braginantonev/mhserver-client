@@ -1,0 +1,526 @@
+import { FieldBackground } from "../../../components/fields.slint";
+import { SimpleButton } from "../../../components/button.slint";
+import { LineEdit, ScrollView } from "std-widgets.slint";
+import { ProgressIndicator } from "../../../components/progress_indicator.slint";
+import { FilesSettings } from "../../../globals/settings.slint";
+import { FilesInternal, File } from "../../../globals/internal/main.slint";
+import { Assets } from "../../../assets/assets.slint";
+
+//* ----------------- General ----------------- *//
+
+component FolderNameInput inherits PopupWindow {
+    width: 400px;
+    height: 100px;
+    close-policy: close-on-click-outside;
+
+    callback accepted(string);
+    
+    FieldBackground {
+        enabled: true;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    VerticalLayout {
+        padding: 15px;
+        spacing: 5px;
+
+        Text {
+            font-size: 15pt; 
+            text: @tr("Create folder");
+        }
+
+        input := LineEdit {
+            placeholder-text: @tr("Enter folder name");
+
+            accepted(text) => {
+                root.close();
+                root.accepted(text);
+            }
+        }
+    }    
+}
+
+//* ----------------- File ----------------- *//
+
+struct ExtendFileInfo {
+    name: string,
+    is_dir: bool
+}
+
+component FileCeil {
+    out property <bool> has-hover <=> butt.has-hover;
+    out property <length> mouse-x <=> butt.mouse-x;
+    out property <length> mouse-y <=> butt.mouse-y;
+
+    in property <image> file-icon <=> file-icon.source;
+    in property <string> name <=> text.text;
+
+    callback selected <=> butt.clicked;
+    callback opened <=> butt.double-clicked;
+    callback context-triggered();
+
+    butt := SimpleButton {
+        hover-additional-width: 10px;
+        border-radius: 15px;
+
+        preferred-height: parent.height;
+        preferred-width: parent.width;
+
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.up {
+                selected();
+
+                if event.button == PointerEventButton.right {
+                    context-triggered();
+                }
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: 7px;
+
+        file-icon := Image {}
+        text := Text {
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+component FileExtender { 
+    private property <length> text-padding: 15px;
+
+    height: 35px;
+    opacity: 0.0;
+    animate opacity { duration: 250ms; }
+
+    Rectangle {
+        width: txt.width + text-padding * 2;
+        height: txt.height;
+        x: 0px;
+
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+            
+        background: #302222;
+    }
+
+    txt := Text {
+        height: parent.height;
+        x: parent.x + text-padding;
+        font-size: 12pt;
+        vertical-alignment: center;
+    }
+
+    public function show_file(file-info: ExtendFileInfo) {
+        self.opacity = 1.0;
+        txt.text = file-info.name + (file-info.is-dir ? @tr(" (Folder)") : "");
+    }
+
+    public function hide() {
+        self.opacity = 0.0;
+    }
+}
+
+//* ----------------- Context Menu ----------------- *//
+
+global ContextMenuInfo {
+    out property <bool> target-empty;
+    out property <length> target-x;
+    out property <length> target-y;
+
+    private property <length> mouse-padding: 5px;
+
+    public function update_info(target_empty: bool, x: length, y: length) {
+        self.target-empty = target_empty;
+        self.target-x = x + mouse-padding;
+        self.target-y = y + mouse-padding;
+    }
+}
+
+component MenuItem inherits SimpleButton {
+    use-native-scale: true;
+    hover-additional-width: -2px; // * Change with ContextMenuBackground border-width 
+}
+
+component MenuSeparator {
+    height: 1px;
+    Rectangle {
+        width: parent.width - 2px * 2; // * Change with ContextMenuBackground border-width 
+        background: gray;
+    }
+}
+
+component ContextMenu inherits PopupWindow {
+    private property <length> element-height: 40px;
+
+    callback open_triggered <=> act_open.clicked;
+
+    callback download_triggered <=> act_download.clicked;
+    callback upload_triggered <=> act_upload.clicked;
+    callback delete_triggered <=> act_delete.clicked;
+    callback create_folder_triggered <=> act_mkdir.clicked;
+
+    callback properties_triggered <=> act_properties.clicked;
+
+    width: 200px;
+    x <=> ContextMenuInfo.target-x;
+    y <=> ContextMenuInfo.target-y;
+
+    back := FieldBackground {
+        enabled: true;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    VerticalLayout {
+        // Open action
+        act_open := MenuItem {
+            enabled: !ContextMenuInfo.target-empty;
+            height: element-height;
+            text: @tr("Open");
+        }
+
+        MenuSeparator {}
+
+        // Download action
+        act_download := MenuItem {
+            height: element-height;
+            text: @tr("Download");
+        }
+
+        act_upload := MenuItem {
+            height: element-height;
+            text: @tr("Upload files");
+        }
+
+        // Delete action
+        act_delete := MenuItem {
+            enabled: !ContextMenuInfo.target-empty;
+            height: element-height;
+            text: @tr("Delete");
+        }
+
+        // Create folder action
+        act_mkdir := MenuItem {
+            height: element-height;
+            text: @tr("Create folder");
+        }
+
+        MenuSeparator {}
+
+        // Properties action
+        act_properties := MenuItem {
+            height: element-height;
+            text: @tr("Properties");
+        }
+    }
+}
+
+//* ------------------- Loader ----------------- *//
+
+struct LoadDataInfo {
+    connID: string,
+    is_upload: bool,
+    name: string,
+    progress: float,
+    previous: float,
+}
+
+component LoadData inherits HorizontalLayout {
+    in property <LoadDataInfo> info;
+
+    callback cancel_load(string);
+
+    spacing: 10px;
+
+    SimpleButton {
+        icon: Assets.close-icon;
+        icon-color: whitesmoke;
+
+        hover-additional-width: 10px;
+
+        preferred-width: 12px;
+        preferred-height: 12px;
+
+        clicked => { 
+            self.enabled = false;
+            cancel_load(info.connID);
+        }
+    }
+
+    // progress animation timer
+    Timer {
+        interval: 1ms;
+        running: true;
+        triggered => {
+            progress_indicator.progress = info.progress;
+            self.running = false;
+        }
+    }
+
+    dataname := Text {
+        text: info.name;
+        width: parent.width / 2;
+        overflow: elide;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+
+    progress_indicator := ProgressIndicator {
+        y: parent.height / 2 - self.height / 2;
+        update_duration: FilesSettings.loader-update-interval;
+        progress: info.previous;
+        color: info.is-upload ? #004bbb : green;
+    }
+}
+
+component DataLoader {
+    in property <length> start_y;
+    out property <[LoadDataInfo]> upload_data;
+
+    private property <length> element_height: 50px;
+    private property <int> loads;
+    private property <bool> collapsed: true;
+
+    callback update([LoadDataInfo]);
+    callback update_require();
+    callback cancel_load(string); // uuid
+
+    width: 300px;
+    height: 200px;
+
+    opacity: 0.0;
+    visible: self.opacity > 0;
+
+    y: collapsed ? start_y + main_layout.height - label.height : start_y;
+
+    animate opacity { duration: 400ms; }
+    animate y { delay: 200ms; duration: 500ms; easing: ease-out-quint; }
+
+    back := FieldBackground {
+        enabled: true;
+        width: parent.width;
+        height: parent.height + 4px;
+    }
+
+    main_layout := VerticalLayout {
+        label := MenuItem {
+            text: @tr("Load data");
+            font-size: 14pt;
+            clicked => { collapsed = !collapsed; }
+        }
+
+        MenuSeparator {}
+
+        ScrollView {
+            width: parent.width;
+            viewport-width: self.width;
+            viewport-height: upload_data.length * element_height;
+            horizontal-scrollbar-policy: always-off;
+
+            VerticalLayout {
+                width: parent.width - 30px;
+                padding-right: 20px;
+
+                for data[i] in upload_data: LoadData {
+                    spacing: 3px;
+                    height: element_height;
+                    info: data;
+
+                    cancel_load(id) => {
+                        root.cancel_load(id);
+                    }
+                }
+            }
+        }
+    }
+    
+    upd_timer := Timer {
+        interval: FilesSettings.loader-update-interval;
+        running: false;
+        triggered => {
+            update_require();
+        }
+    }
+
+    function change_showed() {
+        collapsed = !collapsed;
+        self.opacity = self.opacity == 1.0 ? 0.0 : 1.0;
+        upd_timer.running ? upd_timer.stop() : upd_timer.start();
+    }
+
+    update(data) => {
+        upload_data = data;
+        let len = data.length;
+        if len != loads && (len == 0 || loads == 0) {
+            change_showed();
+        }
+        loads = len;
+    }
+}
+
+//* ----------------- Service ----------------- *//
+
+component FilesWindow {
+    out property <File> active-file;
+
+    private property <length> tile-width: 100px;
+    private property <length> tile-height: 100px;
+    private property <length> grid-spacing: 30px;
+    private property <int> cols-count: self.width / (tile-width + grid-spacing);
+    private property <int> rows: Math.ceil(FilesInternal.showed-files.length / cols-count);
+    private property <int> rows-in-win: (files_layout.height - files_layout.padding-top) / (tile-height + files_layout.spacing);
+
+    callback context-triggered(string, length, length); // filename, mouse-x, mouse-y
+    callback selected(File); // file
+    callback opened(File); // file
+
+    scroll := ScrollView {
+        viewport-width: self.width;
+        viewport-height: files_layout.height;
+        horizontal-scrollbar-policy: always-off;
+
+        files_layout := GridLayout {
+            y: 0px;
+            padding-top: 10px;
+            padding-left: 10px;
+            spacing: 30px;
+            height: rows * (tile-height + self.spacing);
+
+            for file[i] in FilesInternal.showed-files: FileCeil {
+                col: i.mod(cols-count);
+                row: i / cols-count;
+                    
+                height: tile-height;
+                width: tile-width;
+                file-icon: file.icon;
+                name: file.name;
+
+                selected => {
+                    active-file = file;
+                    root.selected(file)
+                }
+
+                opened => { root.opened(file); }
+
+                context-triggered => {
+                    self.selected();
+                    root.context-triggered(self.name, self.x + self.mouse-x + scroll.viewport-x, self.y + self.mouse-y + scroll.viewport-y);
+                }
+            }
+        }
+    } 
+}
+
+export component FilesServiceField inherits FieldBackground {
+    callback req_change_dir(string); // directory name
+    callback req_make_dir(string); // directory name
+    callback req_remove_dir(string); // directory name
+    callback req_download_dir(string); // directory name
+
+    callback req_download_file(string); // filename
+    callback req_delete_file(string); // filename
+
+    callback req_upload_files();
+    callback req_upload_folders();
+    
+    callback update_load_data <=> data_loader.update;
+    callback req_update_load_data <=> data_loader.update_require;
+    callback req_cancel_load <=> data_loader.cancel_load;
+
+    TouchArea {
+        width: parent.width;
+        height: parent.height;
+        
+        clicked => {
+            extender.hide();
+        }
+
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
+                ContextMenuInfo.update_info(true, self.x + self.mouse-x, self.y + self.mouse-y);
+                context_menu.show();
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: 10px;
+        padding-top: 15px;
+        padding-left: 10px;
+
+        current_dir := Text {
+            text: "> /";
+            vertical-alignment: center;
+            font-size: 18px;
+        }
+
+        MenuSeparator {}
+
+        files_win := FilesWindow {
+            selected(f) => { extender.show_file(f); }
+            opened(f) => { 
+                if f.is-dir {
+                    req_change_dir(f.name);
+                } // Todo: Add on else - preview file
+            }
+            context-triggered(filename, x, y) => {
+                if filename != ".." {
+                    ContextMenuInfo.update_info(false, x, y);
+                    context_menu.show();
+                }
+            }
+        } 
+    }
+    
+    context_menu := ContextMenu {
+        open_triggered => {
+            if files_win.active_file.is-dir {
+                req_change_dir(files_win.active_file.name);
+            }
+            // Todo: Add preview file, if active file is not dir
+        }
+
+        download_triggered => {
+            files_win.active-file.is-dir ? req_download_dir(files_win.active-file.name) : req_download_file(files_win.active-file.name);
+        }
+
+        upload_triggered => {
+            req_upload_files();
+        }
+
+        delete_triggered => { 
+            files_win.active-file.is-dir ? req_remove_dir(files_win.active-file.name) : req_delete_file(files_win.active-file.name);
+        }            
+
+        create_folder_triggered => {
+            filename_input.show();
+        }
+
+        properties_triggered => { 
+            debug("properties triggered");
+        }
+    }
+
+    filename_input := FolderNameInput {
+        x: parent.width / 2 - self.width / 2;
+        y: parent.height / 2 - self.height / 2;
+        accepted(name) => {
+            req_make_dir(name);
+        }
+    }
+
+    extender := FileExtender {
+        x: 0px;
+        y: parent.height - self.height;
+    }
+
+    data_loader := DataLoader {
+        x: parent.width - self.width - 50px;
+        start_y: parent.height - self.height;
+    }
+}
