@@ -1,20 +1,17 @@
 import { Notification, NotificationInfo, NotificationType } from "components/notification.slint";
 export { NotificationInfo }
 
-//* Fields import
-import { FieldBackground } from "fields/base.slint";
-import { Button } from "std-widgets.slint";
-
 // Services
-import { FilesServiceField, File } from "fields/services/files.slint";
 import { PreparingPage } from "pages/preparing/preparing.slint";
 import { MainPage } from "pages/main/main.slint";
 
 import { PreparingInternal } from "globals/internal/preparing.slint";
-export { PreparingInternal }
-
 import { State } from "globals/state.slint";
-export { State }
+
+export {
+    PreparingInternal,
+    State
+}
 
 export component MainWindow inherits Window {
     title: "mhserver-client";
