@@ -90,7 +90,8 @@ component FileCeil {
     }
 }
 
-component FileExtender { 
+// Может быть в будущем я вернусь к нему, если захочу. А пока пусть будет так
+/*component FileExtender { 
     private property <length> text-padding: 15px;
 
     height: 35px;
@@ -123,7 +124,7 @@ component FileExtender {
     public function hide() {
         self.opacity = 0.0;
     }
-}
+}*/
 
 //* ----------------- Context Menu ----------------- *//
 
@@ -409,9 +410,9 @@ export component FilesServiceField inherits FieldBackground {
         width: parent.width;
         height: parent.height;
         
-        clicked => {
+        /*clicked => {
             extender.hide();
-        }
+        }*/
 
         pointer-event(event) => {
             if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
@@ -427,7 +428,7 @@ export component FilesServiceField inherits FieldBackground {
         padding-left: 10px;
 
         current_dir := Text {
-            text: "> " + FilesInternal.current-directory;
+            text: "> " + FilesInternal.current-directory + (FilesInternal.active-file.is-dir ? "" : FilesInternal.active-file.name);
             vertical-alignment: center;
             font-size: 18px;
         }
@@ -435,7 +436,7 @@ export component FilesServiceField inherits FieldBackground {
         MenuSeparator {}
 
         files_win := FilesWindow {
-            selected(f) => { extender.show_file(f); }
+            /*selected(f) => { extender.show_file(f); }*/
             context-triggered(filename, x, y) => {
                 if filename != ".." {
                     ContextMenuInfo.update_info(false, x, y);
@@ -459,10 +460,9 @@ export component FilesServiceField inherits FieldBackground {
         }
     }
 
-    extender := FileExtender {
-        x: 0px;
-        y: parent.height - self.height;
-    }
+    // extender := FileExtender {
+    //     y: parent.height - self.height;
+    // }
 
     data_loader := Loader {
         x: parent.width - self.width - 50px;

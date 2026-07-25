@@ -5,8 +5,7 @@ mod init;
 use {
     crate::{
         MainWindow, 
-        config::app::ApplicationConfig, 
-        service::*
+        config::app::ApplicationConfig,
     }, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 

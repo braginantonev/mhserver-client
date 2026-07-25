@@ -9,7 +9,7 @@ slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> Result<(), app::errors::ApplicationError> {
-    let mut app = app::Application::new()?;
+    let app = app::Application::new()?;
     
     app.run().await?;
 
