@@ -9,9 +9,9 @@ export enum Services {
 export global MainInternal {
     out property <Services> active-service: Empty;
 
-    callback properties_clicked();
-    callback open_downloads_clicked();
-    callback quit_clicked();
+    callback open_properties();
+    callback open_downloads();
+    callback quit();
 
     public function change_active_service(new_service: Services) {
         active-service = new-service;

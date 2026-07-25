@@ -73,5 +73,6 @@ impl Application {
 
         self.init_preparing_callbacks();
         self.init_files_callbacks(files_service);
+        self.init_window_callbacks();
     }
 }

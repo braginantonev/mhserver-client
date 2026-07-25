@@ -1,14 +1,14 @@
-use slint::ComponentHandle;
-use std::process::Command;
-use crate::app::Application;
-
-use crate::repository::dirs::default_download_dir;
+use {
+    crate::{MainInternal, app::Application, repository::dirs::default_download_dir},
+    std::process::Command,
+    slint::ComponentHandle
+};
 
 impl Application {
     pub fn init_window_callbacks(&self) {
-        let win_weak = self.ui_window.as_weak();
+        let internal = self.ui_window.global::<MainInternal>();
 
-        self.ui_window.on_open_downloads({
+        internal.on_open_downloads({
             let cfg = self.cfg.clone();
             move || {
                 let cfg = cfg.clone();
@@ -22,8 +22,8 @@ impl Application {
             }
         });
 
-        self.ui_window.on_quit({
-            let win = win_weak.clone();
+        internal.on_quit({
+            let win = self.ui_window.as_weak();
             move || {
                 let _ = win.upgrade_in_event_loop(move |win| {
                     win.window().dispatch_event(slint::platform::WindowEvent::CloseRequested);

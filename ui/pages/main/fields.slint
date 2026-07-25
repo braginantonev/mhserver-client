@@ -40,19 +40,19 @@ component ManageField inherits PopupWindow {
     VerticalLayout {
         ManageButton {
             text: @tr("Properties");
-            clicked => { MainInternal.properties_clicked() }
+            clicked => { MainInternal.open_properties() }
         }
 
         ManageSeparator {}
 
         ManageButton {
             text: @tr("Downloads directory");
-            clicked => { MainInternal.open_downloads_clicked() }
+            clicked => { MainInternal.open_downloads() }
         }
 
         ManageButton {
             text: @tr("Quit");
-            clicked => { MainInternal.quit_clicked() }
+            clicked => { MainInternal.quit() }
         }
     }
 }
@@ -101,7 +101,7 @@ export component ServiceField inherits FieldBackground {
     }
 
     manage := ManageField {
-        x: parent.width + 2px;
-        y: parent.height - self.height - 2px;
+        x: parent.width + 10px;
+        y: parent.height - self.height;
     }
 }
