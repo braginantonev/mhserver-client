@@ -1,110 +1,103 @@
 use {
     crate::{
-        NotificationType, PreparingStates, actions::UiActions, app::Application
-    },
-    slint::ComponentHandle, 
-    std::sync::Arc,
-    tokio::sync::RwLock,
+        NotificationType, PreparingInternal, State, actions::UiActions, app::Application, service::preparing
+    }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
+fn api_cfg(client: Client, base_path: String) -> Configuration {
+    let mut cfg = Configuration::new();
+    cfg.client = client;
+    cfg.base_path = base_path;
+    cfg
+}
 
 impl Application {
-    pub fn init_preparing_callbacks(&self, tools_service: Arc<RwLock<crate::service::tools::ServerTools>>) {
+    pub fn init_preparing_callbacks(&self) {
         let win_weak = self.ui_window.as_weak();
 
-        self.ui_window.on_change_preparing_state({
+        let preparing_internal = self.ui_window.global::<PreparingInternal>();
+
+        preparing_internal.on_connect({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let tools = tools_service.clone();
-
-            move |new_preparing_state| {
-                let win = win.clone();
-                let cfg = cfg.clone();
-                let tools = tools.clone();
-
-                tokio::spawn(async move {
-                    println!("go to preparing {:?}", new_preparing_state);
-                    match new_preparing_state {
-                        PreparingStates::Normal => {
-                            UiActions::ChangePreparingState(new_preparing_state.next())
-                        },
-                        PreparingStates::CheckConn => {
-                            let api_cfg = cfg.read().await;
-
-                            UiActions::ChangePreparingState(if tools.read().await.ping(Some(api_cfg.server_api_config().base_path())).await {
-                                new_preparing_state.next()
-                            } else {
-                                PreparingStates::Connection
-                            })
-                        },
-                        PreparingStates::CheckAuth => {
-                            UiActions::ChangePreparingState(if cfg.read().await.server_api_config().jwt() == "" {
-                                PreparingStates::Login
-                            } else {
-                                new_preparing_state.next()
-                            })
-                        },
-                        PreparingStates::End => {
-                            cfg.read().await.save_to_file();
-
-                            //Todo: add multiply events update
-                            let _ = win.upgrade_in_event_loop(|win| {
-                                win.invoke_update_service_configs();
-                            });
-
-                            println!("end preparing");
-
-                            UiActions::ChangeAppState(crate::AppStates::Main)
-                        }
-                        _ => UiActions::ShowNotification(format!("unexpected preparing state: {:?}", new_preparing_state), NotificationType::Info)
-                    }.run_in_event_loop(win);
-                });
-            }
-        });
-
-        self.ui_window.on_connect({
-            let win = win_weak.clone();
-            let cfg = self.cfg.clone();
-            let tools = tools_service.clone();
+            let http_client = self.http_client.clone();
 
             move |srv_addr| {
                 let win = win.clone();
                 let cfg = cfg.clone();
-                let tools = tools.clone();
+                let http_client = http_client.clone();
 
                 tokio::spawn(async move {
-                    if tools.read().await.ping(Some(srv_addr.as_str())).await {
+                    if preparing::ping(&api_cfg(http_client, srv_addr.to_string())).await {
                         cfg.write().await.server_api_config_mut().set_base_path(srv_addr.as_str());
 
-                        //Todo: add multiply events update
                         let _ = win.upgrade_in_event_loop(|win| {
-                            win.invoke_update_service_configs();
+                            win.global::<State>().invoke_next();
                         });
-                        
-                        UiActions::ChangePreparingState(PreparingStates::Connection.next())
                     } else {
-                        UiActions::ShowNotification("Server is off or unavailable".to_owned(), NotificationType::Error)
-                    }.run_in_event_loop(win);
+                        UiActions::ShowNotification("Server not found or is off".to_owned(), NotificationType::Error).run_in_event_loop(win);
+                    };
                 });
             }
         });
 
-        self.ui_window.on_update_service_configs({
-            let main_cfg = self.cfg.clone();
-            let services = self.services.clone();
+        preparing_internal.on_login({
+            let win = win_weak.clone();
+            let cfg = self.cfg.clone();
+            let http_client = self.http_client.clone();
 
-            move || {
-                let main_cfg = main_cfg.clone();
-                let services = services.clone();
+            move |username, password| {
+                let win = win.clone();
+                let cfg = cfg.clone();
+                let http_client = http_client.clone();
 
-                for service in services {
-                    let cfg = main_cfg.clone();
+                tokio::spawn(async move {
+                    let base_path: String;
+                    {
+                        let lock = cfg.read().await;
+                        base_path = lock.server_api_config().base_path().to_owned();
+                    }
 
-                    tokio::spawn(async move {
-                        let cfg = cfg.read().await.clone();
-                        service.write().await.update_config_from_app(cfg);
-                    });
-                }
+                    let (jwt, act) = preparing::login(
+                        &api_cfg(http_client, base_path),
+                        api::models::UserLoginRequest::new(username.to_string(), password.to_string())
+                    ).await;
+
+                    if let Some(jwt) = jwt {
+                        cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
+                    }
+                    act.run_in_event_loop(win);
+                });
+            }
+        });
+
+        preparing_internal.on_register({
+            let win = win_weak.clone();
+            let cfg = self.cfg.clone();
+            let http_client = self.http_client.clone();
+
+            move |username, password, verify, key| {
+                let win = win.clone();
+                let cfg = cfg.clone();
+                let http_client = http_client.clone();
+
+                tokio::spawn(async move {
+                    if password != verify {
+                        UiActions::ShowNotification("Password and verify password not ident!".to_owned(), NotificationType::Error).run_in_event_loop(win);
+                        return
+                    }
+
+                    let base_path: String;
+                    {
+                        let lock = cfg.read().await;
+                        base_path = lock.server_api_config().base_path().to_owned();
+                    }
+
+                    preparing::register(
+                        &api_cfg(http_client, base_path),
+                        api::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())
+                    ).await.run_in_event_loop(win);
+                });
             }
         });
     }

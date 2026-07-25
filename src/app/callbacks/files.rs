@@ -1,39 +1,32 @@
 use {
     crate::{
-        Services, 
-        actions::UiActions, 
-        app::Application, 
-        service
+        FilesInternal, actions::UiActions, app::Application, service
     }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
-    pub fn init_files_callbacks(&mut self, files_service: Arc<RwLock<service::files::FileManager>>) {
-        self.ui_window.on_show_service({
+    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<service::files::FileManager>>) {
+        let internal = self.ui_window.global::<FilesInternal>();
+
+        internal.on_update_list({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
-            move |target| {
-                if target != Services::Files {
-                    return
-                }
-
+            move || {
                 let win = win.clone();
                 let service = service.clone();
-
-                UiActions::ChangeActiveService(target).run_in_event_loop(win.clone());
 
                 tokio::spawn(async move {
                     let files = service.write().await.get_files().await; 
                     match files {
-                        Ok(res) => UiActions::DataUpdateFilesList(res, String::from("/")),
+                        Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")),
                         Err(err_act) => err_act
                     }.run_in_event_loop(win);
                 });
             }
         });
 
-        self.ui_window.on_files_req_change_directory({
+        internal.on_cd({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -49,14 +42,15 @@ impl Application {
                     } else {
                         lock.prev().await
                     } {
-                        Ok(files) => UiActions::DataUpdateFilesList(files, lock.current_dir()),
+                        Ok(files) => UiActions::FilesUpdateFilesList(files, lock.current_dir()),
                         Err(act) => act
-                    }.run_in_event_loop(win);
+                    }.run_in_event_loop(win.clone());
+                    UiActions::FilesUpdateCurrentDirectory(lock.current_dir()).run_in_event_loop(win);
                 });
             }
         });
 
-        self.ui_window.on_files_req_make_directory({
+        internal.on_mkdir({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -72,7 +66,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            UiActions::DataUpdateFilesList(files, from)
+                            UiActions::FilesUpdateFilesList(files, from)
                         },
                         Err(err) => err
                     }.run_in_event_loop(win);
@@ -80,7 +74,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_remove_directory({
+        internal.on_rmdir({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -96,7 +90,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            UiActions::DataUpdateFilesList(files, from)
+                            UiActions::FilesUpdateFilesList(files, from)
                         },
                         Err(err) => err
                     }.run_in_event_loop(win);
@@ -105,7 +99,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_upload_files({
+        internal.on_upload_files({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -133,12 +127,12 @@ impl Application {
                         }
                     }
 
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
 
-        self.ui_window.on_files_req_download_file({
+        internal.on_download_file({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -150,12 +144,12 @@ impl Application {
                     if let Err(act) = service.write().await.download_file(filename.to_string()).await {
                         act.run_in_event_loop(win.clone());
                     };
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
 
-        self.ui_window.on_files_req_cancel_load({
+        internal.on_cancel_load({
             let service = files_service.clone();
 
             move |uuid| {
@@ -166,7 +160,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_update_load_data({
+        internal.on_update_load_files({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -175,7 +169,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });

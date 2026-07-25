@@ -1,0 +1,59 @@
+import { Page } from "../page.slint";
+import { LoginField, RegisterField, ConnectionField } from "fields.slint";
+import { State, PreparingStates, ApplicationStates } from "../../globals/state.slint";
+import { PreparingSettings, MainSettings } from "../../globals/settings.slint";
+import { PreparingInternal } from "../../globals/internal/preparing.slint";
+import { FieldBackground } from "../../components/fields.slint";
+
+export component PreparingPage inherits Page {
+    private property <bool> first-init: true;
+    enabled: State.application == ApplicationStates.Preparing;
+
+    // Greeting timer
+    Timer {
+        interval: PreparingSettings.greeting-duration;
+        running: first-init && State.preparing == PreparingStates.Greeting;
+        triggered => {
+            debug("start preparing");
+            first-init = false;
+            State.next();
+        }
+    }
+
+    field_background := FieldBackground {
+        width: 300px;
+        height: 300px;
+        enabled: true;
+    }
+
+    connection_field := ConnectionField {
+        width: field_background.width;
+    }
+
+    login_field := LoginField {
+        width: field_background.width;
+    }
+
+    register_field := RegisterField {
+        width: field_background.width;
+    }
+
+    states [
+        prepare_connection when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Connection: {
+            connection_field.enabled: true;
+            field_background.height: connection_field.height;
+        }
+        prepare_login when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Login: {
+            login_field.enabled: true;
+            field_background.stretch-delay: MainSettings.object-visible-duration;
+            field_background.height: login_field.height;
+        }
+        prepare_register when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Register: {
+            register_field.enabled: true;
+            field_background.height: register_field.height;
+        }
+        greeting when State.preparing == PreparingStates.Greeting: {
+            field_background.enabled: false;
+        }
+    ]
+}

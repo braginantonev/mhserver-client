@@ -1,0 +1,24 @@
+import { Page } from "../page.slint";
+import { State, ApplicationStates } from "../../globals/state.slint";
+import { MainInternal, Services } from "../../globals/internal/main.slint";
+import { ServiceField } from "fields.slint";
+import { FilesServiceField } from "services/files.slint";
+
+export component MainPage inherits Page {
+    private property <length> fields-spacing: 10px;
+
+    enabled: State.application == ApplicationStates.Main;
+
+    service_field := ServiceField {
+        x: 0px;
+        height: parent.height - 4px;
+        enabled: true;
+    }
+
+    files_service := FilesServiceField {
+        enabled: MainInternal.active-service == Services.Files;
+        height: parent.height - 4px;
+        width: parent.width - service_field.width - fields-spacing - 2px;
+        x: service_field.width + fields-spacing;
+    }
+}

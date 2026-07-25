@@ -1,0 +1,24 @@
+import { MainSettings } from "../globals/settings.slint";
+
+export component OpacityObject {
+    in property <bool> enabled: false;
+
+    animate opacity {
+        duration: MainSettings.object-visible-duration;
+        easing: ease-in-quart;
+    }
+
+    states [
+        enabled when enabled: {
+            opacity: 1;
+            visible: true;
+        }
+
+        disabled when !enabled: {
+            opacity: 0;
+            visible: self.opacity > 0;
+        }
+    ]
+
+    @children
+}

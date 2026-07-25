@@ -1,0 +1,10 @@
+export global PreparingInternal {
+    in-out property <bool> prepare-needed: false;
+
+    callback handle_state();
+
+    callback login(string, string); // username, password
+    callback register(string, string, string, string); // username, password, verify password, register key
+    callback connect(string); // server address
+    callback update_services();
+}

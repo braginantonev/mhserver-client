@@ -3,8 +3,7 @@ mod path;
 
 use {
     crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
-        apis::{Error, default_api::*},
-        models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
+        apis::{Error, configuration::Configuration, default_api::*}, models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
     }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
 
@@ -49,10 +48,9 @@ pub struct FileManager {
 }
 
 impl FileManager {
-    pub fn new(cfg: FileServiceConfig) -> Self {
-        let _ = std::fs::create_dir(cfg.download_dir());
+    pub fn new() -> Self {
         Self { 
-            cfg,
+            cfg: FileServiceConfig::default(),
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
@@ -354,10 +352,13 @@ impl FileManager {
 }
 
 impl super::Service for FileManager {
-    fn update_config_from_app(&mut self, app_cfg: crate::config::app::ApplicationConfig) {
+    fn update_config(&mut self, client: reqwest::Client, app_cfg: crate::config::app::ApplicationConfig) {
         let server_api_conf = app_cfg.server_api_config();
+        let mut api_cfg = Configuration::new();
+        api_cfg.client = client;
+        api_cfg.base_path = server_api_conf.base_path().to_owned();
+        api_cfg.bearer_access_token = Some(server_api_conf.jwt().to_owned());
 
-        self.cfg.api_conf.base_path = server_api_conf.base_path().to_owned();
-        self.cfg.api_conf.bearer_access_token = Some(server_api_conf.jwt().to_owned());
+        self.cfg = FileServiceConfig::new(api_cfg, app_cfg.download_dir())
     }
 }

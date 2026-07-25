@@ -1,0 +1,66 @@
+import { PreparingInternal } from "internal/preparing.slint";
+
+export enum PreparingStates {
+    // Main preparing states
+    Greeting, 
+    Connection, 
+    Login,
+    End,
+
+    // Additional preparing states
+    // By default this states not using in standard state change
+    // Use this states only by force change
+    Register
+}
+
+export enum ApplicationStates {
+    Preparing, 
+    Main
+}
+
+export global State {
+    out property <ApplicationStates> application: Preparing;
+    out property <PreparingStates> preparing: Greeting;
+
+    // Force preparing state change
+    public function force_preparing_state(new_state: PreparingStates) {
+        preparing = new-state;
+    }
+
+    // Force application state change
+    public function force_application_state(new_state: ApplicationStates) {
+        application = new-state;
+    }
+
+    // Standard state change
+    public function next() {
+        // Main preparing states
+        if preparing == PreparingStates.Greeting {
+            preparing = PreparingStates.Connection;
+        } 
+        else if preparing == PreparingStates.Connection {
+            preparing = PreparingStates.Login;
+        } 
+        else if preparing == PreparingStates.Login {
+            preparing = PreparingStates.End;
+        } 
+        else if preparing == PreparingStates.End {
+            end_preparing()
+        }
+
+        // Additional preparing states
+        if preparing == PreparingStates.Register {
+            preparing = PreparingStates.Login;
+        }
+
+        PreparingInternal.prepare-needed = false;
+        PreparingInternal.handle_state();
+        debug("handle next state", preparing);
+    }
+
+    function end_preparing() {
+        PreparingInternal.update_services();
+        application = ApplicationStates.Main;
+        preparing = PreparingStates.Greeting;
+    }
+}

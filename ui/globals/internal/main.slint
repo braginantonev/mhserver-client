@@ -1,0 +1,61 @@
+export enum Services {
+    Empty,
+    Files,
+    Music,
+    Images,
+    AI
+}
+
+export global MainInternal {
+    out property <Services> active-service: Empty;
+
+    callback properties_clicked();
+    callback open_downloads_clicked();
+    callback quit_clicked();
+
+    public function change_active_service(new_service: Services) {
+        active-service = new-service;
+        if new-service == Services.Files {
+            FilesInternal.update_list();
+        }
+    }
+}
+
+export struct File {
+    name: string,
+    is_dir: bool,
+    server_path: string,
+    size: int,
+    icon: image,
+}
+
+export struct LoadFile {
+    connID: string,
+    is_upload: bool,
+    name: string,
+    progress: float,
+    previous: float,
+}
+
+export global FilesInternal {
+    in-out property <string> current-directory: "/";
+    in-out property <File> active-file;
+    in-out property <[File]> showed-files;
+    in-out property <[LoadFile]> load-files;
+
+    callback update_list();
+
+    callback cd(target: string);
+    callback mkdir(name: string);
+    callback rmdir(target: string);
+    callback rmfile(target: string);
+
+    callback download_directory(target: string);
+    callback download_file(target: string);
+
+    callback upload_files();
+    callback upload_folders();
+
+    callback cancel_load(string);
+    callback update_load_files();
+}
