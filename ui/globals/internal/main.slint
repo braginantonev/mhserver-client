@@ -29,8 +29,33 @@ export struct File {
     icon: image,
 }
 
+export struct LoadFile {
+    connID: string,
+    is_upload: bool,
+    name: string,
+    progress: float,
+    previous: float,
+}
+
 export global FilesInternal {
+    in-out property <string> current-directory: "/";
+    in-out property <File> active-file;
     in-out property <[File]> showed-files;
-    
+    in-out property <[LoadFile]> load-files;
+
     callback update_list();
+
+    callback cd(target: string);
+    callback mkdir(name: string);
+    callback rmdir(target: string);
+    callback rmfile(target: string);
+
+    callback download_directory(target: string);
+    callback download_file(target: string);
+
+    callback upload_files();
+    callback upload_folders();
+
+    callback cancel_load(string);
+    callback update_load_files();
 }

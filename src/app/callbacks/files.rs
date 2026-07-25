@@ -26,7 +26,7 @@ impl Application {
             }
         });
 
-        /*self.ui_window.on_files_req_change_directory({
+        internal.on_cd({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -49,7 +49,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_make_directory({
+        internal.on_mkdir({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -73,7 +73,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_remove_directory({
+        internal.on_rmdir({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -98,7 +98,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_upload_files({
+        internal.on_upload_files({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -131,7 +131,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_download_file({
+        internal.on_download_file({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -148,7 +148,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_cancel_load({
+        internal.on_cancel_load({
             let service = files_service.clone();
 
             move |uuid| {
@@ -159,7 +159,7 @@ impl Application {
             }
         });
 
-        self.ui_window.on_files_req_update_load_data({
+        internal.on_update_load_files({
             let win = self.ui_window.as_weak();
             let service = files_service.clone();
 
@@ -171,6 +171,6 @@ impl Application {
                     UiActions::DataUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
-        });*/
+        });
     }
 }

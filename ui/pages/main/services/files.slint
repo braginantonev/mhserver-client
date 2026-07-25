@@ -3,7 +3,7 @@ import { SimpleButton } from "../../../components/button.slint";
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { ProgressIndicator } from "../../../components/progress_indicator.slint";
 import { FilesSettings } from "../../../globals/settings.slint";
-import { FilesInternal, File } from "../../../globals/internal/main.slint";
+import { FilesInternal, LoadFile, File } from "../../../globals/internal/main.slint";
 import { Assets } from "../../../assets/assets.slint";
 
 //* ----------------- General ----------------- *//
@@ -157,14 +157,7 @@ component MenuSeparator {
 component ContextMenu inherits PopupWindow {
     private property <length> element-height: 40px;
 
-    callback open_triggered <=> act_open.clicked;
-
-    callback download_triggered <=> act_download.clicked;
-    callback upload_triggered <=> act_upload.clicked;
-    callback delete_triggered <=> act_delete.clicked;
     callback create_folder_triggered <=> act_mkdir.clicked;
-
-    callback properties_triggered <=> act_properties.clicked;
 
     width: 200px;
     x <=> ContextMenuInfo.target-x;
@@ -182,6 +175,11 @@ component ContextMenu inherits PopupWindow {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Open");
+            clicked => {
+                if FilesInternal.active_file.is-dir {
+                    FilesInternal.cd(FilesInternal.active_file.name);
+                }
+            }
         }
 
         MenuSeparator {}
@@ -190,11 +188,15 @@ component ContextMenu inherits PopupWindow {
         act_download := MenuItem {
             height: element-height;
             text: @tr("Download");
+            clicked => {
+                FilesInternal.active-file.is-dir ? FilesInternal.download_directory(FilesInternal.active-file.name) : FilesInternal.download_file(FilesInternal.active-file.name);
+            }
         }
 
         act_upload := MenuItem {
             height: element-height;
             text: @tr("Upload files");
+            clicked => { FilesInternal.upload_files() }
         }
 
         // Delete action
@@ -202,6 +204,7 @@ component ContextMenu inherits PopupWindow {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Delete");
+            clicked => { FilesInternal.active-file.is-dir ? FilesInternal.rmdir(FilesInternal.active-file.name) : FilesInternal.rmfile(FilesInternal.active-file.name); }
         }
 
         // Create folder action
@@ -216,22 +219,15 @@ component ContextMenu inherits PopupWindow {
         act_properties := MenuItem {
             height: element-height;
             text: @tr("Properties");
+            clicked => { debug("properties triggered"); }
         }
     }
 }
 
 //* ------------------- Loader ----------------- *//
 
-struct LoadDataInfo {
-    connID: string,
-    is_upload: bool,
-    name: string,
-    progress: float,
-    previous: float,
-}
-
 component LoadData inherits HorizontalLayout {
-    in property <LoadDataInfo> info;
+    in property <LoadFile> info;
 
     callback cancel_load(string);
 
@@ -280,15 +276,10 @@ component LoadData inherits HorizontalLayout {
 
 component DataLoader {
     in property <length> start_y;
-    out property <[LoadDataInfo]> upload_data;
 
     private property <length> element_height: 50px;
     private property <int> loads;
     private property <bool> collapsed: true;
-
-    callback update([LoadDataInfo]);
-    callback update_require();
-    callback cancel_load(string); // uuid
 
     width: 300px;
     height: 200px;
@@ -319,20 +310,20 @@ component DataLoader {
         ScrollView {
             width: parent.width;
             viewport-width: self.width;
-            viewport-height: upload_data.length * element_height;
+            viewport-height: FilesInternal.load-files.length * element_height;
             horizontal-scrollbar-policy: always-off;
 
             VerticalLayout {
                 width: parent.width - 30px;
                 padding-right: 20px;
 
-                for data[i] in upload_data: LoadData {
+                for data[i] in FilesInternal.load-files: LoadData {
                     spacing: 3px;
                     height: element_height;
                     info: data;
 
                     cancel_load(id) => {
-                        root.cancel_load(id);
+                        FilesInternal.cancel_load(id);
                     }
                 }
             }
@@ -341,9 +332,9 @@ component DataLoader {
     
     upd_timer := Timer {
         interval: FilesSettings.loader-update-interval;
-        running: false;
+        running: true;
         triggered => {
-            update_require();
+            FilesInternal.update_load_files()
         }
     }
 
@@ -352,22 +343,11 @@ component DataLoader {
         self.opacity = self.opacity == 1.0 ? 0.0 : 1.0;
         upd_timer.running ? upd_timer.stop() : upd_timer.start();
     }
-
-    update(data) => {
-        upload_data = data;
-        let len = data.length;
-        if len != loads && (len == 0 || loads == 0) {
-            change_showed();
-        }
-        loads = len;
-    }
 }
 
 //* ----------------- Service ----------------- *//
 
 component FilesWindow {
-    out property <File> active-file;
-
     private property <length> tile-width: 100px;
     private property <length> tile-height: 100px;
     private property <length> grid-spacing: 30px;
@@ -377,7 +357,6 @@ component FilesWindow {
 
     callback context-triggered(string, length, length); // filename, mouse-x, mouse-y
     callback selected(File); // file
-    callback opened(File); // file
 
     scroll := ScrollView {
         viewport-width: self.width;
@@ -401,11 +380,16 @@ component FilesWindow {
                 name: file.name;
 
                 selected => {
-                    active-file = file;
+                    FilesInternal.active-file = file;
                     root.selected(file)
                 }
 
-                opened => { root.opened(file); }
+                opened() => { 
+                    if file.is-dir {
+                        FilesInternal.cd(file.name);
+                    }
+                    // Todo: else - preview file
+                }
 
                 context-triggered => {
                     self.selected();
@@ -417,21 +401,6 @@ component FilesWindow {
 }
 
 export component FilesServiceField inherits FieldBackground {
-    callback req_change_dir(string); // directory name
-    callback req_make_dir(string); // directory name
-    callback req_remove_dir(string); // directory name
-    callback req_download_dir(string); // directory name
-
-    callback req_download_file(string); // filename
-    callback req_delete_file(string); // filename
-
-    callback req_upload_files();
-    callback req_upload_folders();
-    
-    callback update_load_data <=> data_loader.update;
-    callback req_update_load_data <=> data_loader.update_require;
-    callback req_cancel_load <=> data_loader.cancel_load;
-
     TouchArea {
         width: parent.width;
         height: parent.height;
@@ -454,7 +423,7 @@ export component FilesServiceField inherits FieldBackground {
         padding-left: 10px;
 
         current_dir := Text {
-            text: "> /";
+            text: "> " + FilesInternal.current-directory;
             vertical-alignment: center;
             font-size: 18px;
         }
@@ -463,11 +432,6 @@ export component FilesServiceField inherits FieldBackground {
 
         files_win := FilesWindow {
             selected(f) => { extender.show_file(f); }
-            opened(f) => { 
-                if f.is-dir {
-                    req_change_dir(f.name);
-                } // Todo: Add on else - preview file
-            }
             context-triggered(filename, x, y) => {
                 if filename != ".." {
                     ContextMenuInfo.update_info(false, x, y);
@@ -478,31 +442,8 @@ export component FilesServiceField inherits FieldBackground {
     }
     
     context_menu := ContextMenu {
-        open_triggered => {
-            if files_win.active_file.is-dir {
-                req_change_dir(files_win.active_file.name);
-            }
-            // Todo: Add preview file, if active file is not dir
-        }
-
-        download_triggered => {
-            files_win.active-file.is-dir ? req_download_dir(files_win.active-file.name) : req_download_file(files_win.active-file.name);
-        }
-
-        upload_triggered => {
-            req_upload_files();
-        }
-
-        delete_triggered => { 
-            files_win.active-file.is-dir ? req_remove_dir(files_win.active-file.name) : req_delete_file(files_win.active-file.name);
-        }            
-
         create_folder_triggered => {
             filename_input.show();
-        }
-
-        properties_triggered => { 
-            debug("properties triggered");
         }
     }
 
@@ -510,7 +451,7 @@ export component FilesServiceField inherits FieldBackground {
         x: parent.width / 2 - self.width / 2;
         y: parent.height / 2 - self.height / 2;
         accepted(name) => {
-            req_make_dir(name);
+            FilesInternal.mkdir(name);
         }
     }
 

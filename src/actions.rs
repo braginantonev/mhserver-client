@@ -1,7 +1,7 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, State, notification}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FilesInternal, LoadFile, State, notification, service::files}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
@@ -14,7 +14,7 @@ pub enum UiActions {
     /// Update files in data service. Required the files, and server path, where is this files located. 
     DataUpdateFilesList(Vec<api::models::FilesListInner>, String),
 
-    //DataUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
+    DataUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
 }
 
 impl UiActions {
@@ -37,12 +37,11 @@ impl UiActions {
                     }
                 })))));
             },
-            // UiActions::DataUpdateLoadFiles(files) => {
-            //     let slint_files = files.iter().map(|conn| {
-            //         LoadDataInfo { connID: conn.id.to_shared_string(), is_upload: conn.is_upload, name: conn.filename.to_shared_string(), progress: conn.load_progress, previous: conn.previous_progress }
-            //     });
-            //     win.invoke_files_update_load_data(ModelRc::from(Rc::new(VecModel::from_iter(slint_files))));
-            // },
+            UiActions::DataUpdateLoadFiles(files) => {
+                win.global::<FilesInternal>().set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|conn| {
+                    LoadFile { connID: conn.id.to_shared_string(), is_upload: conn.is_upload, name: conn.filename.to_shared_string(), progress: conn.load_progress, previous: conn.previous_progress }
+                })))));
+            },
         }
     }
 
