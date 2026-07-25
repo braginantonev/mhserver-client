@@ -209,6 +209,7 @@ component ContextMenu inherits PopupWindow {
 
         // Properties action
         act_properties := MenuButton {
+            enabled: false;
             height: element-height;
             text: @tr("Properties");
             clicked => { debug("properties triggered"); }
