@@ -118,13 +118,14 @@ impl Application {
                         .pick_files()
                         .await;
                     
-                    if files.is_none() {
-                        return;
-                    }
+                    let files = match files {
+                        Some(v) => v,
+                        None => return,
+                    };
 
                     {
                         let mut lock = service.write().await;
-                        for f in files.unwrap() {
+                        for f in files {
                             if let Err(act) = lock.upload_file(f.path()).await {
                                 act.run_in_event_loop(win.clone());
                             }

@@ -22,14 +22,6 @@ export component MainWindow inherits Window {
     height: 720px;
     background: #2d2a29;
 
-    main_notification := Notification {
-        x: root.width - self.width - 20px;
-        y: root.height - self.height - 20px;
-        hided: true;
-    }
-
-    callback update_main_notification <=> main_notification.update;
-
     PreparingPage {
         width: parent.width;
         height: parent.height;
@@ -38,4 +30,12 @@ export component MainWindow inherits Window {
         width: parent.width;
         height: parent.height;
     }
+
+    main_notification := Notification {
+        x: root.width - self.width - 20px;
+        y: root.height - self.height - 20px;
+        hided: true;
+    }
+
+    callback update_main_notification <=> main_notification.update;
 }
