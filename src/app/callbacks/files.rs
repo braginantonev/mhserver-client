@@ -148,6 +148,39 @@ impl Application {
             }
         });
 
+        internal.on_download_directory({
+            let win = self.ui_window.as_weak();
+            let service = files_service.clone();
+
+            move |dir_name| {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let mut from = service.read().await.current_dir() + &dir_name;
+                    from.push('/');
+                    {
+                        let mut lock = service.write().await;
+                        let download_files = match lock.get_files(Some(from.clone())).await {
+                            Ok(files) => files,
+                            Err(err) => {
+                                err.run_in_event_loop(win);
+                                return 
+                            }
+                        };
+                        
+                        for file in download_files {
+                            if let Err(act) = lock.download_file(Some(from.clone()), file.name).await {
+                                act.run_in_event_loop(win.clone());
+                            }
+                        }
+                    }
+
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                });
+            }
+        });
+
         internal.on_cancel_load({
             let service = files_service.clone();
 
