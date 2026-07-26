@@ -1,3 +1,5 @@
+import { ColorSettings } from "../globals/settings.slint";
+
 export component SimpleButton {
     in property <bool> enabled: true;
     in property <image> icon <=> image.source;
@@ -31,7 +33,7 @@ export component SimpleButton {
     }
 
     hover := Rectangle {
-        background: whitesmoke;
+        background: ColorSettings.button-hover-color;
         width: components-width + hover-additional-width;
         height: components-height + hover-additional-width;
         border-radius: components-height / 2;

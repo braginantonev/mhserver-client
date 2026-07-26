@@ -2,7 +2,7 @@ import { FieldBackground } from "../../../components/fields.slint";
 import { SimpleButton, MenuButton } from "../../../components/button.slint";
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { ProgressIndicator } from "../../../components/progress_indicator.slint";
-import { FilesSettings } from "../../../globals/settings.slint";
+import { FilesSettings, ColorSettings } from "../../../globals/settings.slint";
 import { FilesInternal, LoadFile, File } from "../../../globals/internal/main.slint";
 import { Assets } from "../../../assets/assets.slint";
 import { MenuSeparator } from "../../../components/base.slint";
@@ -45,24 +45,20 @@ component FolderNameInput inherits PopupWindow {
 //* ----------------- File ----------------- *//
 
 component FileCeil {
-    out property <bool> has-hover <=> butt.has-hover;
-    out property <length> mouse-x <=> butt.mouse-x;
-    out property <length> mouse-y <=> butt.mouse-y;
+    out property <length> mouse-x <=> touch.mouse-x;
+    out property <length> mouse-y <=> touch.mouse-y;
 
     in property <image> file-icon <=> file-icon.source;
     in property <string> name <=> text.text;
 
-    callback selected <=> butt.clicked;
-    callback opened <=> butt.double-clicked;
+    private property <float> hover-max-opacity: 0.1;
+    private property <length> hover-add-width: 10px;
+
+    callback selected <=> touch.clicked;
+    callback opened <=> touch.double-clicked;
     callback context-triggered();
 
-    butt := SimpleButton {
-        hover-additional-width: 10px;
-        border-radius: 15px;
-
-        preferred-height: parent.height;
-        preferred-width: parent.width;
-
+    touch := TouchArea {
         pointer-event(event) => {
             if event.kind == PointerEventKind.up {
                 selected();
@@ -72,6 +68,15 @@ component FileCeil {
                 }
             }
         }
+    }
+
+    Rectangle {
+        width: parent.width + hover-add-width;
+        height: parent.height + hover-add-width;
+        background: ColorSettings.button-hover-color;
+        border-radius: 20px;
+        opacity: FilesInternal.active-file.name == name ? hover-max-opacity : touch.has-hover ? hover-max-opacity : 0;
+        animate opacity { duration: 100ms; }
     }
 
     VerticalLayout {
