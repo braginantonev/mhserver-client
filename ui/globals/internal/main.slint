@@ -42,12 +42,14 @@ export global FilesInternal {
     in-out property <File> active-file;
     in-out property <[File]> showed-files;
     in-out property <[LoadFile]> load-files;
+    in-out property <string> available-space: "undefined"; // string, because it's not a bytes
 
     public function inactive-file() {
         active-file = {}
     }
 
     callback update_list();
+    callback update_available_space();
 
     callback cd(target: string);
     callback mkdir(name: string);

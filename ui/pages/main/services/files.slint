@@ -398,6 +398,8 @@ component FilesWindow {
 }
 
 export component FilesServiceField inherits FieldBackground {
+    private property <length> fields-padding: 10px;
+
     TouchArea {
         width: parent.width;
         height: parent.height;
@@ -416,10 +418,12 @@ export component FilesServiceField inherits FieldBackground {
 
     VerticalLayout {
         spacing: 10px;
-        padding-top: 15px;
-        padding-left: 10px;
+        padding-top: fields-padding;
+        padding-bottom: fields-padding;
 
-        current_dir := Text {
+        // file extender
+        Text {
+            x: fields-padding;
             text: "> " + FilesInternal.current-directory + (FilesInternal.active-file.is-dir ? "" : FilesInternal.active-file.name);
             vertical-alignment: center;
             font-size: 18px;
@@ -427,14 +431,24 @@ export component FilesServiceField inherits FieldBackground {
 
         MenuSeparator {}
 
-        files_win := FilesWindow {
+        FilesWindow {
             context-triggered(filename, x, y) => {
                 if filename != ".." {
                     ContextMenuInfo.update_info(false, x, y);
                     context_menu.show();
                 }
             }
-        } 
+        }
+
+        MenuSeparator {}
+
+        // available space label
+        Text {
+            x: fields-padding;
+            text: @tr("Доступно места") + ": " + FilesInternal.available-space;
+            vertical-alignment: center;
+            font-size: 12px;
+        }
     }
     
     context_menu := ContextMenu {
@@ -451,7 +465,7 @@ export component FilesServiceField inherits FieldBackground {
         }
     }
 
-    data_loader := Loader {
+    Loader {
         x: parent.width - self.width - 50px;
         start_y: parent.height - self.height;
     }
