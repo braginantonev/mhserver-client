@@ -18,10 +18,11 @@ impl Application {
 
                 tokio::spawn(async move {
                     let files = service.write().await.get_files(None).await; 
+
                     match files {
-                        Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")),
-                        Err(err) => UiActions::from(err)
-                    }.run_in_event_loop(win.clone());
+                        Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")).run_in_event_loop(win.clone()),
+                        Err(err) => return UiActions::from(err).run_in_event_loop(win),
+                    };
 
                     match service.read().await.available_space().await {
                         Ok(s) => UiActions::FilesUpdateAvailableSpace(s.to_string_candy()),

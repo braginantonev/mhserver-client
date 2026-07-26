@@ -4,10 +4,6 @@ use {
     }, api::apis::configuration::Configuration, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
 };
 
-async fn login_expired() -> bool {
-    true // tmp
-}
-
 impl Application {
     pub fn init(&self) {
         let win_weak = self.ui_window.as_weak();       
@@ -40,11 +36,11 @@ impl Application {
 
                     let win = win.upgrade().unwrap();
                     
-                    // if to check - need preparing or not
+                    // check need preparing or not
                     if match win.global::<State>().get_preparing() {
                         PreparingStates::Greeting => return,
                         PreparingStates::Connection => preparing::ping(&api_cfg).await.is_err(),
-                        PreparingStates::Login => login_expired().await,
+                        PreparingStates::Login => api_cfg.bearer_access_token.unwrap_or_default().is_empty(),
                         PreparingStates::Register => false,
                         PreparingStates::End => false,
                     } {

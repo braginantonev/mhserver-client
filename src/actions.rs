@@ -1,12 +1,14 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, LoadFile, State, notification, service::{ServiceError, files::connections::ConnectionInfo}}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FilesInternal, LoadFile, PreparingStates, State, notification, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
     /// Invoke next() method of State global
     InvokeNextState,
+
+    ForceAuthorization,
 
     /// Show notification with description and type
     ShowNotification(String, NotificationType),
@@ -26,6 +28,9 @@ impl UiActions {
         match self {
             UiActions::InvokeNextState => {
                 win.global::<State>().invoke_next();
+            },
+            UiActions::ForceAuthorization => {
+                win.global::<State>().invoke_force_preparing_state(PreparingStates::Login);
             },
             UiActions::ShowNotification(desc, r#type) => {
                 notification::show(win, desc.as_str(), r#type);
@@ -65,7 +70,10 @@ impl UiActions {
 impl From<ServiceError> for UiActions {
     fn from(value: ServiceError) -> Self {
         if let Some(code) = value.code() {
-            return UiActions::ShowNotification(format!("error not implement now ({code})"), NotificationType::Info);
+            match code {
+                StatusCode::UNAUTHORIZED => return UiActions::ForceAuthorization,
+                _ => (), // not implement
+            }
         }
         UiActions::ShowNotification(value.label(), NotificationType::Error)
     }

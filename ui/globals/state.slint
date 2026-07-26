@@ -24,12 +24,10 @@ export global State {
 
     // Force preparing state change
     public function force_preparing_state(new_state: PreparingStates) {
+        debug("force preparing state", new-state);
+        PreparingInternal.prepare-needed = true;
         preparing = new-state;
-    }
-
-    // Force application state change
-    public function force_application_state(new_state: ApplicationStates) {
-        application = new-state;
+        application = ApplicationStates.Preparing;
     }
 
     // Standard state change
