@@ -21,6 +21,11 @@ impl Application {
                     match files {
                         Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")),
                         Err(err_act) => err_act
+                    }.run_in_event_loop(win.clone());
+
+                    match service.read().await.available_space().await {
+                        Ok(s) => UiActions::FilesUpdateAvailableSpace(s.to_string_candy()),
+                        Err(err) => err,
                     }.run_in_event_loop(win);
                 });
             }

@@ -2,10 +2,26 @@ pub mod connections;
 mod path;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit, service::files::path::ServerPath}, api::{
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
     }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
+
+pub struct Size(i64);
+
+impl Size {
+    /// Return eye candy size. Example: `12 mb`, `1 gb` etc
+    pub fn to_string_candy(&self) -> String {
+        const EXTENSIONS: [&str; 5] = ["b", "kb", "mb", "gb", "tb"];
+        let mut size = self.0 as f64;
+        let mut i = 0;
+        while size > 1024.0 && i < EXTENSIONS.len()-1 {
+            size = size / 1024.0;
+            i += 1;
+        }
+        format!("{} {}", size as f32, EXTENSIONS[i])
+    }
+}
 
 #[derive(Clone)]
 struct FilesList(Vec<FilesListInner>);
@@ -85,10 +101,10 @@ impl FileManager {
 
     //* API requests
 
-    pub async fn available_space(&self) -> Result<i64, UiActions> {
+    pub async fn available_space(&self) -> Result<Size, UiActions> {
         self.queue.wait().await;
         match files_get_available_space(&self.cfg.api_conf).await {
-            Ok(v) => Ok(v.content.unwrap()),
+            Ok(v) => Ok(Size(v.content.unwrap())),
             Err(err) => match err {
                 Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
                 _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),

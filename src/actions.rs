@@ -17,6 +17,8 @@ pub enum UiActions {
     FilesUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
 
     FilesUpdateCurrentDirectory(String),
+
+    FilesUpdateAvailableSpace(String),
 }
 
 impl UiActions {
@@ -46,6 +48,9 @@ impl UiActions {
             },
             UiActions::FilesUpdateCurrentDirectory(target) => {
                 win.global::<FilesInternal>().set_current_directory(target.to_shared_string());
+            },
+            UiActions::FilesUpdateAvailableSpace(size) => {
+                win.global::<FilesInternal>().set_available_space(size.to_shared_string());
             }
         }
     }
