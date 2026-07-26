@@ -17,7 +17,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let files = service.write().await.get_files().await; 
+                    let files = service.write().await.get_files(None).await; 
                     match files {
                         Ok(res) => UiActions::FilesUpdateFilesList(res, String::from("/")),
                         Err(err_act) => err_act
@@ -117,13 +117,12 @@ impl Application {
                         return;
                     }
 
-                    let files = files.unwrap();
-                    let mut uuids = Vec::<String>::with_capacity(files.len());
-
-                    for f in files {
-                        match service.write().await.upload_file(f.path()).await {
-                            Ok(id) => uuids.push(id.to_string()),
-                            Err(act) => act.run_in_event_loop(win.clone()), 
+                    {
+                        let mut lock = service.write().await;
+                        for f in files.unwrap() {
+                            if let Err(act) = lock.upload_file(f.path()).await {
+                                act.run_in_event_loop(win.clone());
+                            }
                         }
                     }
 
@@ -141,7 +140,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    if let Err(act) = service.write().await.download_file(filename.to_string()).await {
+                    if let Err(act) = service.write().await.download_file(None, filename.to_string()).await {
                         act.run_in_event_loop(win.clone());
                     };
                     UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);

@@ -2,7 +2,7 @@ pub mod connections;
 mod path;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
+    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit, service::files::path::ServerPath}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
     }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
@@ -70,13 +70,13 @@ impl FileManager {
     /// Go to next folder, and return files list
     pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, UiActions> {
         self.active_dir.push(dir_name);
-        self.get_files().await
+        self.get_files(None).await
     }
 
     /// Go to previous folder, and return files list
     pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
         self.active_dir.pop();
-        self.get_files().await
+        self.get_files(None).await
     }
 
     pub async fn cancel_load(&mut self, id: Uuid) {
@@ -128,9 +128,9 @@ impl FileManager {
     }
 
     /// Get files list from server and save to local cache
-    pub async fn get_files(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
+    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, UiActions> {
         self.queue.wait().await;
-        match get_files_list(&self.cfg.api_conf, self.current_dir().as_str()).await {
+        match get_files_list(&self.cfg.api_conf, &from.unwrap_or(self.current_dir())).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res.content.unwrap());
                 Ok(self.cached_files())
@@ -235,9 +235,20 @@ impl FileManager {
         Ok(conn_info.uuid)
     }
 
-    pub async fn download_file(&mut self, filename: String) -> Result<Uuid, UiActions> {
-        let path = self.cfg.download_dir().join(filename.clone() + ".part");
-        let file = match File::create(path.as_path()) {
+    pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, UiActions> {
+        let with_dirs = from.is_some();
+        let from = from.unwrap_or(self.current_dir());
+
+        let mut save_to = self.cfg.download_dir();
+        if with_dirs {
+            save_to = save_to.join(&from[1..]);
+            if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
+                return Err(UiActions::ShowNotification(format!("failed download file ({err})"), NotificationType::Error));
+            }
+        }
+
+        let save_to = save_to.join(filename.clone() + ".part");
+        let file = match File::create(save_to.as_path()) {
             Ok(f) => Arc::new(f),
             Err(err) => {
                 eprintln!("failed create file for download ({err})");
@@ -246,7 +257,7 @@ impl FileManager {
         };
 
         let conn_req = ConnectionRequest {
-            directory: self.active_dir.to_string(),
+            directory: from,
             filename: filename.clone(),
             size: None,
         };
@@ -336,13 +347,13 @@ impl FileManager {
             }
 
             if canceled {
-                if std::fs::remove_file(path.as_path()).is_err() {
+                if std::fs::remove_file(save_to.as_path()).is_err() {
                     eprintln!("failed remove canceled download file");
                 }
                 return
             }
 
-            if std::fs::rename(path.as_path(), path.with_file_name(filename)).is_err() {
+            if std::fs::rename(save_to.as_path(), save_to.with_file_name(filename)).is_err() {
                 eprintln!("failed rename download file");
             };
         });
