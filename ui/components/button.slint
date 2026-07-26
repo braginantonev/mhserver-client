@@ -46,7 +46,6 @@ export component SimpleButton {
         overflow: elide;
         horizontal-alignment: center;
         vertical-alignment: center;
-        color: parent.enabled ? white : gray;
     }
 
     image := Image {
@@ -54,6 +53,18 @@ export component SimpleButton {
         height: components-height;
         width: components-width;
     }
+
+    states [
+        enabled when enabled: {
+            text.color: white;
+        }
+
+        disabled when !enabled: {
+            touch.enabled: false;
+            text.color: gray;
+            hover.opacity: hover-min-opacity;
+        }
+    ]
 }
 
 export component MenuButton inherits SimpleButton {
