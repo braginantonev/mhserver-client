@@ -16,15 +16,15 @@ export component ConnectionField inherits FieldBase {
             height: 50px;
             vertical-alignment: center;
             horizontal-alignment: center;
-            text: @tr("Enter your server address");
+            text: @tr("Подключение");
             font-size: 16px;
         }
         server_addr_line := LineEdit {
-            placeholder-text: @tr("e.g. localhost:8080");
+            placeholder-text: @tr("Адрес сервера, например localhost:8080");
         }
         Button {
             enabled: root.enabled;
-            text: @tr("Connect");
+            text: @tr("Продолжить");
             clicked => {
                 PreparingInternal.connect(server_addr_line.text)
             }
@@ -44,26 +44,26 @@ export component LoginField inherits FieldBase {
             height: 50px;
             vertical-alignment: center;
             horizontal-alignment: center;
-            text: @tr("Login");
+            text: @tr("Авторизация");
             font-size: 18px;
         }
         username := LineEdit {
-            placeholder-text: @tr("Username");
+            placeholder-text: @tr("Логин");
         }
         pass := LineEdit {
             input-type: InputType.password;
-            placeholder-text: @tr("Password");
+            placeholder-text: @tr("Пароль");
         }
         Button {
             enabled: root.enabled;
-            text: @tr("Login");
+            text: @tr("Продолжить");
             clicked => {
                 PreparingInternal.login(username.text, pass.text);
             }
         }
         SimpleButton {
             vertical-stretch: 0;
-            text: @tr("Don't have account?");
+            text: @tr("Зарегистрироваться");
 
             hover-additional-width: 10px;
 
@@ -87,33 +87,33 @@ export component RegisterField inherits FieldBase {
             height: 50px;
             vertical-alignment: center;
             horizontal-alignment: center;
-            text: @tr("Registration");
+            text: @tr("Регистрация");
             font-size: 18px;
         }
         username := LineEdit {
-            placeholder-text: @tr("Username");
+            placeholder-text: @tr("Логин");
         }
         pass := LineEdit {
             input-type: InputType.password;
-            placeholder-text: @tr("Password");
+            placeholder-text: @tr("Пароль");
         }
         verify := LineEdit {
             input-type: password;
-            placeholder-text: @tr("Verify password");
+            placeholder-text: @tr("Подтвердите пароль");
         }
         key := LineEdit {
             input-type: password;
-            placeholder-text: @tr("Secret key");
+            placeholder-text: @tr("Ключ регистрации");
         }
         Button {
             enabled: root.enabled;
-            text: @tr("Register");
+            text: @tr("Продолжить");
             clicked => {
                 PreparingInternal.register(username.text, pass.text, verify.text, key.text);
             }
         }
         SimpleButton {
-            text: @tr("Have account?");
+            text: @tr("Войти в аккаунт");
 
             hover-additional-width: 10px;
 

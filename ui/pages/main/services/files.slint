@@ -28,11 +28,11 @@ component FolderNameInput inherits PopupWindow {
 
         Text {
             font-size: 15pt; 
-            text: @tr("Create folder");
+            text: @tr("Дайте имя этой сучке");
         }
 
         input := LineEdit {
-            placeholder-text: @tr("Enter folder name");
+            placeholder-text: @tr("Имя папки");
 
             accepted(text) => {
                 root.close();
@@ -171,7 +171,7 @@ component ContextMenu inherits PopupWindow {
         act_open := MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
-            text: @tr("Open");
+            text: @tr("Открыть");
             clicked => {
                 if FilesInternal.active_file.is-dir {
                     FilesInternal.cd(FilesInternal.active_file.name);
@@ -184,7 +184,7 @@ component ContextMenu inherits PopupWindow {
         // Download action
         act_download := MenuButton {
             height: element-height;
-            text: @tr("Download");
+            text: @tr("Скачать");
             clicked => {
                 FilesInternal.active-file.is-dir ? FilesInternal.download_directory(FilesInternal.active-file.name) : FilesInternal.download_file(FilesInternal.active-file.name);
             }
@@ -192,7 +192,7 @@ component ContextMenu inherits PopupWindow {
 
         act_upload := MenuButton {
             height: element-height;
-            text: @tr("Upload files");
+            text: @tr("Загрузить файлы");
             clicked => { FilesInternal.upload_files() }
         }
 
@@ -200,14 +200,14 @@ component ContextMenu inherits PopupWindow {
         act_delete := MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
-            text: @tr("Delete");
+            text: @tr("Удалить");
             clicked => { FilesInternal.active-file.is-dir ? FilesInternal.rmdir(FilesInternal.active-file.name) : FilesInternal.rmfile(FilesInternal.active-file.name); }
         }
 
         // Create folder action
         act_mkdir := MenuButton {
             height: element-height;
-            text: @tr("Create folder");
+            text: @tr("Создать папку");
         }
 
         MenuSeparator {}
@@ -216,7 +216,7 @@ component ContextMenu inherits PopupWindow {
         act_properties := MenuButton {
             enabled: false;
             height: element-height;
-            text: @tr("Properties");
+            text: @tr("Параметры");
             clicked => { debug("properties triggered"); }
         }
     }
@@ -295,7 +295,7 @@ component Loader {
 
     main_layout := VerticalLayout {
         label := MenuButton {
-            text: @tr("Load data");
+            text: @tr("Загрузчик");
             font-size: 14pt;
             clicked => {
                 collapsed = !collapsed;
