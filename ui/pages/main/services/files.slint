@@ -360,14 +360,6 @@ component FilesWindow {
         viewport-height: files_layout.height;
         horizontal-scrollbar-policy: always-off;
 
-        TouchArea {
-            width: parent.viewport-width;
-            height: parent.viewport-height;
-            clicked => {
-                FilesInternal.inactive-file();
-            }
-        }
-
         files_layout := GridLayout {
             y: 0px;
             padding-top: 10px;
@@ -410,9 +402,9 @@ export component FilesServiceField inherits FieldBackground {
         width: parent.width;
         height: parent.height;
         
-        /*clicked => {
-            extender.hide();
-        }*/
+        clicked => {
+            FilesInternal.inactive-file();
+        }
 
         pointer-event(event) => {
             if event.kind == PointerEventKind.up && event.button == PointerEventButton.right {
@@ -436,7 +428,6 @@ export component FilesServiceField inherits FieldBackground {
         MenuSeparator {}
 
         files_win := FilesWindow {
-            /*selected(f) => { extender.show_file(f); }*/
             context-triggered(filename, x, y) => {
                 if filename != ".." {
                     ContextMenuInfo.update_info(false, x, y);
@@ -459,10 +450,6 @@ export component FilesServiceField inherits FieldBackground {
             FilesInternal.mkdir(name);
         }
     }
-
-    // extender := FileExtender {
-    //     y: parent.height - self.height;
-    // }
 
     data_loader := Loader {
         x: parent.width - self.width - 50px;
