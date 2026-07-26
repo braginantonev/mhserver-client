@@ -2,7 +2,8 @@ pub mod connections;
 mod path;
 
 use {
-    crate::{NotificationType, actions::UiActions, config::files::FileServiceConfig, repository::ratelimit}, api::{
+    super::ServiceError,
+    crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
     }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
 };
@@ -84,13 +85,13 @@ impl FileManager {
     }
 
     /// Go to next folder, and return files list
-    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, UiActions> {
+    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, ServiceError> {
         self.active_dir.push(dir_name);
         self.get_files(None).await
     }
 
     /// Go to previous folder, and return files list
-    pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, UiActions> {
+    pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, ServiceError> {
         self.active_dir.pop();
         self.get_files(None).await
     }
@@ -101,18 +102,15 @@ impl FileManager {
 
     //* API requests
 
-    pub async fn available_space(&self) -> Result<Size, UiActions> {
+    pub async fn available_space(&self) -> Result<Size, ServiceError> {
         self.queue.wait().await;
         match files_get_available_space(&self.cfg.api_conf).await {
-            Ok(v) => Ok(Size(v.content.unwrap())),
-            Err(err) => match err {
-                Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
-                _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
-            }
+            Ok(v) => Ok(Size(v.content.unwrap_or_default())),
+            Err(err) => Err(ServiceError::from(err))
         }
     }
 
-    pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), UiActions> {
+    pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), ServiceError> {
         self.queue.wait().await;
         match files_make_directory(&self.cfg.api_conf, self.active_dir.with(new_dir).to_string().as_str()).await {
             Ok(_) => {
@@ -120,46 +118,36 @@ impl FileManager {
                 self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
                 Ok(())
             },
-            Err(err) => {
-                match err {
-                    Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
-                    _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
-                }
-            }
+            Err(err) => Err(ServiceError::from(err))
         }
     }
 
-    pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), UiActions> {
+    pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), ServiceError> {
         self.queue.wait().await;
         match files_remove_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
             Ok(_) => {
                 self.cached_files.remove(target_dir, true);
                 Ok(())
             },
-            Err(err) => match err {
-                Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
-                _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
-            }
+            Err(err) => Err(ServiceError::from(err))
         }
     }
 
     /// Get files list from server and save to local cache
-    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, UiActions> {
+    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, ServiceError> {
         self.queue.wait().await;
         match get_files_list(&self.cfg.api_conf, &from.unwrap_or(self.current_dir())).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res.content.unwrap());
                 Ok(self.cached_files())
             },
-            Err(err) => {
-                match err {
-                    Error::ResponseError(c) => Err(UiActions::ShowNotification(c.content, NotificationType::Error)),
-                    Error::Serde(_) => { // Null response
-                        self.cached_files = FilesList::default();
-                        Ok(self.cached_files())
-                    }, 
-                    _ => Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error))
-                }
+            Err(err) => match err {
+                // If dir don't have files, serde understand this like null response on required field 
+                Error::Serde(_) => {
+                    self.cached_files = FilesList::default();
+                    Ok(self.cached_files())
+                }, 
+                _ => Err(ServiceError::from(err))
             }
         }
     }
@@ -169,15 +157,15 @@ impl FileManager {
     }
 
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
-    pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, UiActions> {
+    pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, ServiceError> {
         let file = match File::open(os_file_path) {
             Ok(f) => Arc::new(f),
-            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
         };
 
         let file_meta = match file.metadata() {
             Ok(m) => m,
-            Err(err) => return Err(UiActions::ShowNotification(err.to_string(), NotificationType::Error)),
+            Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
         };
 
         let filename = os_file_path.file_name().unwrap().display().to_string();
@@ -190,10 +178,7 @@ impl FileManager {
         
         let save_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdwr, conn_req).await {
             Ok(conn) => conn,
-            Err(err) => return Err(match err {
-                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
-                _ => UiActions::ShowNotification(err.to_string(), crate::NotificationType::Error),
-            }),
+            Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
         };
 
         let conn_info = save_info.content.unwrap();
@@ -251,7 +236,7 @@ impl FileManager {
         Ok(conn_info.uuid)
     }
 
-    pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, UiActions> {
+    pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, ServiceError> {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir());
 
@@ -259,17 +244,14 @@ impl FileManager {
         if with_dirs {
             save_to = save_to.join(&from[1..]);
             if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
-                return Err(UiActions::ShowNotification(format!("failed download file ({err})"), NotificationType::Error));
+                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
             }
         }
 
         let save_to = save_to.join(filename.clone() + ".part");
         let file = match File::create(save_to.as_path()) {
             Ok(f) => Arc::new(f),
-            Err(err) => {
-                eprintln!("failed create file for download ({err})");
-                return Err(UiActions::ShowNotification("failed download file".to_owned(), NotificationType::Error));
-            }
+            Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename)),
         };
 
         let conn_req = ConnectionRequest {
@@ -280,20 +262,14 @@ impl FileManager {
         
         let download_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdonly, conn_req).await {
             Ok(conn) => conn,
-            Err(err) => return Err(match err {
-                Error::ResponseError(c) => UiActions::ShowNotification(c.content, crate::NotificationType::Error),
-                _ => {
-                    eprintln!("{err}");
-                    UiActions::ShowNotification("failed download file".to_owned(), crate::NotificationType::Error)
-                }
-            }),
+            Err(err) => return Err(ServiceError::from(err)),
         };
 
         let download_info = download_info.content.unwrap();
 
-        if let Err(_) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
+        if let Err(err) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
             let _ = std::fs::remove_file(save_to.as_path());
-            return Err(UiActions::ShowNotification("not enough of disk space to download".to_owned(), NotificationType::Error));
+            return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
         }
 
         let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);

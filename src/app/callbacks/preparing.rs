@@ -1,6 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingInternal, State, actions::UiActions, app::Application, service::preparing
+        NotificationType, PreparingInternal, actions::UiActions, app::Application, service::preparing
     }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
@@ -28,15 +28,13 @@ impl Application {
                 let http_client = http_client.clone();
 
                 tokio::spawn(async move {
-                    if preparing::ping(&api_cfg(http_client, srv_addr.to_string())).await {
-                        cfg.write().await.server_api_config_mut().set_base_path(srv_addr.as_str());
-
-                        let _ = win.upgrade_in_event_loop(|win| {
-                            win.global::<State>().invoke_next();
-                        });
-                    } else {
-                        UiActions::ShowNotification("Server not found or is off".to_owned(), NotificationType::Error).run_in_event_loop(win);
-                    };
+                    match preparing::ping(&api_cfg(http_client, srv_addr.to_string())).await {
+                        Ok(_) => {
+                            cfg.write().await.server_api_config_mut().set_base_path(srv_addr.as_str());
+                            UiActions::InvokeNextState
+                        },
+                        Err(err) => UiActions::from(err),
+                    }.run_in_event_loop(win);
                 });
             }
         });
@@ -52,21 +50,17 @@ impl Application {
                 let http_client = http_client.clone();
 
                 tokio::spawn(async move {
-                    let base_path: String;
-                    {
-                        let lock = cfg.read().await;
-                        base_path = lock.server_api_config().base_path().to_owned();
-                    }
-
-                    let (jwt, act) = preparing::login(
+                    let base_path = cfg.read().await.server_api_config().base_path().to_owned();
+                    match preparing::login(
                         &api_cfg(http_client, base_path),
                         api::models::UserLoginRequest::new(username.to_string(), password.to_string())
-                    ).await;
-
-                    if let Some(jwt) = jwt {
-                        cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
-                    }
-                    act.run_in_event_loop(win);
+                    ).await {
+                        Ok(jwt) => {
+                            cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
+                            UiActions::InvokeNextState
+                        },
+                        Err(err) => UiActions::from(err),
+                    }.run_in_event_loop(win);
                 });
             }
         });
@@ -83,20 +77,18 @@ impl Application {
 
                 tokio::spawn(async move {
                     if password != verify {
-                        UiActions::ShowNotification("Password and verify password not ident!".to_owned(), NotificationType::Error).run_in_event_loop(win);
+                        UiActions::ShowNotification("Password and verify password not ident".to_owned(), NotificationType::Info).run_in_event_loop(win);
                         return
                     }
 
-                    let base_path: String;
-                    {
-                        let lock = cfg.read().await;
-                        base_path = lock.server_api_config().base_path().to_owned();
-                    }
-
-                    preparing::register(
+                    let base_path = cfg.read().await.server_api_config().base_path().to_owned();
+                    match preparing::register(
                         &api_cfg(http_client, base_path),
                         api::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())
-                    ).await.run_in_event_loop(win);
+                    ).await {
+                        Ok(_) => UiActions::InvokeNextState,
+                        Err(err) => UiActions::from(err),
+                    }.run_in_event_loop(win);
                 });
             }
         });

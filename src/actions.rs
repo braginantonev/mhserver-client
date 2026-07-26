@@ -1,7 +1,7 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, LoadFile, State, notification, service::files}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FilesInternal, LoadFile, State, notification, service::{ServiceError, files::connections::ConnectionInfo}}, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
@@ -14,7 +14,7 @@ pub enum UiActions {
     /// Update files in data service. Required the files, and server path, where is this files located. 
     FilesUpdateFilesList(Vec<api::models::FilesListInner>, String),
 
-    FilesUpdateLoadFiles(Vec<files::connections::ConnectionInfo>),
+    FilesUpdateLoadFiles(Vec<ConnectionInfo>),
 
     FilesUpdateCurrentDirectory(String),
 
@@ -59,5 +59,14 @@ impl UiActions {
         let _ = weak_win.upgrade_in_event_loop(move |win| {
             self.run(win);
         });
+    }
+}
+
+impl From<ServiceError> for UiActions {
+    fn from(value: ServiceError) -> Self {
+        if let Some(code) = value.code() {
+            return UiActions::ShowNotification(format!("error not implement now ({code})"), NotificationType::Info);
+        }
+        UiActions::ShowNotification(value.label(), NotificationType::Error)
     }
 }

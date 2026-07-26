@@ -40,9 +40,10 @@ impl Application {
 
                     let win = win.upgrade().unwrap();
                     
+                    // if to check - need preparing or not
                     if match win.global::<State>().get_preparing() {
                         PreparingStates::Greeting => return,
-                        PreparingStates::Connection => !preparing::ping(&api_cfg).await,
+                        PreparingStates::Connection => preparing::ping(&api_cfg).await.is_err(),
                         PreparingStates::Login => login_expired().await,
                         PreparingStates::Register => false,
                         PreparingStates::End => false,

@@ -1,7 +1,5 @@
 use {
-    crate::{
-        NotificationType, actions::UiActions,
-    },
+    super::ServiceError,
     api::{
         apis::configuration::Configuration,
         apis::default_api::{users_login, users_register, ping as tools_ping},
@@ -9,28 +7,23 @@ use {
     },
 };
 
-pub async fn login(api_cfg: &Configuration, user: UserLoginRequest) -> (Option<String>, UiActions) {
+pub async fn login(api_cfg: &Configuration, user: UserLoginRequest) -> Result<String, ServiceError> {
     match users_login(api_cfg, user).await {
-        Ok(resp) => (Some(resp.content.unwrap()), UiActions::InvokeNextState),
-        Err(err) => (None, UiActions::ShowNotification(err.to_string(), NotificationType::Error))
+        Ok(resp) => Ok(resp.content.unwrap()),
+        Err(err) => Err(ServiceError::from(err))
     }
 }
 
-pub async fn register(api_cfg: &Configuration, user: UserRegisterRequest) -> UiActions {
+pub async fn register(api_cfg: &Configuration, user: UserRegisterRequest) -> Result<(), ServiceError> {
     match users_register(api_cfg, user).await {
-        Ok(_) => todo!()/*UiActions::ChangePreparingState(PreparingStates::Login)*/,
-        Err(err) => UiActions::ShowNotification(err.to_string(), NotificationType::Error)
+        Ok(_) => Ok(()),
+        Err(err) => Err(ServiceError::from(err)),
     }
 }
 
-/// Ping server. Return true, if server available, and false, if not available
-/// Use to ping server addr from self, if target is None
-pub async fn ping(api_cfg: &Configuration) -> bool {
+pub async fn ping(api_cfg: &Configuration) -> Result<(), ServiceError> {
     match tools_ping(api_cfg).await {
-        Ok(_) => true,
-        Err(err) => {
-            eprintln!("Error: {}", err.to_string());
-            false
-        }
+        Ok(_) => Ok(()),
+        Err(err) => Err(ServiceError::from(err)),
     }
 }
