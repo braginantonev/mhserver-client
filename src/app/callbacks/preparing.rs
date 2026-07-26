@@ -77,7 +77,7 @@ impl Application {
 
                 tokio::spawn(async move {
                     if password != verify {
-                        UiActions::ShowNotification("Password and verify password not ident".to_owned(), NotificationType::Info).run_in_event_loop(win);
+                        UiActions::ShowNotification("Password and verify password not ident".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win);
                         return
                     }
 

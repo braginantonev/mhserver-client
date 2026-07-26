@@ -1,7 +1,7 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, LoadFile, PreparingStates, State, notification, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FilesInternal, LoadFile, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub enum UiActions {
@@ -11,7 +11,7 @@ pub enum UiActions {
     ForceAuthorization,
 
     /// Show notification with description and type
-    ShowNotification(String, NotificationType),
+    ShowNotification(String, String, NotificationType),
 
     /// Update files in data service. Required the files, and server path, where is this files located. 
     FilesUpdateFilesList(Vec<api::models::FilesListInner>, String),
@@ -32,8 +32,12 @@ impl UiActions {
             UiActions::ForceAuthorization => {
                 win.global::<State>().invoke_force_preparing_state(PreparingStates::Login);
             },
-            UiActions::ShowNotification(desc, r#type) => {
-                notification::show(win, desc.as_str(), r#type);
+            UiActions::ShowNotification(label, desc, r#type) => {
+                win.global::<NotificationsInternal>().invoke_push(NotificationInfo { 
+                    r#type,
+                    label: label.to_shared_string(),
+                    description: desc.to_shared_string(),
+                });
             },
             UiActions::FilesUpdateFilesList(files, from) => {
                 win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|f| {
@@ -75,6 +79,6 @@ impl From<ServiceError> for UiActions {
                 _ => (), // not implement
             }
         }
-        UiActions::ShowNotification(value.label(), NotificationType::Error)
+        UiActions::ShowNotification(value.label(), value.description(), NotificationType::Error)
     }
 }

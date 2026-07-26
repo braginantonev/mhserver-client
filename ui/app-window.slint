@@ -1,16 +1,17 @@
-import { Notification, NotificationInfo, NotificationType } from "components/notification.slint";
+import { NotificationsBlock } from "components/notifications.slint";
 
 // Services
 import { PreparingPage } from "pages/preparing/preparing.slint";
 import { MainPage } from "pages/main/main.slint";
 
 import { State } from "globals/state.slint";
+import { NotificationsInternal } from "globals/notification.slint";
 import { PreparingInternal } from "globals/internal/preparing.slint";
 import { MainInternal, FilesInternal } from "globals/internal/main.slint";
 
 export {
-    NotificationInfo,
     State,
+    NotificationsInternal,
     PreparingInternal,
     MainInternal,
     FilesInternal
@@ -26,16 +27,16 @@ export component MainWindow inherits Window {
         width: parent.width;
         height: parent.height;
     }
+
     MainPage {
         width: parent.width;
         height: parent.height;
     }
 
-    main_notification := Notification {
-        x: root.width - self.width - 20px;
-        y: root.height - self.height - 20px;
-        hided: true;
+    NotificationsBlock {
+        x: parent.width - 300px - 10px;
+        y: 10px;
+        width: 300px;
+        height: parent.height;
     }
-
-    callback update_main_notification <=> main_notification.update;
 }

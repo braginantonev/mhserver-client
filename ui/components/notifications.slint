@@ -1,0 +1,118 @@
+import { Button, HorizontalBox } from "std-widgets.slint";
+import { SimpleButton } from "button.slint";
+import { NotificationsInternal, NotificationInfo, NotificationType } from "../globals/notification.slint";
+import { OpacityObject } from "base.slint";
+import { FieldBackground } from "fields.slint";
+import { MainSettings } from "../globals/settings.slint";
+
+component Notification inherits OpacityObject {
+    in property <NotificationInfo> info;
+
+    private property <duration> lifetime: 4s;
+    private property <length> border-width: 1px;
+
+    function end_lifetime() {
+        self.enabled = false;
+        life_timer.running = false;
+        close.enabled = false;
+        remove_timer.start();
+    }
+
+    height: 50px;
+
+    // show timer
+    Timer {
+        interval: 10ms;
+        running: true;
+        triggered => {
+            parent.enabled = true;
+            self.running = false;
+            progress.width = layout.width;
+        }
+    }
+
+    life_timer := Timer {
+        interval: lifetime;
+        running: true;
+        triggered => {
+            end_lifetime();
+        }
+    }
+
+    remove_timer := Timer {
+        interval: MainSettings.object-visible-duration;
+        running: false;
+        triggered => {
+            NotificationsInternal.pop();
+        }
+    }
+
+    // progress field
+    progress := FieldBackground {
+        enabled: true;
+        x: 0px;
+        height: layout.height;
+        width: 0px;
+        border-width: 0px;
+        animate width { duration: lifetime; }
+    }
+
+    // main field
+    FieldBackground {
+        enabled: true;
+        x: progress.x + border-width;
+        height: layout.height - border-width * 2;
+        width: layout.width - border-width * 2;
+        border-width: 0px;
+    }
+
+    layout := HorizontalLayout {
+        spacing: 15px;
+        padding: 10px;
+
+        icon := Image {
+            preferred-height: 28px;
+            preferred-width: 28px;
+        }
+
+        Text {
+            max-width: 500px;
+            vertical-alignment: center;
+            text: info.label;
+            wrap: word-wrap;
+        }
+
+        close := SimpleButton {
+            icon: @image-url("../assets/close.png");
+            icon-color: whitesmoke;
+
+            hover-additional-width: 10px;
+            hover-max-opacity: 20%;
+
+            preferred-width: 12px;
+            preferred-height: 12px;
+
+            clicked => { end_lifetime(); }
+        }
+    }
+
+    states [
+        info when info.type == NotificationType.Info: {
+            progress.color: blue;
+            icon.source: @image-url("../assets/info.png");
+        }
+        error when info.type == NotificationType.Error: {
+            progress.color: red;
+            icon.source: @image-url("../assets/error.png");
+        }
+    ]
+}
+
+export component NotificationsBlock {
+    VerticalLayout {
+        spacing: 10px;
+        for data[i] in NotificationsInternal.active-notifications: Notification {
+            info: data;
+        }
+    }
+}

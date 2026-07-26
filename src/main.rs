@@ -1,7 +1,6 @@
 mod config;
 mod app;
 mod service;
-mod notification;
 mod actions;
 mod repository;
 

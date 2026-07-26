@@ -3,7 +3,8 @@ import { ColorSettings, MainSettings } from "../globals/settings.slint";
 
 export component FieldBackground inherits OpacityObject {
     in property <duration> stretch-delay;
-    in-out property <brush> color <=> rect.background;
+    in property <brush> color: ColorSettings.field-color;
+    in property <length> border-width: 1px;
     
     animate width, height {
         duration: MainSettings.object-visible-duration / 2;
@@ -12,9 +13,9 @@ export component FieldBackground inherits OpacityObject {
     }
 
     rect := Rectangle {
-        background: ColorSettings.field-color;
+        background: color;
         border-color: ColorSettings.field-border-color;
-        border-width: 1px;
+        border-width: border-width;
         border-radius: 20px;
     }
 }
