@@ -43,6 +43,10 @@ export global FilesInternal {
     in-out property <[File]> showed-files;
     in-out property <[LoadFile]> load-files;
 
+    public function inactive-file() {
+        active-file = {}
+    }
+
     callback update_list();
 
     callback cd(target: string);

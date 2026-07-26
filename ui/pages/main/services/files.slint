@@ -360,6 +360,14 @@ component FilesWindow {
         viewport-height: files_layout.height;
         horizontal-scrollbar-policy: always-off;
 
+        TouchArea {
+            width: parent.viewport-width;
+            height: parent.viewport-height;
+            clicked => {
+                FilesInternal.inactive-file();
+            }
+        }
+
         files_layout := GridLayout {
             y: 0px;
             padding-top: 10px;
