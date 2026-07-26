@@ -290,6 +290,12 @@ impl FileManager {
         };
 
         let download_info = download_info.content.unwrap();
+
+        if let Err(_) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
+            let _ = std::fs::remove_file(save_to.as_path());
+            return Err(UiActions::ShowNotification("not enough of disk space to download".to_owned(), NotificationType::Error));
+        }
+
         let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
         let mut save_cancel = conn_record.cancel_receiver();
         let mut download_cancel = conn_record.cancel_receiver();
