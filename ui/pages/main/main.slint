@@ -3,6 +3,7 @@ import { State, ApplicationStates } from "../../globals/state.slint";
 import { MainInternal, Services } from "../../globals/internal/main.slint";
 import { ServiceField } from "fields.slint";
 import { FilesServiceField } from "services/files.slint";
+import { MainSettings } from "../../globals/settings.slint";
 
 export component MainPage inherits Page {
     private property <length> fields-spacing: 10px;
@@ -16,9 +17,48 @@ export component MainPage inherits Page {
     }
 
     files_service := FilesServiceField {
-        enabled: MainInternal.active-service == Services.Files;
         height: parent.height - 4px;
         width: parent.width - service_field.width - fields-spacing - 2px;
         x: service_field.width + fields-spacing;
     }
+
+    label := Text {
+        vertical-alignment: center;
+        horizontal-alignment: center;
+        font-size: 24pt;
+        font-weight: 800;
+        color: gray;
+        opacity: 0;
+    }
+
+    states [
+        files-active when MainInternal.active-service == Services.Files && MainInternal.service-available: {
+            files_service.enabled: true;
+        }
+
+        unavailable-active when !MainInternal.service-available: {
+            label.opacity: 1;
+            label.text: @tr("Сервис недоступен \nлибо выключен");
+
+            in {
+                animate label.opacity {
+                    delay: MainSettings.object-visible-duration;
+                    duration: MainSettings.object-visible-duration;
+                }
+            }
+        } 
+
+        empty-active when MainInternal.active-service == Services.Empty: {
+            label.opacity: 1;
+            label.text: @tr("mhserver\nclient");
+            label.letter-spacing: 2px;
+
+            in {
+                animate label.opacity {
+                    delay: MainSettings.object-visible-duration;
+                    duration: MainSettings.object-visible-duration;
+                }
+            }
+        }
+    ]
 }
