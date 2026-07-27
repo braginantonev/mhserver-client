@@ -33,6 +33,10 @@ impl ServiceError {
     }
 
     pub fn with_label(mut self, label: &str) -> Self {
+        if !self.label.is_empty() {
+            let old_label = &self.label.clone();
+            self = self.with_desc(old_label);
+        }
         self.label = label.to_owned();
         self
     }
@@ -56,7 +60,10 @@ impl<T> From<Error<T>> for ServiceError {
             Error::Reqwest(err) => ServiceError { label: String::from("network error"), desc: Some(err.to_string()), code: err.status() },
             Error::Serde(err) => ServiceError { label: String::from("request parse error"), desc: Some(err.to_string()), code: None },
             Error::Io(err) => ServiceError { label: err.to_string(), desc: None, code: None },
-            Error::ResponseError(c) => ServiceError { label: c.content, desc: None, code: Some(c.status) },
+            Error::ResponseError(c) => {
+                let label = c.content;
+                ServiceError { label: String::from(label.strip_suffix('\n').unwrap_or(&label)), desc: None, code: Some(c.status) }
+            },
         }
     }
 }
