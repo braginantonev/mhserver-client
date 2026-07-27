@@ -2,9 +2,10 @@ import { MainSettings, ColorSettings } from "../globals/settings.slint";
 
 export component OpacityObject {
     in property <bool> enabled: false;
+    in property <duration> visible-duration: MainSettings.object-visible-duration;
 
     animate opacity {
-        duration: MainSettings.object-visible-duration;
+        duration: visible-duration;
         easing: ease-in-quart;
     }
 

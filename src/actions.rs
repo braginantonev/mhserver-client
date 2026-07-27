@@ -33,7 +33,8 @@ impl UiActions {
                 win.global::<State>().invoke_force_preparing_state(PreparingStates::Login);
             },
             UiActions::ShowNotification(label, desc, r#type) => {
-                win.global::<NotificationsInternal>().invoke_push(NotificationInfo { 
+                win.global::<NotificationsInternal>().invoke_push(NotificationInfo {
+                    id: 0, // will be override in callback
                     r#type,
                     label: label.to_shared_string(),
                     description: desc.to_shared_string(),

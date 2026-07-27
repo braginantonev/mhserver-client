@@ -11,6 +11,8 @@ component Notification inherits OpacityObject {
     private property <duration> lifetime: 4s;
     private property <length> border-width: 1px;
 
+    visible-duration: 500ms;
+
     function end_lifetime() {
         self.enabled = false;
         life_timer.running = false;
@@ -18,7 +20,7 @@ component Notification inherits OpacityObject {
         remove_timer.start();
     }
 
-    height: 50px;
+    height: 45px;
 
     // show timer
     Timer {
@@ -40,10 +42,10 @@ component Notification inherits OpacityObject {
     }
 
     remove_timer := Timer {
-        interval: MainSettings.object-visible-duration;
+        interval: parent.visible-duration;
         running: false;
         triggered => {
-            NotificationsInternal.pop();
+            NotificationsInternal.remove(info.id);
         }
     }
 

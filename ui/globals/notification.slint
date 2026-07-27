@@ -1,6 +1,7 @@
 export enum NotificationType { Info, Error }
 
 export struct NotificationInfo {
+    id: int,
     type: NotificationType,
     label: string,
     description: string,
@@ -10,5 +11,5 @@ export global NotificationsInternal {
     in-out property <[NotificationInfo]> active-notifications;
 
     callback push(notification: NotificationInfo);
-    callback pop();
+    callback remove(id: int);
 }

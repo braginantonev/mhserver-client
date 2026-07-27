@@ -1,5 +1,5 @@
 use {
-    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, repository::dirs::default_download_dir}, slint::{ComponentHandle, Global, Model, ModelRc, VecModel}, std::{process::Command, rc::Rc}
+    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, repository::dirs::default_download_dir}, slint::{ComponentHandle, Global, Model, ModelRc, VecModel}, std::{cell::Cell, process::Command, rc::Rc}
 };
 
 impl Application {
@@ -32,25 +32,29 @@ impl Application {
 
         let notifications_internal = self.ui_window.global::<NotificationsInternal>();
         let weak_notifications_internal = notifications_internal.as_weak();
+        let notification_counter = Rc::new(Cell::new(0)); // i32, because slint not supported i64 type
         
         // set empty model for notifications
         notifications_internal.set_active_notifications(ModelRc::from(Rc::new(VecModel::<NotificationInfo>::default())));
         
         notifications_internal.on_push({
             let internal = weak_notifications_internal.clone();
-            move |info| {
+            let counter = notification_counter.clone();
+            move |mut info| {
                 let notifications = internal.upgrade().unwrap().get_active_notifications();
                 let notifications = notifications.as_any().downcast_ref::<VecModel<NotificationInfo>>().unwrap();
+                counter.update(|x| x + 1);
+                info.id = counter.get();
                 notifications.push(info);
             }
         });
 
-        notifications_internal.on_pop({
+        notifications_internal.on_remove({
             let internal = weak_notifications_internal.clone();
-            move || {
+            move |id| {
                 let notifications = internal.upgrade().unwrap().get_active_notifications();
                 let notifications = notifications.as_any().downcast_ref::<VecModel<NotificationInfo>>().unwrap();
-                notifications.remove(0);
+                notifications.remove(notifications.iter().enumerate().find(|v| v.1.id == id).unwrap_or_default().0);
             }
         });
     }
