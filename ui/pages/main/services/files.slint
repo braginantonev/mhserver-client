@@ -268,7 +268,7 @@ component LoadData inherits HorizontalLayout {
         y: parent.height / 2 - self.height / 2;
         update_duration: FilesSettings.loader-update-interval;
         progress: info.previous;
-        color: info.is-upload ? #004bbb : green;
+        color: info.is-upload ? ColorSettings.upload-color : ColorSettings.download-color;
     }
 }
 

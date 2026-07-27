@@ -92,6 +92,8 @@ pub enum FilesActions {
     UpdateCurrentDirectory(String),
 
     UpdateAvailableSpace(String),
+
+    NotifyLoadedFile(String, bool),
 }
 
 impl UiActions for FilesActions {
@@ -118,6 +120,13 @@ impl UiActions for FilesActions {
             },
             FilesActions::UpdateAvailableSpace(size) => {
                 win.global::<FilesInternal>().set_available_space(size.to_shared_string());
+            },
+            FilesActions::NotifyLoadedFile(name, is_upload) => {
+                if is_upload {
+                    MainActions::ShowNotification("File uploaded".to_owned(), name, NotificationType::Upload)
+                } else {
+                    MainActions::ShowNotification("File downloaded".to_owned(), name, NotificationType::Download)
+                }.run(win);
             }
         }
     }

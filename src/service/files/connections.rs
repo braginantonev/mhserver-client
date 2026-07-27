@@ -47,38 +47,59 @@ impl ConnectionInfo {
     }
 }
 
+pub type CompletedLoad = (String, bool);
+
 #[derive(Clone)]
 pub struct Connections {
-    inner: Arc<RwLock<HashMap<Uuid, ConnectionInner>>>
+    inner: Arc<RwLock<HashMap<Uuid, ConnectionInner>>>,
+    completed: Arc<RwLock<Vec<CompletedLoad>>>
 }
 
 impl Connections {
     pub fn new() -> Self {
-        let s = Self { inner: Arc::new(RwLock::new(HashMap::new())) };
+        let s = Self { 
+            inner: Arc::new(RwLock::new(HashMap::new())),
+            completed: Arc::new(RwLock::new(Vec::new()))
+        };
         s.start_cleaner();
         s
     }
 
     fn start_cleaner(&self) {
         let conns = self.inner.clone();
+        let completed = self.completed.clone();
         tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3));
             loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                let mut end_conns = Vec::<Uuid>::with_capacity(conns.read().await.len());
-                {
-                    let r_lock = conns.read().await;
-                        for (id, conn) in r_lock.iter() {
-                        if conn.loaded >= conn.chunks_count {
-                            end_conns.push(*id);
-                        }
-                    }
+                interval.tick().await;
+                let to_remove: Vec<Uuid> = {
+                    let lock = conns.read().await;
+                    lock.iter()
+                        .filter(|(_, v)| v.loaded >= v.chunks_count)
+                        .map(|(k, _)| *k)
+                        .collect()
+                };
+
+                if to_remove.is_empty() {
+                    continue;
                 }
-                let mut w_lock = conns.write().await;
-                for id in end_conns {
-                    w_lock.remove(&id);
-                } 
+
+                let mut lock = conns.write().await;
+                let completed_items: Vec<CompletedLoad> = to_remove.into_iter()
+                    .filter_map(|k| lock.remove(&k))
+                    .map(|v| (v.filename, v.is_upload))
+                    .collect();
+
+                if !completed_items.is_empty() {
+                    completed.write().await.extend(completed_items);
+                }
             }            
         });
+    } 
+
+    pub async fn completed(&self) -> Vec<CompletedLoad> {
+        let mut lock = self.completed.write().await;
+        lock.drain(..).collect()
     } 
 
     pub async fn progress_list(&self) -> Vec<ConnectionInfo> {

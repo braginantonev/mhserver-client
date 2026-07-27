@@ -1,15 +1,18 @@
 use {
     crate::{
-        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
-    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
+        FilesInternal, LoadFile, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
+    }, slint::{ComponentHandle, Global, Model, VecModel}, std::{fmt::format, str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
     pub fn init_files_callbacks(&self, files_service: Arc<RwLock<service::files::FileManager>>) {
         let internal = self.ui_window.global::<FilesInternal>();
+        let weak_internal = internal.as_weak();
+        let win = self.ui_window.as_weak();
+        
 
         internal.on_update_list({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move || {
@@ -33,7 +36,7 @@ impl Application {
         });
 
         internal.on_cd({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move |target| {
@@ -57,7 +60,7 @@ impl Application {
         });
 
         internal.on_mkdir({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move |dir_name| {
@@ -81,7 +84,7 @@ impl Application {
         });
 
         internal.on_rmdir({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move |dir_name| {
@@ -106,7 +109,7 @@ impl Application {
         });
 
         internal.on_upload_files({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move || {
@@ -138,7 +141,7 @@ impl Application {
         });
 
         internal.on_download_file({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move |filename| {
@@ -156,7 +159,7 @@ impl Application {
         });
 
         internal.on_download_directory({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
 
             move |dir_name| {
@@ -199,15 +202,27 @@ impl Application {
         });
 
         internal.on_update_load_files({
-            let win = self.ui_window.as_weak();
+            let win = win.clone();
             let service = files_service.clone();
+            let internal = weak_internal.clone();
+
+            FilesActions::UpdateLoadFiles(vec![]).run_in_event_loop(win.clone()); // set default value
 
             move || {
                 let win = win.clone();
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    let (load, complete) =  {
+                        let lock = service.read().await;
+                        (lock.get_load_files().await, lock.get_loaded_files().await)
+                    };
+
+                    FilesActions::UpdateLoadFiles(load).run_in_event_loop(win.clone());
+                    
+                    // Show downloaded files
+                    complete.into_iter()
+                        .for_each(|load| FilesActions::NotifyLoadedFile(load.0, load.1).run_in_event_loop(win.clone()));
                 });
             }
         });

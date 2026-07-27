@@ -3,7 +3,7 @@ import { SimpleButton } from "button.slint";
 import { NotificationsInternal, NotificationInfo, NotificationType } from "../globals/notification.slint";
 import { OpacityObject, MenuSeparator } from "base.slint";
 import { FieldBackground } from "fields.slint";
-import { MainSettings } from "../globals/settings.slint";
+import { MainSettings, ColorSettings } from "../globals/settings.slint";
 
 component Notification inherits OpacityObject {
     in property <NotificationInfo> info;
@@ -132,12 +132,18 @@ component Notification inherits OpacityObject {
 
     states [
         info when info.type == NotificationType.Info: {
-            progress.color: blue;
+            progress.color: white;
             icon.source: @image-url("../assets/info.png");
         }
         error when info.type == NotificationType.Error: {
             progress.color: red;
             icon.source: @image-url("../assets/error.png");
+        }
+        downloaded when info.type == NotificationType.Download: {
+            progress.color: ColorSettings.download-color;
+        }
+        uploaded when info.type == NotificationType.Upload: {
+            progress.color: ColorSettings.upload-color;
         }
     ]
 }

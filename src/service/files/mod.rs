@@ -156,6 +156,10 @@ impl FileManager {
         self.connections.progress_list().await
     }
 
+    pub async fn get_loaded_files(&self) -> Vec<connections::CompletedLoad> {
+        self.connections.completed().await
+    }
+
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
     pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, ServiceError> {
         let file = match File::open(os_file_path) {
