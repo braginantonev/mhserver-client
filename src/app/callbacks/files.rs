@@ -1,13 +1,12 @@
 use {
     crate::{
-        FilesInternal, LoadFile, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
-    }, slint::{ComponentHandle, Global, Model, VecModel}, std::{fmt::format, str::FromStr, sync::Arc}, tokio::sync::RwLock
+        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
+    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
     pub fn init_files_callbacks(&self, files_service: Arc<RwLock<service::files::FileManager>>) {
         let internal = self.ui_window.global::<FilesInternal>();
-        let weak_internal = internal.as_weak();
         let win = self.ui_window.as_weak();
         
 
@@ -204,7 +203,6 @@ impl Application {
         internal.on_update_load_files({
             let win = win.clone();
             let service = files_service.clone();
-            let internal = weak_internal.clone();
 
             FilesActions::UpdateLoadFiles(vec![]).run_in_event_loop(win.clone()); // set default value
 
