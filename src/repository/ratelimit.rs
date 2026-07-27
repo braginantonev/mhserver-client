@@ -3,6 +3,8 @@ use {
     tokio::sync::mpsc::{Sender, Receiver, channel},
 };
 
+//todo: use on ping services, when this will be possible in server API
+#[allow(dead_code)] 
 pub fn get_delay(rl: &api::apis::RateLimit) -> Duration {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     Duration::from_millis((rl.reset() - now) * 1000 / rl.limit() as u64)

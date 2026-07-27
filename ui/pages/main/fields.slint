@@ -29,6 +29,7 @@ component ManageField inherits PopupWindow {
 
     VerticalLayout {
         MenuButton {
+            enabled: false;
             text: @tr("Параметры");
             clicked => { MainInternal.open_properties() }
         }

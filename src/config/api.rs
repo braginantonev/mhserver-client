@@ -7,10 +7,6 @@ pub struct ServerApiConfiguration {
 }
 
 impl ServerApiConfiguration {
-    pub fn new(base_path: String, jwt: String) -> Self {
-        Self { base_path, jwt }
-    }
-
     pub fn base_path(&self) -> &str {
         self.base_path.as_str()
     }
