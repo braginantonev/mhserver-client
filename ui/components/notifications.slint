@@ -1,26 +1,33 @@
 import { Button, HorizontalBox } from "std-widgets.slint";
 import { SimpleButton } from "button.slint";
 import { NotificationsInternal, NotificationInfo, NotificationType } from "../globals/notification.slint";
-import { OpacityObject } from "base.slint";
+import { OpacityObject, MenuSeparator } from "base.slint";
 import { FieldBackground } from "fields.slint";
 import { MainSettings } from "../globals/settings.slint";
 
 component Notification inherits OpacityObject {
     in property <NotificationInfo> info;
-
+    
     private property <duration> lifetime: 4s;
     private property <length> border-width: 1px;
 
     visible-duration: 500ms;
 
     function end_lifetime() {
+        life_timer.stop();
         self.enabled = false;
-        life_timer.running = false;
         close.enabled = false;
         remove_timer.start();
     }
 
-    height: 45px;
+    function extend() {
+        if info.description != "" {
+            life_timer.stop();
+            sep.height = 1px;
+            description.text = info.description;
+            description.height = description.preferred-height;
+        }
+    }
 
     // show timer
     Timer {
@@ -60,7 +67,7 @@ component Notification inherits OpacityObject {
     }
 
     // main field
-    FieldBackground {
+    back := FieldBackground {
         enabled: true;
         x: progress.x + border-width;
         height: layout.height - border-width * 2;
@@ -68,33 +75,58 @@ component Notification inherits OpacityObject {
         border-width: 0px;
     }
 
-    layout := HorizontalLayout {
-        spacing: 15px;
-        padding: 10px;
+    TouchArea {
+        width: back.width;
+        height: back.height;
+        clicked => { extend(); }
+    }
 
-        icon := Image {
-            preferred-height: 28px;
-            preferred-width: 28px;
+    layout := VerticalLayout {
+        padding-top: 10px;
+        padding-bottom: description.height != 0 ? 10px : 0;
+        padding-left: 20px;
+        padding-right: 20px;
+        spacing: 5px;
+
+        HorizontalLayout {
+            spacing: 15px;
+            alignment: space-between;
+            
+            icon := Image {
+                height: 28px;
+                width: 28px;
+            }
+
+            Text {
+                max-width: 500px;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+                text: info.label;
+                wrap: word-wrap;
+            }
+
+            close := SimpleButton {
+                icon: @image-url("../assets/close.png");
+                icon-color: whitesmoke;
+
+                hover-additional-width: 10px;
+                hover-max-opacity: 20%;
+
+                preferred-width: 12px;
+                preferred-height: 12px;
+
+                clicked => { end_lifetime(); }
+            }
         }
 
-        Text {
-            max-width: 500px;
-            vertical-alignment: center;
-            text: info.label;
+        sep := MenuSeparator {
+            height: 0px;
+        }
+
+        description := Text {
+            height: 0px;
             wrap: word-wrap;
-        }
-
-        close := SimpleButton {
-            icon: @image-url("../assets/close.png");
-            icon-color: whitesmoke;
-
-            hover-additional-width: 10px;
-            hover-max-opacity: 20%;
-
-            preferred-width: 12px;
-            preferred-height: 12px;
-
-            clicked => { end_lifetime(); }
+            color: whitesmoke;
         }
     }
 
