@@ -147,10 +147,11 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    match service.write().await.download_file(None, filename.to_string()).await {
-                        Ok(_) => UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await),
-                        Err(err) => UiActions::from(err)
-                    }.run_in_event_loop(win);
+                    if let Err(err) = service.write().await.download_file(None, filename.to_string()).await {
+                        UiActions::from(err).run_in_event_loop(win);
+                        return;
+                    };
+                    UiActions::FilesUpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
