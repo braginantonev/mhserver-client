@@ -1,6 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingInternal, actions::UiActions, app::Application, service::preparing
+        NotificationType, PreparingInternal, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
     }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
@@ -31,10 +31,10 @@ impl Application {
                     match preparing::ping(&api_cfg(http_client, srv_addr.to_string())).await {
                         Ok(_) => {
                             cfg.write().await.server_api_config_mut().set_base_path(srv_addr.as_str());
-                            UiActions::InvokeNextState
+                            PreparingActions::InvokeNextState.run_in_event_loop(win);
                         },
-                        Err(err) => UiActions::from(err),
-                    }.run_in_event_loop(win);
+                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                    };
                 });
             }
         });
@@ -57,10 +57,10 @@ impl Application {
                     ).await {
                         Ok(jwt) => {
                             cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
-                            UiActions::InvokeNextState
+                            PreparingActions::InvokeNextState.run_in_event_loop(win);
                         },
-                        Err(err) => UiActions::from(err),
-                    }.run_in_event_loop(win);
+                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                    };
                 });
             }
         });
@@ -77,7 +77,7 @@ impl Application {
 
                 tokio::spawn(async move {
                     if password != verify {
-                        UiActions::ShowNotification("Password and verify password not ident".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win);
+                        MainActions::ShowNotification("Password and verify password not ident".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win);
                         return
                     }
 
@@ -86,9 +86,9 @@ impl Application {
                         &api_cfg(http_client, base_path),
                         api::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())
                     ).await {
-                        Ok(_) => UiActions::InvokeNextState,
-                        Err(err) => UiActions::from(err),
-                    }.run_in_event_loop(win);
+                        Ok(_) => PreparingActions::InvokeNextState.run_in_event_loop(win),
+                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                    };
                 });
             }
         });

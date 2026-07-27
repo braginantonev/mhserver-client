@@ -6,6 +6,7 @@ pub mod preparing;
 
 use api::apis::Error;
 
+#[derive(Clone)]
 pub struct ServiceError {
     label: String,
     desc: Option<String>,
