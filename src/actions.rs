@@ -1,7 +1,7 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, LoadFile, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub trait UiActions: TryFrom<ServiceError> {
@@ -49,6 +49,8 @@ impl UiActions for PreparingActions {
 pub enum MainActions {
     /// Show notification with description and type
     ShowNotification(String, String, NotificationType),
+
+    ServiceUnavailable,
 }
 
 impl UiActions for MainActions {
@@ -62,12 +64,21 @@ impl UiActions for MainActions {
                     description: desc.to_shared_string(),
                 });
             },
+            MainActions::ServiceUnavailable => {
+                win.global::<MainInternal>().set_service_available(false);
+            }
         }
     }
 }
 
 impl From<ServiceError> for MainActions {
     fn from(value: ServiceError) -> Self {
+        if let Some(code) = value.code() {
+            match code {
+                StatusCode::SERVICE_UNAVAILABLE => return MainActions::ServiceUnavailable,
+                _ => (),
+            };
+        }
         MainActions::ShowNotification(value.label(), value.description(), NotificationType::Error)
     }
 }

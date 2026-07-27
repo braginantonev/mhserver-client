@@ -1,4 +1,5 @@
 import { PreparingInternal } from "internal/preparing.slint";
+import { MainInternal, Services } from "internal/main.slint";
 
 export enum PreparingStates {
     // Main preparing states
@@ -28,6 +29,7 @@ export global State {
         PreparingInternal.prepare-needed = true;
         preparing = new-state;
         application = ApplicationStates.Preparing;
+        MainInternal.change_active_service(Services.Empty);
     }
 
     // Standard state change

@@ -8,15 +8,19 @@ export enum Services {
 
 export global MainInternal {
     out property <Services> active-service: Empty;
+    in-out property <bool> service-available: true;
 
     callback open_properties();
     callback open_downloads();
     callback quit();
 
     public function change_active_service(new_service: Services) {
+        service-available = true;
         active-service = new-service;
         if new-service == Services.Files {
             FilesInternal.update_list();
+        } else {
+            service-available = false; // incomplete services
         }
     }
 }
