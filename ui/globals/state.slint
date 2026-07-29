@@ -3,7 +3,8 @@ import { MainInternal, Services } from "internal/main.slint";
 
 export enum PreparingStates {
     // Main preparing states
-    Greeting, 
+    Greeting,
+    Update,
     Connection, 
     Login,
     End,
@@ -39,8 +40,11 @@ export global State {
             preparing = PreparingStates.Connection;
         } 
         else if preparing == PreparingStates.Connection {
-            preparing = PreparingStates.Login;
+            preparing = PreparingStates.Update;
         } 
+        else if preparing == PreparingStates.Update {
+            preparing = PreparingStates.Login;
+        }
         else if preparing == PreparingStates.Login {
             preparing = PreparingStates.End;
         } 

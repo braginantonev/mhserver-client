@@ -1,6 +1,6 @@
 use {
     crate::{
-        PreparingInternal, PreparingStates, State, app::Application, service::*
+        PreparingInternal, PreparingStates, State, actions::{MainActions, UiActions}, app::Application, service::{preparing::UpdateStatus, *}
     }, api::apis::configuration::Configuration, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
 };
 
@@ -40,6 +40,20 @@ impl Application {
                     if match win.global::<State>().get_preparing() {
                         PreparingStates::Greeting => return,
                         PreparingStates::Connection => preparing::ping(&api_cfg).await.is_err(),
+                        PreparingStates::Update => match preparing::update_status(&api_cfg).await {
+                            Ok(st ) => match st {
+                                UpdateStatus::Available => true,
+                                UpdateStatus::CantCheck => {
+                                    MainActions::ShowNotification("failed check update".to_owned(), String::default(), crate::NotificationType::Info).run(win.clone_strong());
+                                    false
+                                },
+                                _ => false
+                            },
+                            Err(err) => {
+                                MainActions::from(err).run(win.clone_strong());
+                                false
+                            }
+                        },
                         PreparingStates::Login => api_cfg.bearer_access_token.unwrap_or_default().is_empty(),
                         PreparingStates::Register => false,
                         PreparingStates::End => false,
