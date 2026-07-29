@@ -1,30 +1,31 @@
 # \DefaultApi
 
-All URIs are relative to *https://my.best.server/api/v1*
+All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**files_create_connection**](DefaultApi.md#files_create_connection) | **POST** /files/connect | Получение параметров получения или отправки чанков
-[**files_create_connection_0**](DefaultApi.md#files_create_connection_0) | **POST** /files/connect | Получение параметров получения или отправки чанков
-[**files_get_available_space**](DefaultApi.md#files_get_available_space) | **GET** /files/space | Получить количество свободного места
-[**files_get_available_space_0**](DefaultApi.md#files_get_available_space_0) | **GET** /files/space | Получить количество свободного места
-[**files_get_chunk**](DefaultApi.md#files_get_chunk) | **GET** /files/get | Получить часть файла
-[**files_get_chunk_0**](DefaultApi.md#files_get_chunk_0) | **GET** /files/get | Получить часть файла
-[**files_get_sum**](DefaultApi.md#files_get_sum) | **GET** /files/sum | Получить контрольную сумму части файла
-[**files_get_sum_0**](DefaultApi.md#files_get_sum_0) | **GET** /files/sum | Получить контрольную сумму части файла
-[**files_make_directory**](DefaultApi.md#files_make_directory) | **POST** /files/mkdir | Создать каталог
-[**files_make_directory_0**](DefaultApi.md#files_make_directory_0) | **POST** /files/mkdir | Создать каталог
-[**files_remove_directory**](DefaultApi.md#files_remove_directory) | **POST** /files/rmdir | Удалить каталог
-[**files_remove_directory_0**](DefaultApi.md#files_remove_directory_0) | **POST** /files/rmdir | Удалить каталог
-[**files_save_chunk**](DefaultApi.md#files_save_chunk) | **POST** /files/save | Сохранить часть файла
-[**files_save_chunk_0**](DefaultApi.md#files_save_chunk_0) | **POST** /files/save | Сохранить часть файла
-[**get_files_list**](DefaultApi.md#get_files_list) | **GET** /files | Получить список файлов в каталоге
-[**get_files_list_0**](DefaultApi.md#get_files_list_0) | **GET** /files | Получить список файлов в каталоге
-[**ping**](DefaultApi.md#ping) | **POST** /tools/ping | Приветствие
-[**users_login**](DefaultApi.md#users_login) | **POST** /users/login | Получение JWT пользователя
-[**users_login_0**](DefaultApi.md#users_login_0) | **POST** /users/login | Получение JWT пользователя
-[**users_register**](DefaultApi.md#users_register) | **POST** /users/register | Регистрация пользователя
-[**users_register_0**](DefaultApi.md#users_register_0) | **POST** /users/register | Регистрация пользователя
+[**files_create_connection**](DefaultApi.md#files_create_connection) | **POST** /api/v1/files/connect | Получение параметров получения или отправки чанков
+[**files_create_connection_0**](DefaultApi.md#files_create_connection_0) | **POST** /api/v1/files/connect | Получение параметров получения или отправки чанков
+[**files_get_available_space**](DefaultApi.md#files_get_available_space) | **GET** /api/v1/files/space | Получить количество свободного места
+[**files_get_available_space_0**](DefaultApi.md#files_get_available_space_0) | **GET** /api/v1/files/space | Получить количество свободного места
+[**files_get_chunk**](DefaultApi.md#files_get_chunk) | **GET** /api/v1/files/get | Получить часть файла
+[**files_get_chunk_0**](DefaultApi.md#files_get_chunk_0) | **GET** /api/v1/files/get | Получить часть файла
+[**files_get_sum**](DefaultApi.md#files_get_sum) | **GET** /api/v1/files/sum | Получить контрольную сумму части файла
+[**files_get_sum_0**](DefaultApi.md#files_get_sum_0) | **GET** /api/v1/files/sum | Получить контрольную сумму части файла
+[**files_make_directory**](DefaultApi.md#files_make_directory) | **POST** /api/v1/files/mkdir | Создать каталог
+[**files_make_directory_0**](DefaultApi.md#files_make_directory_0) | **POST** /api/v1/files/mkdir | Создать каталог
+[**files_remove_directory**](DefaultApi.md#files_remove_directory) | **POST** /api/v1/files/rmdir | Удалить каталог
+[**files_remove_directory_0**](DefaultApi.md#files_remove_directory_0) | **POST** /api/v1/files/rmdir | Удалить каталог
+[**files_save_chunk**](DefaultApi.md#files_save_chunk) | **POST** /api/v1/files/save | Сохранить часть файла
+[**files_save_chunk_0**](DefaultApi.md#files_save_chunk_0) | **POST** /api/v1/files/save | Сохранить часть файла
+[**get_files_list**](DefaultApi.md#get_files_list) | **GET** /api/v1/files | Получить список файлов в каталоге
+[**get_files_list_0**](DefaultApi.md#get_files_list_0) | **GET** /api/v1/files | Получить список файлов в каталоге
+[**ping**](DefaultApi.md#ping) | **POST** /api/v1/tools/ping | Приветствие
+[**users_login**](DefaultApi.md#users_login) | **POST** /api/v1/users/login | Получение JWT пользователя
+[**users_login_0**](DefaultApi.md#users_login_0) | **POST** /api/v1/users/login | Получение JWT пользователя
+[**users_register**](DefaultApi.md#users_register) | **POST** /api/v1/users/register | Регистрация пользователя
+[**users_register_0**](DefaultApi.md#users_register_0) | **POST** /api/v1/users/register | Регистрация пользователя
+[**version**](DefaultApi.md#version) | **POST** /api | Версия сервера
 
 
 
@@ -628,6 +629,33 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: application/json
+- **Accept**: text/plain
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## version
+
+> String version()
+Версия сервера
+
+Возвращает версию сервера в стандарте semver
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**String**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: text/plain
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
