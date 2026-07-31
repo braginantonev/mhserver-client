@@ -47,6 +47,8 @@ impl UiActions for PreparingActions {
 }
 
 pub enum MainActions {
+    ExitApp,
+
     /// Show notification with description and type
     ShowNotification(String, String, NotificationType),
 
@@ -56,6 +58,9 @@ pub enum MainActions {
 impl UiActions for MainActions {
     fn run(self, win: MainWindow) {
         match self {
+            MainActions::ExitApp => {
+                win.global::<MainInternal>().invoke_quit();
+            },
             MainActions::ShowNotification(label, desc, r#type) => {
                 win.global::<NotificationsInternal>().invoke_push(NotificationInfo {
                     id: 0, // will be override in callback

@@ -1,6 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingSettings, OS, PreparingInternal, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
+        NotificationType, OS, PreparingInternal, PreparingSettings, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
     }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
@@ -109,9 +109,19 @@ impl Application {
 
                 tokio::spawn(async move {
                     match preparing::download_update(&api_cfg(http_client, "".to_owned())).await {
-                        Ok(_) => MainActions::ShowNotification("update downloaded".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win),
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
-                    }
+                        Ok(_) => MainActions::ShowNotification("update downloaded".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win.clone()),
+                        Err(err) => {
+                            MainActions::from(err).run_in_event_loop(win);
+                            return;
+                        }
+                    };
+                    
+                    std::process::Command::new("cmd")
+                        .args(&["/c", "start", "/b", "update_windows.bat"])
+                        .spawn()
+                        .expect("Failed to start update");
+                    
+                    MainActions::ExitApp.run_in_event_loop(win);
                 });
             }
         });
