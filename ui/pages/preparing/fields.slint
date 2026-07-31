@@ -3,6 +3,7 @@ import { FieldBase } from "../../components/fields.slint";
 import { SimpleButton } from "../../components/button.slint";
 import { PreparingInternal, UpdateStatus } from "../../globals/internal/preparing.slint";
 import { State, PreparingStates } from "../../globals/state.slint";
+import { PreparingSettings, OS } from "../../globals/settings.slint";
 
 component FieldLayout inherits VerticalLayout {
     in property <string> header-text <=> header.text;
@@ -42,7 +43,7 @@ export component ConnectionField inherits FieldBase {
 }
 
 export component UpdateField inherits FieldBase {
-    rows: 2;
+    rows: 3;
     height: self.calculate_height(layout.spacing, layout.padding);
 
     layout := FieldLayout {
@@ -52,13 +53,26 @@ export component UpdateField inherits FieldBase {
             spacing: 10px;
 
             Button {
+                enabled: PreparingSettings.current-os == OS.Windows;
                 text: @tr("Установить");
+                clicked => {
+                    PreparingInternal.update_windows();
+                }
             }
 
             Button {
-                enabled: PreparingInternal.update-status == UpdateStatus.Required ? false : true;
+                enabled: PreparingInternal.update-status != UpdateStatus.Required;
                 text: @tr("Пропустить");
+                clicked => {
+                    State.next();
+                }
             }
+        }
+
+        Text {
+            text: @tr("Для обновления на Linux используйте пакетный менеджер");
+            wrap: word-wrap;
+            color: gray;
         }
     }
 }
@@ -134,7 +148,7 @@ export component RegisterField inherits FieldBase {
                 PreparingInternal.register(username.text, pass.text, verify.text, key.text);
             }
         }
-        
+
         SimpleButton {
             text: @tr("Войти в аккаунт");
 
