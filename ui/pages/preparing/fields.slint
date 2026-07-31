@@ -1,27 +1,36 @@
 import { Button, LineEdit } from "std-widgets.slint";
 import { FieldBase } from "../../components/fields.slint";
 import { SimpleButton } from "../../components/button.slint";
-import { PreparingInternal } from "../../globals/internal/preparing.slint";
+import { PreparingInternal, UpdateStatus } from "../../globals/internal/preparing.slint";
 import { State, PreparingStates } from "../../globals/state.slint";
+
+component FieldLayout inherits VerticalLayout {
+    in property <string> header-text <=> header.text;
+    out property <length> header-height <=> header.height;
+
+    spacing: 20px;
+    padding: 30px;
+
+    header := Text {
+        height: 50px;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+        font-size: 16px;
+    }
+}
 
 export component ConnectionField inherits FieldBase {
     rows: 3;
+    header-height: layout.header-height;
     height: self.calculate_height(layout.spacing, layout.padding);
 
-    layout := VerticalLayout {
-        spacing: 20px;
-        padding: 30px;
-
-        Text {
-            height: 50px;
-            vertical-alignment: center;
-            horizontal-alignment: center;
-            text: @tr("Подключение");
-            font-size: 16px;
-        }
+    layout := FieldLayout {
+        header-text: @tr("Подключение");
+        
         server_addr_line := LineEdit {
             placeholder-text: @tr("Адрес сервера, например localhost:8080");
         }
+
         Button {
             enabled: root.enabled;
             text: @tr("Продолжить");
@@ -32,28 +41,44 @@ export component ConnectionField inherits FieldBase {
     }
 }
 
+export component UpdateField inherits FieldBase {
+    rows: 2;
+    height: self.calculate_height(layout.spacing, layout.padding);
+
+    layout := FieldLayout {
+        header-text: PreparingInternal.update-status == UpdateStatus.Required ? @tr("Доступно критическое обновление") : @tr("Доступно обновление");
+        
+        HorizontalLayout {
+            spacing: 10px;
+
+            Button {
+                text: @tr("Установить");
+            }
+
+            Button {
+                enabled: PreparingInternal.update-status == UpdateStatus.Required ? false : true;
+                text: @tr("Пропустить");
+            }
+        }
+    }
+}
+
 export component LoginField inherits FieldBase {
     rows: 5;
     height: self.calculate_height(layout.spacing, layout.padding);
 
-    layout := VerticalLayout {
-        spacing: 20px;
-        padding: 25px;
+    layout := FieldLayout {
+        header-text: @tr("Авторизация");
 
-        Text {
-            height: 50px;
-            vertical-alignment: center;
-            horizontal-alignment: center;
-            text: @tr("Авторизация");
-            font-size: 18px;
-        }
         username := LineEdit {
             placeholder-text: @tr("Логин");
         }
+
         pass := LineEdit {
             input-type: InputType.password;
             placeholder-text: @tr("Пароль");
         }
+
         Button {
             enabled: root.enabled;
             text: @tr("Продолжить");
@@ -61,6 +86,7 @@ export component LoginField inherits FieldBase {
                 PreparingInternal.login(username.text, pass.text);
             }
         }
+
         SimpleButton {
             vertical-stretch: 0;
             text: @tr("Зарегистрироваться");
@@ -79,32 +105,28 @@ export component RegisterField inherits FieldBase {
     rows: 7;
     height: self.calculate_height(layout.spacing, layout.padding);
 
-    layout := VerticalLayout {
-        spacing: 20px;
-        padding: 25px;
+    layout := FieldLayout {
+        header-text: @tr("Регистрация");
 
-        Text {
-            height: 50px;
-            vertical-alignment: center;
-            horizontal-alignment: center;
-            text: @tr("Регистрация");
-            font-size: 18px;
-        }
         username := LineEdit {
             placeholder-text: @tr("Логин");
         }
+
         pass := LineEdit {
             input-type: InputType.password;
             placeholder-text: @tr("Пароль");
         }
+
         verify := LineEdit {
             input-type: password;
             placeholder-text: @tr("Подтвердите пароль");
         }
+
         key := LineEdit {
             input-type: password;
             placeholder-text: @tr("Ключ регистрации");
         }
+
         Button {
             enabled: root.enabled;
             text: @tr("Продолжить");
@@ -112,6 +134,7 @@ export component RegisterField inherits FieldBase {
                 PreparingInternal.register(username.text, pass.text, verify.text, key.text);
             }
         }
+        
         SimpleButton {
             text: @tr("Войти в аккаунт");
 

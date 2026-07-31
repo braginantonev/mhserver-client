@@ -1,5 +1,14 @@
+export enum UpdateStatus {
+    Required,
+    Available,
+    ServerOld,
+    CantCheck,
+    NotNeeded
+}
+
 export global PreparingInternal {
     in-out property <bool> prepare-needed: false;
+    in-out property <UpdateStatus> update-status: UpdateStatus.NotNeeded;
 
     callback handle_state();
 

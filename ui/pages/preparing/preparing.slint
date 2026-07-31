@@ -1,5 +1,5 @@
 import { Page } from "../page.slint";
-import { LoginField, RegisterField, ConnectionField } from "fields.slint";
+import { LoginField, RegisterField, ConnectionField, UpdateField } from "fields.slint";
 import { State, PreparingStates, ApplicationStates } from "../../globals/state.slint";
 import { PreparingSettings, MainSettings } from "../../globals/settings.slint";
 import { PreparingInternal } from "../../globals/internal/preparing.slint";
@@ -30,6 +30,10 @@ export component PreparingPage inherits Page {
         width: field_background.width;
     }
 
+    update_field := UpdateField {
+        width: field_background.width;
+    }
+
     login_field := LoginField {
         width: field_background.width;
     }
@@ -42,6 +46,10 @@ export component PreparingPage inherits Page {
         prepare_connection when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Connection: {
             connection_field.enabled: true;
             field_background.height: connection_field.height;
+        }
+        prepare-update when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Update: {
+            update_field.enabled: true;
+            field_background.height: update_field.height;
         }
         prepare_login when PreparingInternal.prepare-needed && State.preparing == PreparingStates.Login: {
             login_field.enabled: true;
