@@ -125,14 +125,14 @@ impl Application {
                         None => return,
                     };
 
-                    {
-                        let mut lock = service.write().await;
-                        for f in files {
-                            if let Err(err) = lock.upload_file(f.path()).await {
-                                MainActions::from(err).run_in_event_loop(win.clone());
-                            }
+                    
+                    for f in files {
+                        // todo: use single lock in api 3.x if it's will be needed
+                        if let Err(err) = service.write().await.upload_file(f.path()).await {
+                            MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
+                    
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
@@ -167,22 +167,22 @@ impl Application {
                 tokio::spawn(async move {
                     let mut from = service.read().await.current_dir() + &dir_name;
                     from.push('/');
-                    {
-                        let mut lock = service.write().await;
-                        let download_files = match lock.get_files(Some(from.clone())).await {
-                            Ok(files) => files,
-                            Err(err) => {
-                                MainActions::from(err).run_in_event_loop(win);
+                    
+                    let download_files = match service.write().await.get_files(Some(from.clone())).await {
+                        Ok(files) => files,
+                        Err(err) => {
+                            MainActions::from(err).run_in_event_loop(win);
                                 return 
-                            }
-                        };
-                        
-                        for file in download_files {
-                            if let Err(err) = lock.download_file(Some(from.clone()), file.name.clone()).await {
-                                MainActions::from(err).run_in_event_loop(win.clone());
-                            }
+                        }
+                    };
+                    
+                    for file in download_files {
+                        // todo: use single lock in api 3.x if it's will be needed
+                        if let Err(err) = service.write().await.download_file(Some(from.clone()), file.name.clone()).await {
+                            MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
+                    
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }

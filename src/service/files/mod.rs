@@ -2,10 +2,9 @@ pub mod connections;
 mod path;
 
 use {
-    super::ServiceError,
-    crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
+    super::ServiceError, crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, uuid::Uuid,
+    }, std::{fs::File, path::Path, sync::Arc}, system_interface::fs::FileIoExt, tokio::sync::Semaphore, uuid::Uuid,
 };
 
 pub struct Size(i64);
@@ -60,6 +59,7 @@ pub struct FileManager {
     active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
     connections: connections::Connections,
+    load_sem: Arc<Semaphore>
 }
 
 impl FileManager {
@@ -69,6 +69,7 @@ impl FileManager {
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
+            load_sem: Arc::new(Semaphore::new(20)),
         }
     }
 
@@ -173,7 +174,7 @@ impl FileManager {
             size: Some(file_meta.len() as i64),
         };
         
-        let save_info = match files_create_connection(&self.cfg.first_api_conf, ConnectionMode::Rdwr, conn_req).await {
+        let save_info = match files_create_connection(&self.cfg.second_api_conf, ConnectionMode::Rdwr, conn_req).await {
             Ok(conn) => conn,
             Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
         };
@@ -186,10 +187,13 @@ impl FileManager {
         let connections = self.connections.clone();
 
         let http_cfg = Arc::new(self.cfg.second_api_conf.clone());
+        let sem = self.load_sem.clone();
 
         // save file
         tokio::spawn(async move {
             for ch_idx in 0..conn_info.chunks_count {
+                let sem = sem.clone();
+                
                 if cancel_channel.try_recv().is_ok() {
                     return
                 }
@@ -215,6 +219,7 @@ impl FileManager {
 
                     if cancel.try_recv().is_ok() { return }
 
+                    let _perm = sem.acquire().await.unwrap();
                     match files_save_chunk(http_cfg.as_ref(), conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
                         Ok(_) => {
                             connections.increase_progress(conn_info.uuid).await;
@@ -256,7 +261,7 @@ impl FileManager {
             size: None,
         };
         
-        let download_info = match files_create_connection(&self.cfg.first_api_conf, ConnectionMode::Rdonly, conn_req).await {
+        let download_info = match files_create_connection(&self.cfg.second_api_conf, ConnectionMode::Rdonly, conn_req).await {
             Ok(conn) => conn,
             Err(err) => return Err(ServiceError::from(err)),
         };
@@ -278,10 +283,12 @@ impl FileManager {
 
         let connections = self.connections.clone();
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
+        let sem = self.load_sem.clone();
 
         // download stage
         tokio::spawn(async move {
             for ch_idx in 0..download_info.chunks_count {
+                let sem = sem.clone();
                 if download_cancel.try_recv().is_ok() { return }
 
                 let http_cfg = http_cfg.clone();
@@ -291,6 +298,7 @@ impl FileManager {
                 if download_cancel.try_recv().is_ok() { return }
                 tokio::spawn(async move {
                     let offset = download_info.chunk_size * ch_idx as i64;
+                    let _perm = sem.acquire().await.unwrap();
                     match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
                         Ok(v) => {
                             connections.increase_progress(download_info.uuid).await;
@@ -364,12 +372,14 @@ impl super::Service for FileManager {
         let mut second_api_cfg = first_api_cfg.clone();
 
         first_api_cfg.client = reqwest_middleware::ClientBuilder::new(client.clone())
-            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(170)))) // tmp
+            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(500)))) // tmp
             .build();
         
         second_api_cfg.client = reqwest_middleware::ClientBuilder::new(client)
-            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(107)))) // tmp
+            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(56)))) // tmp
             .build();
+    
+        // all fucking temp!
 
         self.cfg = FileServiceConfig::new(first_api_cfg, second_api_cfg, app_cfg.download_dir())
     }
