@@ -13,9 +13,9 @@ fi
 
 # linux build
 cargo build --release
-cp target/release/mhserver-client build/bin/
+cp target/release/mhserver-client build/bin/mhserver-client
 
 # windows build
 cargo build --target x86_64-pc-windows-gnu --release
-cp target/x86_64-pc-windows-gnu/release/mhserver-client.exe build/bin
+cp target/x86_64-pc-windows-gnu/release/mhserver-client.exe build/bin/mhserver-client.exe
 

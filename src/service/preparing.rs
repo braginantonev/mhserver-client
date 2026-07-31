@@ -54,7 +54,7 @@ pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, Serv
         return Ok(UpdateStatus::Available)
     }
 
-    let last_app_ver = match api_cfg.client.get("https://raw.githubusercontent.com/braginantonev/mhserver-client/dev/VERSION.test").send().await {
+    let last_app_ver = match api_cfg.client.get("https://raw.githubusercontent.com/braginantonev/mhserver-client/main/VERSION").send().await {
         Ok(resp) => resp.text().await.unwrap(),
         Err(_) => return Ok(UpdateStatus::CantCheck)
     };
@@ -77,8 +77,13 @@ pub async fn download_update(api_cfg: &Configuration) -> Result<(), ServiceError
         Err(err) => return Err(ServiceError::new("failed create update file", Some(err.to_string()), None)),
     };
 
+    let last_app_ver = match api_cfg.client.get("https://raw.githubusercontent.com/braginantonev/mhserver-client/main/VERSION").send().await {
+        Ok(resp) => resp.text().await.unwrap(),
+        Err(err) => return Err(ServiceError::new("failed download update", Some(err.to_string()), None)),
+    };
+
     let mut stream = match api_cfg.client
-        .get("https://api.github.com/repos/braginantonev/mhserver-client/tarball/v0.4.0") //tmp
+        .get(format!("https://github.com/braginantonev/mhserver-client/releases/download/{last_app_ver}/mhserver-client.exe"))
         .header(reqwest::header::USER_AGENT, format!("mhserver-client-{}", crate::APPLICATION_VERSION))
         .send()
         .await
