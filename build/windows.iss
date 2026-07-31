@@ -35,7 +35,7 @@ OutputBaseFilename=Mhserver Client
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Files]
-Source: "..\target\x86_64-pc-windows-gnu\debug\mhserver-client.exe"; DestDir: "{app}"; DestName: "Mhserver Client.exe"
+Source: "bin\mhserver-client.exe"; DestDir: "{app}"; DestName: "Mhserver Client.exe"
 Source: "update_windows.bat"; DestDir: "{app}"; DestName: "update.bat"
 
 ;[Icons]
