@@ -2,5 +2,5 @@ target/
 .vscode/
 api/openapi.yml
 api/examples/
-build/Output
+build/out
 build/bin

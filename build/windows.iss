@@ -29,13 +29,14 @@ DisableDirPage=auto
 DisableProgramGroupPage=auto
 DisableReadyPage=yes
 
-OutputBaseFilename=Mhserver Client
+OutputBaseFilename=mhserver-client
+OutputDir=out
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Files]
-Source: "bin\mhserver-client.exe"; DestDir: "{app}"; DestName: "mhserver-client.exe"
+Source: "bin\mhserver-client.exe"; DestDir: "{app}"; DestName: "Mhserver Client.exe"
 Source: "update_windows.bat"; DestDir: "{app}"; DestName: "update.bat"
 
 ;[Icons]
