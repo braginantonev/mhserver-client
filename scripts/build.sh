@@ -6,9 +6,9 @@ if [[ !(-e Cargo.toml) ]]; then
 fi
 
 if [[ !(-e build/bin) ]]; then
-    mkdir build/bin
+    mkdir build/bin/
 else
-    rm -rf build/bin
+    rm -rf build/bin/
 fi
 
 # linux build

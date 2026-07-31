@@ -1,7 +1,7 @@
 [Setup]
 AppName=Mhserver Client
 AppId=opBnr6diBkq-mhserver-client-bb72-0f6e58bbcb42
-AppVersion=0.5.0
+AppVersion=1.0.0
 AppPublisher=Bragin Anton
 AppPublisherURL=https://github.com/braginantonev
 AppUpdatesURL=https://github.com/braginantonev/mhserver-client
