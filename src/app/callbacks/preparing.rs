@@ -1,6 +1,6 @@
 use {
     crate::{
-        NotificationType, PreparingInternal, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
+        NotificationType, PreparingSettings, OS, PreparingInternal, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
     }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
@@ -14,8 +14,13 @@ fn api_cfg(client: Client, base_path: String) -> Configuration {
 impl Application {
     pub fn init_preparing_callbacks(&self) {
         let win_weak = self.ui_window.as_weak();
-
         let preparing_internal = self.ui_window.global::<PreparingInternal>();
+
+        #[cfg(target_os = "linux")]
+        self.ui_window.global::<PreparingSettings>().set_current_os(OS::Linux);
+
+        #[cfg(target_os = "windows")]
+        self.ui_window.global::<PreparingSettings>().set_current_os(OS::Windows);
 
         preparing_internal.on_connect({
             let win = win_weak.clone();
@@ -89,6 +94,24 @@ impl Application {
                         Ok(_) => PreparingActions::InvokeNextState.run_in_event_loop(win),
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
+                });
+            }
+        });
+
+        #[cfg(target_os = "windows")]
+        preparing_internal.on_update_windows({
+            let win = win_weak.clone();
+            let http_client = self.http_client.clone();
+
+            move || {
+                let win = win.clone();
+                let http_client = http_client.clone();
+
+                tokio::spawn(async move {
+                    match preparing::download_update(&api_cfg(http_client, "".to_owned())).await {
+                        Ok(_) => MainActions::ShowNotification("update downloaded".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win),
+                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                    }
                 });
             }
         });

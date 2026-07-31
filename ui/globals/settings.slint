@@ -14,6 +14,12 @@ export global FilesSettings {
     out property <duration> loader-update-interval: 1s;
 }
 
+export enum OS {
+    Linux,
+    Windows
+}
+
 export global PreparingSettings {
     out property <duration> greeting-duration: 2s;
+    in-out property <OS> current-os;
 }

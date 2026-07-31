@@ -1,12 +1,11 @@
 use {
     super::ServiceError,
-    crate::UpdateStatus,
+    crate::UpdateStatus, 
     api::{
-        apis::configuration::Configuration,
-        apis::default_api::{users_login, users_register, ping as tools_ping, version},
+        apis::{configuration::Configuration, default_api::{ping as tools_ping, users_login, users_register, version}}, 
         models::{UserLoginRequest, UserRegisterRequest},
-    },
-    semver::Version
+    }, 
+    semver::Version,
 };
 
 pub async fn login(api_cfg: &Configuration, user: UserLoginRequest) -> Result<String, ServiceError> {
@@ -55,7 +54,7 @@ pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, Serv
         return Ok(UpdateStatus::Available)
     }
 
-    let last_app_ver = match reqwest::get("https://raw.githubusercontent.com/braginantonev/mhserver-client/dev/VERSION.test").await {
+    let last_app_ver = match api_cfg.client.get("https://raw.githubusercontent.com/braginantonev/mhserver-client/dev/VERSION.test").send().await {
         Ok(resp) => resp.text().await.unwrap(),
         Err(_) => return Ok(UpdateStatus::CantCheck)
     };
@@ -66,3 +65,34 @@ pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, Serv
 
     Ok(UpdateStatus::NotNeeded)
 }
+
+#[cfg(target_os = "windows")]
+pub async fn download_update(api_cfg: &Configuration) -> Result<(), ServiceError> {
+    use {
+        futures_util::stream::StreamExt, system_interface::io::IoExt
+    };
+
+    let updated_app = match std::fs::File::create(std::env::temp_dir().join("mhserver-client.update")) {
+        Ok(v) => v,
+        Err(err) => return Err(ServiceError::new("failed create update file", Some(err.to_string()), None)),
+    };
+
+    let mut stream = match api_cfg.client
+        .get("https://api.github.com/repos/braginantonev/mhserver-client/tarball/v0.4.0") //tmp
+        .header(reqwest::header::USER_AGENT, format!("mhserver-client-{}", crate::APPLICATION_VERSION))
+        .send()
+        .await
+    {
+        Ok(res) => res.bytes_stream(),
+        Err(err) => return Err(ServiceError::new("failed download update", Some(err.to_string()), None)),
+    };
+
+    while let Some(chunk_result) = stream.next().await {
+        let chunk = chunk_result.unwrap(); //tmp
+        let _ = updated_app.write_all(&chunk);
+    }
+
+    let _ = updated_app.flush();
+
+    Ok(())
+} 
