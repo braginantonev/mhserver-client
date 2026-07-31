@@ -1,7 +1,7 @@
 use {
     super::{
         File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    }, crate::{FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
 };
 
 pub trait UiActions: TryFrom<ServiceError> {
@@ -105,9 +105,10 @@ impl UiActions for FilesActions {
     fn run(self, win: MainWindow) {
         match self {
             FilesActions::UpdateFilesList(files, from) => {
+                let icons = win.global::<FileIcons>().as_weak();
                 win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|f| {
                     File {
-                        icon: FileTypes::from(f).to_slint_image().expect("failed load file icon"),
+                        icon: FileTypes::from(f).to_slint_image(icons.clone()),
                         name: f.name.to_shared_string(),
                         server_path: from.to_shared_string(),
                         is_dir: f.is_dir.unwrap_or(false),

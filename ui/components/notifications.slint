@@ -4,6 +4,7 @@ import { NotificationsInternal, NotificationInfo, NotificationType } from "../gl
 import { OpacityObject, MenuSeparator } from "base.slint";
 import { FieldBackground } from "fields.slint";
 import { MainSettings, ColorSettings } from "../globals/settings.slint";
+import { Assets } from "../assets.slint";
 
 component Notification inherits OpacityObject {
     in property <NotificationInfo> info;
@@ -106,7 +107,7 @@ component Notification inherits OpacityObject {
             }
 
             close := SimpleButton {
-                icon: @image-url("../assets/close.png");
+                icon: Assets.close-icon;
                 icon-color: whitesmoke;
 
                 hover-additional-width: 10px;
@@ -133,11 +134,11 @@ component Notification inherits OpacityObject {
     states [
         info when info.type == NotificationType.Info: {
             progress.color: white;
-            icon.source: @image-url("../assets/info.png");
+            icon.source: Assets.info-icon;
         }
         error when info.type == NotificationType.Error: {
             progress.color: red;
-            icon.source: @image-url("../assets/error.png");
+            icon.source: Assets.error-icon;
         }
         downloaded when info.type == NotificationType.Download: {
             progress.color: ColorSettings.download-color;

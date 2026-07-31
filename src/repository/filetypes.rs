@@ -1,5 +1,5 @@
 use {
-    api::models::FilesListInner, std::path::Path,
+    crate::FileIcons, api::models::FilesListInner, slint::Weak,
 };
 
 pub enum FileTypes {
@@ -13,24 +13,19 @@ pub enum FileTypes {
     Undefined
 }
 
-const ICONS_PATH: &str = "ui/assets/file-icons";
-
 impl FileTypes {
-    pub fn to_slint_image(&self) -> Result<slint::Image, slint::LoadImageError> {
-        slint::Image::load_from_path(Path::new(&self.to_file_path()))
-    }
-
-    pub fn to_file_path(&self) -> String {
-        format!("{}/{}", ICONS_PATH, match self {
-            FileTypes::Directory => "folder.png",
-            FileTypes::Text => "text.png",
-            FileTypes::Document => "document.png",
-            FileTypes::Image => "image.png",
-            FileTypes::Video => "video.png",
-            FileTypes::Music => "music.png",
-            FileTypes::Executable => "executable.png",
-            FileTypes::Undefined => "undefined.png",
-        })
+    pub fn to_slint_image(&self, assets: Weak<FileIcons<'static>>) -> slint::Image {
+        let strong = assets.unwrap();
+        match self {
+            FileTypes::Directory => strong.get_folder(),
+            FileTypes::Text => strong.get_text(),
+            FileTypes::Document => strong.get_document(),
+            FileTypes::Image => strong.get_image(),
+            FileTypes::Video => strong.get_video(),
+            FileTypes::Music => strong.get_music(),
+            FileTypes::Executable => strong.get_executable(),
+            _ => strong.get_undefined(),
+        }
     }
 }
 
