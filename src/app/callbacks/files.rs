@@ -9,7 +9,6 @@ impl Application {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
         
-
         internal.on_update_list({
             let win = win.clone();
             let service = files_service.clone();
@@ -179,7 +178,7 @@ impl Application {
                         };
                         
                         for file in download_files {
-                            if let Err(err) = lock.download_file(Some(from.clone()), file.name).await {
+                            if let Err(err) = lock.download_file(Some(from.clone()), file.name.clone()).await {
                                 MainActions::from(err).run_in_event_loop(win.clone());
                             }
                         }

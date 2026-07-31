@@ -6,12 +6,12 @@ use {
     crate::{
         MainWindow, 
         config::app::ApplicationConfig,
-    }, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
+    }, errors::{ApplicationError, ApplicationErrors}, reqwest_middleware::Middleware, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 
 pub struct Application {
     ui_window: MainWindow,
-    http_client: reqwest::Client,
+    base_client: reqwest::Client,
     cfg: Arc<RwLock<ApplicationConfig>>,
 }
 
@@ -22,7 +22,7 @@ impl Application {
             Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateWindow(err.to_string()))),
         };
 
-        let http_client = match reqwest::Client::builder()
+        let base_client = match reqwest::Client::builder()
             .tls_info(true)
             .tls_backend_rustls()
             .danger_accept_invalid_certs(true)
@@ -39,7 +39,7 @@ impl Application {
 
         let s = Self {
             ui_window: win,
-            http_client,
+            base_client,
             cfg,
         };
 

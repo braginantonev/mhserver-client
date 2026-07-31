@@ -1,6 +1,5 @@
 use {
-    std::{sync::Arc, time::{Duration, SystemTime}}, 
-    tokio::sync::mpsc::{Sender, Receiver, channel},
+    reqwest_middleware::Middleware, std::{sync::Arc, time::{Duration, SystemTime}}, tokio::sync::mpsc::{Receiver, Sender, channel},
 };
 
 //todo: use on ping services, when this will be possible in server API
@@ -36,5 +35,29 @@ impl RequestQueue {
     pub async fn wait(&self) {
         let rx = self.rx.clone();
         rx.lock().await.recv().await;
+    }
+}
+
+pub struct RateLimitMiddleware {
+    queue: RequestQueue
+}
+
+impl RateLimitMiddleware {
+    pub fn new(queue: RequestQueue) -> Self {
+        Self { queue }
+    }
+}
+
+#[async_trait::async_trait]
+impl Middleware for RateLimitMiddleware {
+    async fn handle(
+        &self,
+        req: reqwest::Request,
+        extensions: &mut http::Extensions,
+        next: reqwest_middleware::Next<'_>,
+    ) -> reqwest_middleware::Result<reqwest::Response> {
+        self.queue.wait().await;
+        let resp = next.run(req, extensions).await?;
+        Ok(resp)
     }
 }

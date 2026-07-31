@@ -19,14 +19,14 @@ impl Application {
         preparing_internal.on_handle_state({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let client = self.http_client.clone();
+            let client = self.base_client.clone();
             move || {
                 let win = win.clone();
                 let cfg = cfg.clone();
                 let client = client.clone();
                 let _ = slint::spawn_local(async move {
                     let mut api_cfg = Configuration::new();
-                    api_cfg.client = client;
+                    api_cfg.client = reqwest_middleware::ClientWithMiddleware::from(client);
 
                     {
                         let lock = cfg.read().await;
@@ -68,7 +68,7 @@ impl Application {
         
         preparing_internal.on_update_services({
             let update_cfg = self.cfg.clone();
-            let client = self.http_client.clone();
+            let client = self.base_client.clone();
             move || {
                 let update_cfg = update_cfg.clone();
                 let services = services.clone();
