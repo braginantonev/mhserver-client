@@ -1,5 +1,6 @@
 use {
     super::ServiceError,
+    crate::UpdateStatus,
     api::{
         apis::configuration::Configuration,
         apis::default_api::{users_login, users_register, ping as tools_ping, version},
@@ -29,14 +30,6 @@ pub async fn ping(api_cfg: &Configuration) -> Result<(), ServiceError> {
     }
 }
 
-pub enum UpdateStatus {
-    Required,
-    Available,
-    ServerOld,
-    CantCheck,
-    NotNeeded
-}
-
 pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, ServiceError> {
     let server_version = match version(api_cfg).await {
         Ok(v) => v.content.unwrap(),
@@ -62,7 +55,7 @@ pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, Serv
         return Ok(UpdateStatus::Available)
     }
 
-    let last_app_ver = match reqwest::get("https://github.com/braginantonev/mhserver-client/blob/main/VERSION").await {
+    let last_app_ver = match reqwest::get("https://raw.githubusercontent.com/braginantonev/mhserver-client/dev/VERSION.test").await {
         Ok(resp) => resp.text().await.unwrap(),
         Err(_) => return Ok(UpdateStatus::CantCheck)
     };
