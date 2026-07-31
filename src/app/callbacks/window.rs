@@ -13,7 +13,7 @@ impl Application {
                 let cfg = cfg.clone();
                 tokio::spawn(async move {
                     #[cfg(target_os = "windows")]
-                    Command::new("open").arg(cfg.read().await.download_dir().unwrap_or(default_download_dir()).spawn().unwrap());
+                    Command::new("open").arg(cfg.read().await.download_dir().unwrap_or(default_download_dir())).spawn().unwrap();
 
                     #[cfg(target_os = "linux")]
                     Command::new("xdg-open").arg(cfg.read().await.download_dir().unwrap_or(default_download_dir())).spawn().unwrap();
