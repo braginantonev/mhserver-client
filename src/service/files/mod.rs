@@ -100,14 +100,14 @@ impl FileManager {
     //* API requests
 
     pub async fn available_space(&self) -> Result<Size, ServiceError> {
-        match files_get_available_space(&self.cfg.api_conf).await {
+        match files_get_available_space(&self.cfg.first_api_conf).await {
             Ok(v) => Ok(Size(v.content.unwrap_or_default())),
             Err(err) => Err(ServiceError::from(err))
         }
     }
 
     pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), ServiceError> {
-        match files_make_directory(&self.cfg.api_conf, self.active_dir.with(new_dir).to_string().as_str()).await {
+        match files_make_directory(&self.cfg.first_api_conf, self.active_dir.with(new_dir).to_string().as_str()).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
                 self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
@@ -118,7 +118,7 @@ impl FileManager {
     }
 
     pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), ServiceError> {
-        match files_remove_directory(&self.cfg.api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
+        match files_remove_directory(&self.cfg.first_api_conf, self.active_dir.with(target_dir).to_string().as_str()).await {
             Ok(_) => {
                 self.cached_files.remove(target_dir, true);
                 Ok(())
@@ -129,7 +129,7 @@ impl FileManager {
 
     /// Get files list from server and save to local cache
     pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, ServiceError> {
-        match get_files_list(&self.cfg.api_conf, &from.unwrap_or(self.current_dir())).await {
+        match get_files_list(&self.cfg.first_api_conf, &from.unwrap_or(self.current_dir())).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res.content.unwrap());
                 Ok(self.cached_files())
@@ -173,7 +173,7 @@ impl FileManager {
             size: Some(file_meta.len() as i64),
         };
         
-        let save_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdwr, conn_req).await {
+        let save_info = match files_create_connection(&self.cfg.first_api_conf, ConnectionMode::Rdwr, conn_req).await {
             Ok(conn) => conn,
             Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
         };
@@ -185,7 +185,7 @@ impl FileManager {
         self.connections.add(conn_info.uuid, conn_record).await;
         let connections = self.connections.clone();
 
-        let http_cfg = Arc::new(self.cfg.api_conf.clone());
+        let http_cfg = Arc::new(self.cfg.second_api_conf.clone());
 
         // save file
         tokio::spawn(async move {
@@ -256,7 +256,7 @@ impl FileManager {
             size: None,
         };
         
-        let download_info = match files_create_connection(&self.cfg.api_conf, ConnectionMode::Rdonly, conn_req).await {
+        let download_info = match files_create_connection(&self.cfg.first_api_conf, ConnectionMode::Rdonly, conn_req).await {
             Ok(conn) => conn,
             Err(err) => return Err(ServiceError::from(err)),
         };
@@ -272,11 +272,9 @@ impl FileManager {
         let mut save_cancel = conn_record.cancel_receiver();
         let mut download_cancel = conn_record.cancel_receiver();
 
-        println!("wait");
         self.connections.add(download_info.uuid, conn_record).await;
-        println!("pass");
 
-        let http_cfg = Arc::new(self.cfg.api_conf.clone());
+        let http_cfg = Arc::new(self.cfg.second_api_conf.clone());
 
         let connections = self.connections.clone();
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
@@ -359,14 +357,20 @@ impl FileManager {
 impl super::Service for FileManager {
     fn update_config(&mut self, client: reqwest::Client, app_cfg: crate::config::app::ApplicationConfig) {
         let server_api_conf = app_cfg.server_api_config();
-        let mut api_cfg = Configuration::new();
-        api_cfg.client = reqwest_middleware::ClientBuilder::new(client)
-            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(50)))) // tmp
+        let mut first_api_cfg = Configuration::new();
+        first_api_cfg.base_path = server_api_conf.base_path().to_owned();
+        first_api_cfg.bearer_access_token = Some(server_api_conf.jwt().to_owned());
+
+        let mut second_api_cfg = first_api_cfg.clone();
+
+        first_api_cfg.client = reqwest_middleware::ClientBuilder::new(client.clone())
+            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(170)))) // tmp
+            .build();
+        
+        second_api_cfg.client = reqwest_middleware::ClientBuilder::new(client)
+            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(107)))) // tmp
             .build();
 
-        api_cfg.base_path = server_api_conf.base_path().to_owned();
-        api_cfg.bearer_access_token = Some(server_api_conf.jwt().to_owned());
-
-        self.cfg = FileServiceConfig::new(api_cfg, app_cfg.download_dir())
+        self.cfg = FileServiceConfig::new(first_api_cfg, second_api_cfg, app_cfg.download_dir())
     }
 }
