@@ -27,10 +27,9 @@ impl RequestQueue {
 
     fn start_passing(&self, tx: Sender<()>, interval: Duration) {
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(interval);
             loop {
                 let _ = tx.send(()).await;
-                interval.tick().await;
+                tokio::time::sleep(interval).await;
             }
         });
     }

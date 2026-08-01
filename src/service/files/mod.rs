@@ -381,7 +381,6 @@ impl FileManager {
                         if let Err(err) = f.write_at(&chunk, v.1 as u64) {
                             eprintln!("failed write chunk to file ({err})")
                         }
-                        
                     } else {
                         eprintln!("return a null chunk to write")
                     }
