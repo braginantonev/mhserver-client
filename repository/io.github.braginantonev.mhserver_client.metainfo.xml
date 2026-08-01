@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>io.github.braginantonev.mhserver_client</id>
+    
+    <name>mhserver-client</name>
+    <summary>Client app for mhserver</summary>
+  
+    <metadata_license>MIT</metadata_license>
+    <project_license>MIT</project_license>
+  
+    <description>
+        <p>
+            Easy communication with your home server
+        </p>
+    </description>
+
+    <content_rating type="oars-1.0"/>
+  
+    <launchable type="desktop-id">io.github.braginantonev.mhserver_client.desktop</launchable>
+    <screenshots>
+        <screenshot type="default">
+            <image>https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/main.png</image>
+        </screenshot>
+        <screenshot>
+            <image>https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/files.png</image>
+        </screenshot>
+        <screenshot>
+            <image>https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/upload.png</image>
+        </screenshot>
+    </screenshots>
+
+    <developer id="io.github.braginantonev">
+        <name>Bragin Anton</name>
+    </developer>
+
+    <url type="homepage">https://github.com/braginantonev/mhserver-client</url>
+</component>
