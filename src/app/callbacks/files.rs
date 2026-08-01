@@ -1,11 +1,14 @@
 use {
     crate::{
-        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
-    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
+        actions::{AnyActions, FilesActions, MainActions, UiActions},
+        FilesInternal, app::Application, service::files::FileManager,
+    }, 
+    std::{str::FromStr, sync::Arc},
+    slint::ComponentHandle, tokio::sync::RwLock
 };
 
 impl Application {
-    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<service::files::FileManager>>) {
+    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<FileManager>>) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
         

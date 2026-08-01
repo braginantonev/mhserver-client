@@ -1,7 +1,9 @@
 use {
     crate::{
-        PreparingInternal, PreparingStates, UpdateStatus, State, actions::{MainActions, UiActions}, app::Application, service::*
-    }, api::apis::configuration::Configuration, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
+        actions::{MainActions, UiActions},
+        service::*, PreparingInternal, PreparingStates, UpdateStatus, State, app::Application,
+    }, 
+    api::apis::configuration::Configuration, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
 };
 
 impl Application {

@@ -3,10 +3,9 @@ pub mod callbacks;
 mod init;
 
 use {
-    crate::{
-        MainWindow, 
-        config::app::ApplicationConfig,
-    }, errors::{ApplicationError, ApplicationErrors}, reqwest_middleware::Middleware, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
+    crate::{MainWindow, config::app::ApplicationConfig}, 
+    errors::{ApplicationError, ApplicationErrors}, 
+    slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
 };
 
 pub struct Application {

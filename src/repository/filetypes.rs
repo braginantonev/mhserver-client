@@ -1,5 +1,7 @@
 use {
-    crate::FileIcons, api::models::FilesListInner, slint::Weak,
+    crate::FileIcons, 
+    api::models::FilesListInner, 
+    slint::Weak,
 };
 
 pub enum FileTypes {

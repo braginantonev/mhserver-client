@@ -1,7 +1,9 @@
 use {
     crate::{
-        NotificationType, OS, PreparingInternal, PreparingSettings, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
-    }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
+        actions::{MainActions, PreparingActions, UiActions},
+        NotificationType, OS, PreparingInternal, PreparingSettings, app::Application, service::preparing
+    }, 
+    api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
 fn api_cfg(client: Client, base_path: String) -> Configuration {

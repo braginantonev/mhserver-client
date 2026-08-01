@@ -1,5 +1,7 @@
 use {
-    reqwest_middleware::Middleware, std::{sync::Arc, time::{Duration, SystemTime}}, tokio::sync::mpsc::{Receiver, Sender, channel},
+    reqwest_middleware::Middleware, 
+    std::{sync::Arc, time::SystemTime}, 
+    tokio::{time::Duration, sync::mpsc::{Receiver, Sender, channel}},
 };
 
 //todo: use on ping services, when this will be possible in server API
@@ -25,9 +27,10 @@ impl RequestQueue {
 
     fn start_passing(&self, tx: Sender<()>, interval: Duration) {
         tokio::spawn(async move {
+            let mut interval = tokio::time::interval(interval);
             loop {
                 let _ = tx.send(()).await;
-                tokio::time::sleep(interval).await;
+                interval.tick().await;
             }
         });
     }

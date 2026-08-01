@@ -1,5 +1,7 @@
 use {
-    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, repository::dirs::default_download_dir}, slint::{ComponentHandle, Global, Model, ModelRc, VecModel}, std::{cell::Cell, process::Command, rc::Rc}
+    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, repository::dirs::default_download_dir},
+    slint::{ComponentHandle, Global, Model, ModelRc, VecModel}, 
+    std::{cell::Cell, process::Command, rc::Rc}
 };
 
 impl Application {
