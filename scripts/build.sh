@@ -5,8 +5,6 @@ if [[ !(-e Cargo.toml) ]]; then
     cd ..
 fi
 
-mkdir build/bin/
-
 # linux build
 echo "start linux build"
 cargo build --release
