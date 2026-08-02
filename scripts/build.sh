@@ -5,10 +5,6 @@ if [[ !(-e Cargo.toml) ]]; then
     cd ..
 fi
 
-if [[ -e build/bin ]]; then
-    rm -rf build/bin
-fi
-
 tag_name=""
 echo -n "Tag name: "
 read tag_name
