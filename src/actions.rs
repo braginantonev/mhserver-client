@@ -1,7 +1,11 @@
 use {
-    super::{
-        File, MainWindow, NotificationType, repository::filetypes::FileTypes
-    }, crate::{FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}}, reqwest::StatusCode, slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc,
+    super::{File, MainWindow, NotificationType, repository::filetypes::FileTypes}, 
+    crate::{
+        service::{ServiceError, files::connections::ConnectionInfo},
+        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State
+    },
+    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, 
+    reqwest::StatusCode, std::rc::Rc,
 };
 
 pub trait UiActions: TryFrom<ServiceError> {

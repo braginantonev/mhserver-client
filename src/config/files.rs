@@ -5,7 +5,7 @@ use crate::repository::dirs::default_download_dir;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {
-    pub api_conf: Configuration,
+    api_conf: Configuration,
     download_dir: PathBuf,
 }
 

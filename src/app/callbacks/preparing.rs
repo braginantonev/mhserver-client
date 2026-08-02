@@ -1,12 +1,14 @@
 use {
     crate::{
-        NotificationType, OS, PreparingInternal, PreparingSettings, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::preparing
-    }, api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
+        actions::{MainActions, PreparingActions, UiActions},
+        NotificationType, OS, PreparingInternal, PreparingSettings, app::Application, service::preparing
+    }, 
+    api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
 };
 
 fn api_cfg(client: Client, base_path: String) -> Configuration {
     let mut cfg = Configuration::new();
-    cfg.client = client;
+    cfg.client = reqwest_middleware::ClientWithMiddleware::from(client);
     cfg.base_path = base_path;
     cfg
 }
@@ -25,7 +27,7 @@ impl Application {
         preparing_internal.on_connect({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let http_client = self.http_client.clone();
+            let http_client = self.base_client.clone();
 
             move |srv_addr| {
                 let win = win.clone();
@@ -47,7 +49,7 @@ impl Application {
         preparing_internal.on_login({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let http_client = self.http_client.clone();
+            let http_client = self.base_client.clone();
 
             move |username, password| {
                 let win = win.clone();
@@ -73,7 +75,7 @@ impl Application {
         preparing_internal.on_register({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let http_client = self.http_client.clone();
+            let http_client = self.base_client.clone();
 
             move |username, password, verify, key| {
                 let win = win.clone();

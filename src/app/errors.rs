@@ -1,7 +1,4 @@
-use std::{
-    error::Error,
-    fmt, 
-};
+use std::{error::Error, fmt::{Display, Formatter, Result}};
 
 #[derive(Debug)]
 pub enum ApplicationErrors {
@@ -33,8 +30,8 @@ pub struct ApplicationError {
     err: ApplicationErrors
 }
 
-impl fmt::Display for ApplicationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for ApplicationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let _ = write!(f, "app error: {}\n", self.err.name());
         write!(f, "error description: {}", self.err.desc())
     }

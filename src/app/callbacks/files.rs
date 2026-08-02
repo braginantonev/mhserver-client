@@ -1,15 +1,17 @@
 use {
     crate::{
-        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service
-    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
+        actions::{AnyActions, FilesActions, MainActions, UiActions},
+        FilesInternal, app::Application, service::files::FileManager,
+    }, 
+    std::{str::FromStr, sync::Arc},
+    slint::ComponentHandle, tokio::sync::RwLock
 };
 
 impl Application {
-    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<service::files::FileManager>>) {
+    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<FileManager>>) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
         
-
         internal.on_update_list({
             let win = win.clone();
             let service = files_service.clone();
@@ -126,14 +128,14 @@ impl Application {
                         None => return,
                     };
 
-                    {
-                        let mut lock = service.write().await;
-                        for f in files {
-                            if let Err(err) = lock.upload_file(f.path()).await {
-                                MainActions::from(err).run_in_event_loop(win.clone());
-                            }
+                    
+                    for f in files {
+                        // todo: use single lock in api 3.x if it's will be needed
+                        if let Err(err) = service.write().await.upload_file(f.path()).await {
+                            MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
+                    
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
@@ -168,22 +170,22 @@ impl Application {
                 tokio::spawn(async move {
                     let mut from = service.read().await.current_dir() + &dir_name;
                     from.push('/');
-                    {
-                        let mut lock = service.write().await;
-                        let download_files = match lock.get_files(Some(from.clone())).await {
-                            Ok(files) => files,
-                            Err(err) => {
-                                MainActions::from(err).run_in_event_loop(win);
+                    
+                    let download_files = match service.write().await.get_files(Some(from.clone())).await {
+                        Ok(files) => files,
+                        Err(err) => {
+                            MainActions::from(err).run_in_event_loop(win);
                                 return 
-                            }
-                        };
-                        
-                        for file in download_files {
-                            if let Err(err) = lock.download_file(Some(from.clone()), file.name).await {
-                                MainActions::from(err).run_in_event_loop(win.clone());
-                            }
+                        }
+                    };
+                    
+                    for file in download_files {
+                        // todo: use single lock in api 3.x if it's will be needed
+                        if let Err(err) = service.write().await.download_file(Some(from.clone()), file.name.clone()).await {
+                            MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
+                    
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }

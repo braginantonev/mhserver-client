@@ -16,6 +16,9 @@ system-interface = "0.27.3"
 rfd = "0.17.2"
 semver = "1.0.28"
 futures-util = "0.3.33"
+reqwest-middleware = "0.5.2"
+http = "1.5.0"
+async-trait = "0.1.91"
 
 [build-dependencies]
 slint-build = "1.15.1"

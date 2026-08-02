@@ -5,3 +5,4 @@ templateDir: ./templates
 additionalProperties:
   packageName: api
   supportAsync: true
+  supportMiddleware: true

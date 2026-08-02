@@ -58,7 +58,8 @@ impl ServiceError {
 impl<T> From<Error<T>> for ServiceError {
     fn from(value: Error<T>) -> Self {
         match value {
-            Error::Reqwest(err) => ServiceError { label: String::from("network error"), desc: Some(err.to_string()), code: err.status() },
+            Error::ReqwestMiddleware(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
+            Error::Reqwest(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
             Error::Serde(err) => ServiceError { label: String::from("request parse error"), desc: Some(err.to_string()), code: None },
             Error::Io(err) => ServiceError { label: err.to_string(), desc: None, code: None },
             Error::ResponseError(c) => {

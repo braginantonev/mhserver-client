@@ -142,9 +142,11 @@ component Notification inherits OpacityObject {
         }
         downloaded when info.type == NotificationType.Download: {
             progress.color: ColorSettings.download-color;
+            icon.source: Assets.download-icon;
         }
         uploaded when info.type == NotificationType.Upload: {
             progress.color: ColorSettings.upload-color;
+            icon.source: Assets.upload-icon;
         }
     ]
 }
