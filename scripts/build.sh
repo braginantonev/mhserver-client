@@ -9,6 +9,13 @@ if [[ -e build/bin ]]; then
     rm -rf build/bin
 fi
 
+tag_name=""
+echo -n "Tag name: "
+read tag_name
+
+git tag -a $tag_name -m "release $tag_name"
+git push --tags
+
 mkdir build/bin/
 
 # linux build
