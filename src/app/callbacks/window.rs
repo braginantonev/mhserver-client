@@ -14,11 +14,14 @@ impl Application {
             move || {
                 let cfg = cfg.clone();
                 tokio::spawn(async move {
+                    let download_dir = cfg.read().await.download_dir().unwrap_or(default_download_dir());
+                    let _ = std::fs::create_dir_all(download_dir.clone());
+
                     #[cfg(target_os = "windows")]
-                    Command::new("open").arg(cfg.read().await.download_dir().unwrap_or(default_download_dir())).spawn().unwrap();
+                    Command::new("explorer").arg(download_dir).spawn().unwrap();
 
                     #[cfg(target_os = "linux")]
-                    Command::new("xdg-open").arg(cfg.read().await.download_dir().unwrap_or(default_download_dir())).spawn().unwrap();
+                    Command::new("xdg-open").arg(download_dir).spawn().unwrap();
                 });
             }
         });
