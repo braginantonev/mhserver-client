@@ -103,7 +103,7 @@ impl Application {
         #[cfg(target_os = "windows")]
         preparing_internal.on_update_windows({
             let win = win_weak.clone();
-            let http_client = self.http_client.clone();
+            let http_client = self.base_client.clone();
 
             move || {
                 let win = win.clone();
