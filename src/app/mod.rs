@@ -23,7 +23,7 @@ impl Application {
 
         let base_client = match reqwest::Client::builder()
             .tls_info(true)
-            .tls_backend_rustls()
+            .tls_backend_native()
             .danger_accept_invalid_certs(true)
             .timeout(std::time::Duration::new(2, 0))
             .build() {

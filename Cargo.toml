@@ -5,10 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-api = { path = "./api/gen" }
-reqwest = { version = "0.13.1", features = ["json", "stream"] }
+api = { path = "./api/gen", features = ["native-tls"]}
+reqwest = { version = "0.13.1", default-features = false, features = ["json", "stream", "native-tls"] }
 slint = "1.15.1"
-tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.49.0", default-features = false, features = ["macros", "rt-multi-thread", "sync"] }
 serde = "1.0.228"
 toml = "0.9.11"
 uuid = "1.23.1"
