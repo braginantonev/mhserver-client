@@ -6,15 +6,23 @@
 ### Linux
 #### Arch
 Пакет доступен на `AUR`. Вы можете установить его вручную, либо с помощью пакетного мэнеджера, например `yay`.
-```
+``` bash
 yay -S mhserver-client
 ```
+Если пакет на `AUR` недоступен, вы можете установить пакет вручную. Скачайте пакет из ассетов [последнего релиза](https://github.com/braginantonev/mhserver-client/releases/latest).
+Например, для версии 1.0.1 - это файл [mhserver-client-1.0.1-1-x86_64.pkg.tar.zst](https://github.com/braginantonev/mhserver-client/releases/download/v1.0.1/mhserver-client-1.0.1-1-x86_64.pkg.tar.zst):
+``` bash
+cd /tmp
+wget https://github.com/braginantonev/mhserver-client/releases/download/v1.0.1/mhserver-client-1.0.1-1-x86_64.pkg.tar.zst
+sudo pacman -U mhserver-client-1.0.1-1-x86_64.pkg.tar.zst
+```
+
 #### Ручная установка
 Для данного способа скачайте билд из [последнего релиза](https://github.com/braginantonev/mhserver-client/releases/latest). 
 Хоть и дополнительных зависимостей не требуется, возможно вам придётся установить `openssl`.
 
 Скачанным билдом уже можно пользоваться, расположите его где удобно и создайте символическую ссылку:
-```
+``` bash
 ln -s путь_до_исполняемого_файла куда_вы_хотетите_сохранить_ссылку
 ```
 Рекомендую расположить исполняемый файл в `/opt/mhserver-client`.
