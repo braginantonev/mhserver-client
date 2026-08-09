@@ -18,10 +18,9 @@ impl ServerPath {
         self.buff.pop().is_some()
     }
 
-    pub fn with(&self, element: &str) -> Self {
-        let mut res = self.buff.clone();
-        res.push(element.to_owned());
-        Self { buff: res }
+    pub fn with(mut self, element: &str) -> Self {
+        self.buff.push(element.to_owned());
+        self
     }
 }
 
@@ -33,5 +32,11 @@ impl ToString for ServerPath {
             s.push('/');
         }
         s
+    }
+}
+
+impl Into<String> for ServerPath {
+    fn into(self) -> String {
+        self.to_string()
     }
 }

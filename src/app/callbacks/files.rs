@@ -1,10 +1,7 @@
 use {
     crate::{
-        actions::{AnyActions, FilesActions, MainActions, UiActions},
-        FilesInternal, app::Application, service::files::FileManager,
-    }, 
-    std::{str::FromStr, sync::Arc},
-    slint::ComponentHandle, tokio::sync::RwLock
+        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service::files::{dirs::Directory, FileManager},
+    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::{sync::RwLock}
 };
 
 impl Application {
@@ -52,10 +49,10 @@ impl Application {
                     } else {
                         lock.prev().await
                     } {
-                        Ok(files) => FilesActions::UpdateFilesList(files, lock.current_dir()).run_in_event_loop(win.clone()),
+                        Ok(files) => FilesActions::UpdateFilesList(files, lock.current_dir().into()).run_in_event_loop(win.clone()),
                         Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
                     };
-                    FilesActions::UpdateCurrentDirectory(lock.current_dir()).run_in_event_loop(win);
+                    FilesActions::UpdateCurrentDirectory(lock.current_dir().into()).run_in_event_loop(win);
                 });
             }
         });
@@ -76,7 +73,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            FilesActions::UpdateFilesList(files, from).run_in_event_loop(win);
+                            FilesActions::UpdateFilesList(files, from.into()).run_in_event_loop(win);
                         },
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -100,7 +97,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            FilesActions::UpdateFilesList(files, from).run_in_event_loop(win);
+                            FilesActions::UpdateFilesList(files, from.into()).run_in_event_loop(win);
                         },
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -119,7 +116,7 @@ impl Application {
 
                 tokio::spawn(async move {
                     let files = rfd::AsyncFileDialog::new()
-                        .set_directory("/")
+                        .set_directory("~")
                         .pick_files()
                         .await;
                     
@@ -136,6 +133,51 @@ impl Application {
                         }
                     }
                     
+                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                });
+            }
+        });
+
+        internal.on_upload_folders({
+            let win = win.clone();
+            let service = files_service.clone();
+
+            move || {
+                let win = win.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let dirs = rfd::AsyncFileDialog::new()
+                        .set_directory("~")
+                        .pick_folders()
+                        .await;
+                    
+                    let dirs = match dirs {
+                        Some(v) => v,
+                        None => return,
+                    };
+
+                    for dir in dirs {
+                        let mut files = Directory::from_recursive(dir.path()).read();
+                        while let Some(files) = files.recv().await {
+                            for f in files.1 {
+                                service.write().await.upload_files(files.into())
+                            }
+                            
+                        }
+                    }
+
+                    
+                    
+                    // let mut lock = service.write().await;
+                    // for i in dirs {
+                    //     if let Err(err) = lock.make_dir(upload_files.swap_remove(i).name()).await {
+                    //         MainActions::from(err).run_in_event_loop(win.clone());
+                    //     };
+                    // }
+                    // lock.upload_files(upload_files.iter().map(|x| x.path()).collect()).await;
+                    // drop(lock);
+
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
@@ -168,7 +210,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let mut from = service.read().await.current_dir() + &dir_name;
+                    let mut from = service.read().await.current_dir().into() + &dir_name;
                     from.push('/');
                     
                     let download_files = match service.write().await.get_files(Some(from.clone())).await {

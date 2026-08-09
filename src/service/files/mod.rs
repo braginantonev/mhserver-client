@@ -1,5 +1,6 @@
 pub mod connections;
 mod path;
+pub mod dirs;
 
 use {
     super::ServiceError, 
@@ -121,13 +122,13 @@ impl FileManager {
         }
     }
 
-    pub fn current_dir(&self) -> String {
-        self.active_dir.to_string()
+    pub fn current_dir(&self) -> path::ServerPath {
+        self.active_dir.clone()
     }
 
     /// Get a cached files list 
     pub fn cached_files(&self) -> Vec<FilesListInner> {
-        if self.current_dir() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
+        if self.active_dir.to_string() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
     }
 
     /// Go to next folder, and return files list
@@ -156,7 +157,7 @@ impl FileManager {
     }
 
     pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), ServiceError> {
-        match files_make_directory(&self.request_pool.high_priority(), self.active_dir.with(new_dir).to_string().as_str()).await {
+        match files_make_directory(&self.request_pool.high_priority(), &self.current_dir().with(new_dir).to_string()).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
                 self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
@@ -167,7 +168,7 @@ impl FileManager {
     }
 
     pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), ServiceError> {
-        match files_remove_directory(&self.request_pool.high_priority(), self.active_dir.with(target_dir).to_string().as_str()).await {
+        match files_remove_directory(&self.request_pool.high_priority(), &self.current_dir().with(target_dir).to_string()).await {
             Ok(_) => {
                 self.cached_files.remove(target_dir, true);
                 Ok(())
@@ -178,7 +179,7 @@ impl FileManager {
 
     /// Get files list from server and save to local cache
     pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, ServiceError> {
-        match get_files_list(&self.request_pool.high_priority(), &from.unwrap_or(self.current_dir())).await {
+        match get_files_list(&self.request_pool.high_priority(), &from.unwrap_or(self.current_dir().into())).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res.content.unwrap());
                 Ok(self.cached_files())
@@ -283,9 +284,17 @@ impl FileManager {
         Ok(conn_info.uuid)
     }
 
+    pub async fn upload_files(&mut self, files: Vec<&Path>) -> Vec<Result<Uuid, ServiceError>> {
+        let mut results = Vec::<Result<Uuid, ServiceError>>::with_capacity(files.len());
+        for f in files {
+            results.push(self.upload_file(f).await);
+        }
+        results
+    }
+
     pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, ServiceError> {
         let with_dirs = from.is_some();
-        let from = from.unwrap_or(self.current_dir());
+        let from = from.unwrap_or(self.current_dir().into());
 
         let mut save_to = self.cfg.download_dir();
         if with_dirs {
