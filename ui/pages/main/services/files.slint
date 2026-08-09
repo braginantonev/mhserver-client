@@ -91,50 +91,6 @@ component FileCeil {
     }
 }
 
-// Может быть в будущем я вернусь к нему, если захочу. А пока пусть будет так
-/*
-struct ExtendFileInfo {
-    name: string,
-    is_dir: bool
-}
-
-
-component FileExtender { 
-    private property <length> text-padding: 15px;
-
-    height: 35px;
-    opacity: 0.0;
-    animate opacity { duration: 250ms; }
-
-    Rectangle {
-        width: txt.width + text-padding * 2;
-        height: txt.height;
-        x: 0px;
-
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-            
-        background: #302222;
-    }
-
-    txt := Text {
-        height: parent.height;
-        x: parent.x + text-padding;
-        font-size: 12pt;
-        vertical-alignment: center;
-    }
-
-    public function show_file(file-info: ExtendFileInfo) {
-        self.opacity = 1.0;
-        txt.text = file-info.name + (file-info.is-dir ? @tr(" (Folder)") : "");
-    }
-
-    public function hide() {
-        self.opacity = 0.0;
-    }
-}
-*/
-
 //* ----------------- Context Menu ----------------- *//
 
 global ContextMenuInfo {
@@ -168,7 +124,7 @@ component ContextMenu inherits PopupWindow {
 
     VerticalLayout {
         // Open action
-        act_open := MenuButton {
+        MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Открыть");
@@ -182,7 +138,7 @@ component ContextMenu inherits PopupWindow {
         MenuSeparator {}
 
         // Download action
-        act_download := MenuButton {
+        MenuButton {
             height: element-height;
             text: @tr("Скачать");
             clicked => {
@@ -190,14 +146,21 @@ component ContextMenu inherits PopupWindow {
             }
         }
 
-        act_upload := MenuButton {
+        // Upload files
+        MenuButton {
             height: element-height;
             text: @tr("Загрузить файлы");
             clicked => { FilesInternal.upload_files() }
         }
 
+        MenuButton {
+            height: element-height;
+            text: @tr("Загрузить папки");
+            clicked => { FilesInternal.upload_folders() }
+        }
+
         // Delete action
-        act_delete := MenuButton {
+        MenuButton {
             enabled: !ContextMenuInfo.target-empty;
             height: element-height;
             text: @tr("Удалить");
@@ -213,7 +176,7 @@ component ContextMenu inherits PopupWindow {
         MenuSeparator {}
 
         // Properties action
-        act_properties := MenuButton {
+        MenuButton {
             enabled: false;
             height: element-height;
             text: @tr("Параметры");
