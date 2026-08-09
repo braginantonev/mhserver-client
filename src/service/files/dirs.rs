@@ -58,31 +58,23 @@ impl Directory {
         self.name.as_str()
     }
 
-    pub fn path(&self) -> &Path {
-        &self.os_path
-    }
-
-    pub fn files(&self) -> Vec<String> {
-        self.files.clone()
-    }
-
     pub fn dirs(&self) -> Vec<Arc<Directory>> {
         self.dirs.clone()
     }
 
-    pub fn read(self) -> mpsc::Receiver<(ServerPath, Vec<String>)> {
-        let (tx, rx) = mpsc::channel(5);
-        tokio::spawn(async move {
-            let _ = self.read_recursive(ServerPath::new().with(self.name()), tx);
+    pub fn read(self) -> mpsc::Receiver<(ServerPath, Vec<PathBuf>)> {
+        let (tx, rx) = mpsc::channel(50);
+        tokio::task::spawn_blocking(move || {
+            let _ = self.read_recursive(ServerPath::new(), tx);
         });
         rx
     }
 
-    async fn read_recursive(&self, from: ServerPath, tx: mpsc::Sender<(ServerPath, Vec<String>)>) {
+    fn read_recursive(&self, from: ServerPath, tx: mpsc::Sender<(ServerPath, Vec<PathBuf>)>) {
         let from = from.with(self.name());
         for dir in self.dirs() {
             let _ = dir.read_recursive(from.clone(), tx.clone());
         }
-        let _ = tx.send((from, self.files())).await;
+        let _ = tx.blocking_send((from, self.files.iter().map(|x| self.os_path.join(x)).collect()));
     }
 }
