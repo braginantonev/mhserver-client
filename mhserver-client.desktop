@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Mhserver Client
+GenericName=Client application
+Comment=Client to use mhserver
+Path=/opt/mhserver-client
+Exec=mhserver-client
+Icon=mhserver-client
+Terminal=false
+Categories=Office

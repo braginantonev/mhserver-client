@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [[ !(-e Cargo.toml) ]]; then
-    echo zxc
-    cd ..
+    echo "run in root of project tree"
+    exit 1
 fi
 
 # linux build
@@ -29,3 +29,5 @@ read tag_name
 
 git tag -a $tag_name -m "release $tag_name"
 git push --tags
+
+echo "targets ready to use"
