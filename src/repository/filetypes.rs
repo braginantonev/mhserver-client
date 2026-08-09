@@ -40,10 +40,7 @@ impl From<&FilesListInner> for FileTypes {
         FileTypes::from(if !value.name.contains('.') {
             "exe" // Linux use empty extension like executable file
         } else {
-            match value.name.split('.').last() {
-                Some(x) => x,
-                None => "" 
-            }
+            value.name.split('.').last().unwrap_or_default()
         })
     }
 }
