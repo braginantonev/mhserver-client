@@ -1,5 +1,5 @@
 use {
-    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, repository::dirs::default_download_dir},
+    crate::{MainInternal, NotificationInfo, NotificationsInternal, app::Application, service::files::dirs::default_download_dir},
     slint::{ComponentHandle, Global, Model, ModelRc, VecModel}, 
     std::{cell::Cell, process::Command, rc::Rc}
 };

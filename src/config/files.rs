@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use api::apis::configuration::Configuration;
 
-use crate::repository::dirs::default_download_dir;
+use crate::service::files::dirs::default_download_dir;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {

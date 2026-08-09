@@ -156,8 +156,9 @@ impl FileManager {
         }
     }
 
-    pub async fn make_dir(&mut self, new_dir: &str) -> Result<(), ServiceError> {
-        match files_make_directory(&self.request_pool.high_priority(), &self.current_dir().with(new_dir).to_string()).await {
+    pub async fn make_dir(&mut self, from: Option<path::ServerPath>, new_dir: &str) -> Result<(), ServiceError> {
+        let from = from.unwrap_or(self.current_dir());
+        match files_make_directory(&self.request_pool.high_priority(), &from.with(new_dir).to_string()).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
                 self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
@@ -204,7 +205,7 @@ impl FileManager {
     }
 
     /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
-    pub async fn upload_file(&mut self, os_file_path: &Path) -> Result<Uuid, ServiceError> {
+    pub async fn upload_file(&mut self, to: Option<path::ServerPath>, os_file_path: &Path) -> Result<Uuid, ServiceError> {
         let file = match File::open(os_file_path) {
             Ok(f) => Arc::new(f),
             Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
@@ -218,7 +219,7 @@ impl FileManager {
         let filename = os_file_path.file_name().unwrap().display().to_string();
 
         let conn_req = ConnectionRequest {
-            directory: self.active_dir.to_string(),
+            directory: to.unwrap_or(self.current_dir()).into(),
             filename: filename.clone(),
             size: Some(file_meta.len() as i64),
         };
@@ -282,14 +283,6 @@ impl FileManager {
         });
         
         Ok(conn_info.uuid)
-    }
-
-    pub async fn upload_files(&mut self, files: Vec<&Path>) -> Vec<Result<Uuid, ServiceError>> {
-        let mut results = Vec::<Result<Uuid, ServiceError>>::with_capacity(files.len());
-        for f in files {
-            results.push(self.upload_file(f).await);
-        }
-        results
     }
 
     pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, ServiceError> {

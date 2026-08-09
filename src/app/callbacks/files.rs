@@ -66,7 +66,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let resp = service.write().await.make_dir(dir_name.as_str()).await;
+                    let resp = service.write().await.make_dir(None, dir_name.as_str()).await;
                     match resp {
                         Ok(_) => {
                             let (files, from) = {
@@ -115,6 +115,8 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
+                    let current_dir = service.read().await.current_dir();
+
                     let files = rfd::AsyncFileDialog::new()
                         .set_directory("~")
                         .pick_files()
@@ -128,7 +130,7 @@ impl Application {
                     
                     for f in files {
                         // todo: use single lock in api 3.x if it's will be needed
-                        if let Err(err) = service.write().await.upload_file(f.path()).await {
+                        if let Err(err) = service.write().await.upload_file(Some(current_dir.clone()), f.path()).await {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
@@ -147,6 +149,8 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
+                    let current_dir = service.read().await.current_dir();
+
                     let dirs = rfd::AsyncFileDialog::new()
                         .set_directory("~")
                         .pick_folders()
@@ -160,25 +164,20 @@ impl Application {
                     for dir in dirs {
                         let mut files = Directory::from_recursive(dir.path()).read();
                         while let Some(files) = files.recv().await {
+                            if let Err(err) = service.write().await.make_dir(Some(current_dir.clone()), files.0.to_string().trim_start_matches('/').trim_end_matches('/')).await {
+                                MainActions::from(err).run_in_event_loop(win.clone());
+                                continue
+                            };
+
                             for f in files.1 {
-                                service.write().await.upload_files(files.into())
+                                if let Err(err) = service.write().await.upload_file(Some(files.0.clone()), f.as_path()).await {
+                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                    continue;
+                                }
+                                FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
                             }
-                            
                         }
                     }
-
-                    
-                    
-                    // let mut lock = service.write().await;
-                    // for i in dirs {
-                    //     if let Err(err) = lock.make_dir(upload_files.swap_remove(i).name()).await {
-                    //         MainActions::from(err).run_in_event_loop(win.clone());
-                    //     };
-                    // }
-                    // lock.upload_files(upload_files.iter().map(|x| x.path()).collect()).await;
-                    // drop(lock);
-
-                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -210,7 +209,7 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let mut from = service.read().await.current_dir().into() + &dir_name;
+                    let mut from = service.read().await.current_dir().to_string() + &dir_name;
                     from.push('/');
                     
                     let download_files = match service.write().await.get_files(Some(from.clone())).await {
