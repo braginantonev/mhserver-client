@@ -239,7 +239,6 @@ component Loader {
     in property <length> start_y;
 
     private property <length> element_height: 50px;
-    private property <bool> have-loads: FilesInternal.load-files.length > 0;
     private property <bool> collapsed: false;
 
     width: 300px;
@@ -292,20 +291,17 @@ component Loader {
     
     upd_timer := Timer {
         interval: FilesSettings.loader-update-interval;
-        running: false;
+        running: true;
         triggered => {
             FilesInternal.update_load_files()
         }
     }
 
     states [
-        hided when !have-loads: {
+        hided when FilesInternal.load-files.length <= 0: {
             collapsed: true;
             opacity: 0;
             visible: self.opacity > 0;
-        }
-        showed when have-loads: {
-            upd_timer.running: true;
         }
     ]
 }

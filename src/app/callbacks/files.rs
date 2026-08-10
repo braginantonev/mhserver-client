@@ -137,7 +137,6 @@ impl Application {
                         if let Err(err) = h.await.unwrap() {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
-                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
                     } 
                 });
             }
@@ -184,7 +183,6 @@ impl Application {
                             MainActions::from(err).run_in_event_loop(win.clone());
                             continue;
                         }
-                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
                     }
                 });
             }
@@ -202,7 +200,6 @@ impl Application {
                     if let Err(err) = service.write().await.download_file(None, filename.to_string()).await.unwrap() {
                         MainActions::from(err).run_in_event_loop(win.clone());
                     };
-                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
             }
         });
@@ -237,7 +234,6 @@ impl Application {
                         if let Err(err) = h.await.unwrap() {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
-                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
                     }
                 });
             }
