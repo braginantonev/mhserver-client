@@ -6,7 +6,7 @@ use {
     super::ServiceError, crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, 
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, std::{fs::File, path::{Path, PathBuf}, sync::Arc}, system_interface::fs::FileIoExt, tokio::{sync::Semaphore, task::JoinHandle}, uuid::Uuid,
+    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::{sync::Semaphore, task::JoinHandle}, uuid::Uuid,
 };
 
 pub struct Size(i64);
@@ -207,8 +207,9 @@ impl FileManager {
         // save file
         tokio::spawn(async move {
             let filename = os_file_path.file_name().unwrap().display().to_string();
+            let from = os_file_path.to_str().unwrap_or_default();
 
-            let file = match File::open(os_file_path) {
+            let file = match File::open(os_file_path.clone()) {
                 Ok(f) => Arc::new(f),
                 Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
             };
@@ -226,7 +227,7 @@ impl FileManager {
             
             let save_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdwr, conn_req).await {
                 Ok(conn) => conn.content.unwrap(),
-                Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
+                Err(err) => return Err(ServiceError::from(err).with_label("failed upload file").with_desc(from)),
             };
 
             let conn_record = connections::ConnectionInner::new(filename, save_info.chunks_count).upload_conn();
@@ -315,31 +316,35 @@ impl FileManager {
 
         tokio::spawn(async move {
             if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
-                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
+                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&from).with_desc(&filename));
             }
 
             let save_to = save_to.join(filename.clone() + ".part");
             let file = match File::create(save_to.as_path()) {
                 Ok(f) => Arc::new(f),
-                Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename)),
+                Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&from).with_desc(&filename)),
             };
 
             let conn_req = ConnectionRequest {
-                directory: from,
+                directory: from.clone(),
                 filename: filename.clone(),
                 size: None,
             };
             
             let download_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdonly, conn_req).await {
                 Ok(conn) => conn,
-                Err(err) => return Err(ServiceError::from(err)),
+                Err(err) => return Err(ServiceError::from(err)
+                    .with_label("failed download file")
+                    .with_desc(&from)
+                    .with_desc(&filename)
+                ),
             };
 
             let download_info = download_info.content.unwrap();
 
             if let Err(err) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
                 let _ = std::fs::remove_file(save_to.as_path());
-                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
+                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&from).with_desc(&filename));
             }
 
             let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);

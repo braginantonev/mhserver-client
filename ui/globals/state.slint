@@ -26,7 +26,7 @@ export global State {
 
     // Force preparing state change
     public function force_preparing_state(new_state: PreparingStates) {
-        debug("force preparing state", new-state);
+        debug("[UI]: force preparing state", new-state);
         PreparingInternal.prepare-needed = true;
         preparing = new-state;
         application = ApplicationStates.Preparing;
@@ -59,13 +59,13 @@ export global State {
 
         PreparingInternal.prepare-needed = false;
         PreparingInternal.handle_state();
-        debug("handle next state", preparing);
+        debug("[UI]: handle next state", preparing);
     }
 
     function end_preparing() {
         PreparingInternal.update_services();
         application = ApplicationStates.Main;
         preparing = PreparingStates.Greeting;
-        debug("end preparing")
+        debug("[UI]: end of preparing")
     }
 }
