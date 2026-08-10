@@ -1,6 +1,7 @@
 use {
     std::{collections::HashMap, sync::Arc}, 
-    tokio::sync::{RwLock, broadcast::{Receiver, Sender, channel}}, 
+    tokio::sync::{RwLock, broadcast::{Receiver, Sender, channel}},
+    tokio_util::sync::CancellationToken,
     uuid::Uuid,
 };
 
@@ -12,12 +13,12 @@ pub struct ConnectionInner {
     loaded: i32, // count of saved or loaded chunks
     previous: i32,
 
-    cancel: Sender<()>,
+    cancel: CancellationToken
 }
 
 impl ConnectionInner {
     pub fn new(filename: String, chunks_count: i32) -> Self {
-        Self { is_upload: false, filename, chunks_count, loaded: 0, previous: 0, cancel: channel::<()>(1).0 }
+        Self { is_upload: false, filename, chunks_count, loaded: 0, previous: 0, cancel: CancellationToken::new() }
     }
 
     pub fn upload_conn(mut self) -> Self {
@@ -25,12 +26,12 @@ impl ConnectionInner {
         self
     }
 
-    pub fn cancel_receiver(&self) -> Receiver<()> {
-        self.cancel.subscribe()
+    pub fn cancel_token(&self) -> CancellationToken {
+        self.cancel.clone()
     } 
 
     pub fn cancel(&self) {
-        let _ = self.cancel.send(());
+        self.cancel.cancel();
     }
 }
 
