@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://github.com/braginantonev/mhserver-client">
+    <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/logo.svg" alt="app logo" width="200"/>
+  </a>
+</p>
+
 # Mhserver Client
 
 Клиент для [mhserver](https://github.com/braginantonev/mhserver).
@@ -65,3 +71,9 @@ https://[fe80::2e31:aac1:3a8e:12]:30543
 ### Минорные и патчевые обновления
 Обычные обновления функционала клиента. Гарантируют совместимость с сервером.
 При обнужении подобного обновления, программа оповестит пользователя об его наличии.
+
+## Скриншоты 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/main.png" alt="app logo" width="500"/>
+  <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/upload.png" alt="app logo" width="500"/>
+</p>
