@@ -110,15 +110,20 @@ impl UiActions for FilesActions {
         match self {
             FilesActions::UpdateFilesList(files, from) => {
                 let icons = win.global::<FileIcons>().as_weak();
-                win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|f| {
-                    File {
-                        icon: FileTypes::from(f).to_slint_image(icons.clone()),
-                        name: f.name.to_shared_string(),
-                        server_path: from.to_shared_string(),
-                        is_dir: f.is_dir.unwrap_or(false),
-                        size: f.size.unwrap_or(0) as i32,
-                    }
-                })))));
+                let mut files: Vec<File> = files
+                    .iter()
+                    .map(|f| {
+                        File {
+                            icon: FileTypes::from(f).to_slint_image(icons.clone()),
+                            name: f.name.to_shared_string(),
+                            server_path: from.to_shared_string(),
+                            is_dir: f.is_dir.unwrap_or(false),
+                            size: f.size.unwrap_or(0) as i32,
+                        }
+                    })
+                    .collect();
+                files.sort_by_key(|k| !k.is_dir);
+                win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from(files))));
             },
             FilesActions::UpdateLoadFiles(files) => {
                 win.global::<FilesInternal>().set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|conn| {

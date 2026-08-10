@@ -5,6 +5,7 @@ mod app;
 mod service;
 mod actions;
 mod repository;
+mod override_slint;
 
 slint::include_modules!();
 
