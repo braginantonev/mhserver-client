@@ -127,15 +127,18 @@ impl Application {
                         None => return,
                     };
 
-                    
+                    let mut handles = Vec::with_capacity(files.len());
                     for f in files {
                         // todo: use single lock in api 3.x if it's will be needed
-                        if let Err(err) = service.write().await.upload_file(Some(current_dir.clone()), f.path()).await {
+                        handles.push(service.write().await.upload_file(Some(current_dir.clone()), f.path().to_path_buf()));
+                    }
+
+                    for h in handles {
+                        if let Err(err) = h.await.unwrap() {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
-                    }
-                    
-                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
+                    } 
                 });
             }
         });
@@ -161,6 +164,7 @@ impl Application {
                         None => return,
                     };
 
+                    let mut handles = Vec::new();
                     for dir in dirs {
                         let mut files = Directory::from_recursive(dir.path()).read();
                         while let Some(files) = files.recv().await {
@@ -170,13 +174,17 @@ impl Application {
                             };
 
                             for f in files.1 {
-                                if let Err(err) = service.write().await.upload_file(Some(files.0.clone()), f.as_path()).await {
-                                    MainActions::from(err).run_in_event_loop(win.clone());
-                                    continue;
-                                }
-                                FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
+                                handles.push(service.write().await.upload_file(Some(files.0.clone()), f));
                             }
                         }
+                    }
+
+                    for h in handles {
+                        if let Err(err) = h.await.unwrap() {
+                            MainActions::from(err).run_in_event_loop(win.clone());
+                            continue;
+                        }
+                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
                     }
                 });
             }
@@ -189,11 +197,10 @@ impl Application {
             move |filename| {
                 let win = win.clone();
                 let service = service.clone();
-
+                
                 tokio::spawn(async move {
-                    if let Err(err) = service.write().await.download_file(None, filename.to_string()).await {
-                        MainActions::from(err).run_in_event_loop(win);
-                        return;
+                    if let Err(err) = service.write().await.download_file(None, filename.to_string()).await.unwrap() {
+                        MainActions::from(err).run_in_event_loop(win.clone());
                     };
                     FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
                 });
@@ -219,15 +226,19 @@ impl Application {
                                 return 
                         }
                     };
-                    
+
+                    let mut handles = Vec::with_capacity(download_files.len());
                     for file in download_files {
                         // todo: use single lock in api 3.x if it's will be needed
-                        if let Err(err) = service.write().await.download_file(Some(from.clone()), file.name.clone()).await {
-                            MainActions::from(err).run_in_event_loop(win.clone());
-                        }
+                        handles.push(service.write().await.download_file(Some(from.clone()), file.name.clone()));
                     }
                     
-                    FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win);
+                    for h in handles {
+                        if let Err(err) = h.await.unwrap() {
+                            MainActions::from(err).run_in_event_loop(win.clone());
+                        }
+                        FilesActions::UpdateLoadFiles(service.read().await.get_load_files().await).run_in_event_loop(win.clone());
+                    }
                 });
             }
         });

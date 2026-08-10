@@ -3,16 +3,10 @@ mod path;
 pub mod dirs;
 
 use {
-    super::ServiceError, 
-    crate::{config::files::FileServiceConfig, repository::ratelimit}, 
-    api::{
+    super::ServiceError, crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
         apis::{Error, configuration::Configuration, default_api::*}, 
         models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, 
-    std::{fs::File, path::Path, sync::Arc}, 
-    system_interface::fs::FileIoExt, 
-    tokio::sync::Semaphore, 
-    uuid::Uuid,
+    }, std::{fs::File, path::{Path, PathBuf}, sync::Arc}, system_interface::fs::FileIoExt, tokio::{sync::Semaphore, task::JoinHandle}, uuid::Uuid,
 };
 
 pub struct Size(i64);
@@ -204,88 +198,110 @@ impl FileManager {
         self.connections.completed().await
     }
 
-    /// Save file to the server. That function return uuid like a String that can be used to get saving progress.
-    pub async fn upload_file(&mut self, to: Option<path::ServerPath>, os_file_path: &Path) -> Result<Uuid, ServiceError> {
-        let file = match File::open(os_file_path) {
-            Ok(f) => Arc::new(f),
-            Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
-        };
-
-        let file_meta = match file.metadata() {
-            Ok(m) => m,
-            Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
-        };
-
-        let filename = os_file_path.file_name().unwrap().display().to_string();
-
-        let conn_req = ConnectionRequest {
-            directory: to.unwrap_or(self.current_dir()).into(),
-            filename: filename.clone(),
-            size: Some(file_meta.len() as i64),
-        };
-
+    /// Save file to the server. That function return JoinHandle with error, if he exist
+    pub fn upload_file(&mut self, to: Option<path::ServerPath>, os_file_path: PathBuf) -> JoinHandle<Result<(), ServiceError>> {
+        let upload_to = to.unwrap_or(self.current_dir()).into();
+        let mut connections = self.connections.clone();
         let (cfg, sem) = self.request_pool.low_priority();
-        
-        let save_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdwr, conn_req).await {
-            Ok(conn) => conn,
-            Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
-        };
-
-        let conn_info = save_info.content.unwrap();
-        let conn_record = connections::ConnectionInner::new(filename, conn_info.chunks_count).upload_conn();
-        let mut cancel_channel = conn_record.cancel_receiver();
-
-        self.connections.add(conn_info.uuid, conn_record).await;
-        let connections = self.connections.clone();
 
         // save file
         tokio::spawn(async move {
-            for ch_idx in 0..conn_info.chunks_count {
+            let filename = os_file_path.file_name().unwrap().display().to_string();
+
+            let file = match File::open(os_file_path) {
+                Ok(f) => Arc::new(f),
+                Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
+            };
+
+            let file_meta = match file.metadata() {
+                Ok(m) => m,
+                Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
+            };
+
+            let conn_req = ConnectionRequest {
+                directory: upload_to,
+                filename: filename.clone(),
+                size: Some(file_meta.len() as i64),
+            };
+            
+            let save_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdwr, conn_req).await {
+                Ok(conn) => conn.content.unwrap(),
+                Err(err) => return Err(ServiceError::from(err).with_label("failed upload file")),
+            };
+
+            let conn_record = connections::ConnectionInner::new(filename, save_info.chunks_count).upload_conn();
+            let cancel_token = conn_record.cancel_token();
+
+            connections.add(save_info.uuid, conn_record).await;
+            
+            for ch_idx in 0..save_info.chunks_count {
                 let sem = sem.clone();
                 
-                if cancel_channel.try_recv().is_ok() {
-                    return
+                if cancel_token.is_cancelled() {
+                    return Ok(())
                 }
 
-                let offset = conn_info.chunk_size * ch_idx as i64;
+                let offset = save_info.chunk_size * ch_idx as i64;
                 let file = file.clone();
 
-                //todo: add semaphore to restrict a ram usage
                 // read file part (chunk) to upload
                 let chunk = tokio::task::spawn_blocking(move || {
-                    let mut save_chunk = vec![0u8; conn_info.chunk_size as usize];
+                    let mut save_chunk = vec![0u8; save_info.chunk_size as usize];
                     let read = file.read_at(save_chunk.as_mut_slice(), offset as u64).expect("failed read chunk from file");
                     save_chunk[..read].to_vec()
                 });
 
                 let mut connections = connections.clone();
                 let http_cfg = cfg.clone();
-                let mut cancel = cancel_channel.resubscribe();
+
+                let cancel_token = cancel_token.clone();
 
                 tokio::spawn(async move {
-                    if cancel.try_recv().is_ok() { return }
-                    let chunk = chunk.await.expect("blocking file read failed"); // temp, hope
-
-                    if cancel.try_recv().is_ok() { return }
-
-                    let _perm = sem.acquire().await.unwrap();
-                    match files_save_chunk(&http_cfg, conn_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
-                        Ok(_) => {
-                            connections.increase_progress(conn_info.uuid).await;
-                        },
-                        Err(err) => match err {
-                            Error::ResponseError(c) => println!("resp err: {}", c.content),
-                            _ => println!("err: {}", err),
+                    let chunk = tokio::select! {
+                        _ = cancel_token.cancelled() => {
+                            return
                         }
-                    }
+                        got_chunk = chunk => match got_chunk {
+                            Ok(data) => data,
+                            Err(e) => {
+                                eprintln!("Failed to receive chunk: {:?}", e);
+                                return;
+                            }
+                        }
+                    };
+
+                    let _perm = tokio::select! {
+                        _ = cancel_token.cancelled() => {
+                            return
+                        }
+                        permit = sem.acquire() => match permit {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!("Failed to acquire semaphore: {:?}", e);
+                                return;
+                            }
+                        }
+                    };
+
+                    match files_save_chunk(&http_cfg, save_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
+                        Ok(_) => {
+                            connections.increase_progress(save_info.uuid).await;
+                        },
+                        Err(err) => {
+                            cancel_token.cancel();
+                            match err {
+                                Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
+                                _ => eprintln!("err: {}", err),
+                            }
+                        }
+                    };
                 });
-            }
-        });
-        
-        Ok(conn_info.uuid)
+            };
+            Ok(())
+        })
     }
 
-    pub async fn download_file(&mut self, from: Option<String>, filename: String) -> Result<Uuid, ServiceError> {
+    pub fn download_file(&mut self, from: Option<String>, filename: String) -> JoinHandle<Result<(), ServiceError>> {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
 
@@ -294,118 +310,126 @@ impl FileManager {
             save_to = save_to.join(&from[1..]);
         }
 
-        if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
-            return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
-        }
-
-        let save_to = save_to.join(filename.clone() + ".part");
-        let file = match File::create(save_to.as_path()) {
-            Ok(f) => Arc::new(f),
-            Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename)),
-        };
-
-        let conn_req = ConnectionRequest {
-            directory: from,
-            filename: filename.clone(),
-            size: None,
-        };
-
+        let mut connections = self.connections.clone();
         let (cfg, sem) = self.request_pool.low_priority();
-        
-        let download_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdonly, conn_req).await {
-            Ok(conn) => conn,
-            Err(err) => return Err(ServiceError::from(err)),
-        };
 
-        let download_info = download_info.content.unwrap();
-
-        if let Err(err) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
-            let _ = std::fs::remove_file(save_to.as_path());
-            return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
-        }
-
-        let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
-        let mut save_cancel = conn_record.cancel_receiver();
-        let mut download_cancel = conn_record.cancel_receiver();
-
-        self.connections.add(download_info.uuid, conn_record).await;
-
-        let connections = self.connections.clone();
-        let (tx, mut rx) = tokio::sync::mpsc::channel::<(Option<Vec<u8>>, i64)>(5); // tmp
-
-        // download stage
         tokio::spawn(async move {
+            if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
+                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
+            }
+
+            let save_to = save_to.join(filename.clone() + ".part");
+            let file = match File::create(save_to.as_path()) {
+                Ok(f) => Arc::new(f),
+                Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename)),
+            };
+
+            let conn_req = ConnectionRequest {
+                directory: from,
+                filename: filename.clone(),
+                size: None,
+            };
+            
+            let download_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdonly, conn_req).await {
+                Ok(conn) => conn,
+                Err(err) => return Err(ServiceError::from(err)),
+            };
+
+            let download_info = download_info.content.unwrap();
+
+            if let Err(err) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
+                let _ = std::fs::remove_file(save_to.as_path());
+                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&filename));
+            }
+
+            let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
+            let cancel_token = conn_record.cancel_token();
+
+            connections.add(download_info.uuid, conn_record).await;
+            
+            let (tx, mut rx) = tokio::sync::mpsc::channel::<(Vec<u8>, i64)>(5);
+
+            // save stage
+            let save_cancel_token = cancel_token.child_token();
+            tokio::spawn(async move {
+                let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
+                for _ in 0..download_info.chunks_count {
+                    let to_write = tokio::select! {
+                        _ = save_cancel_token.cancelled() => {
+                            break
+                        }
+                        v = rx.recv() => match v {
+                            Some(v) => v,
+                            None => continue
+                        }
+                    };
+                    
+                    let f = file.clone();
+
+                    handles.push(tokio::task::spawn_blocking(move || {
+                        if let Err(err) = f.write_at(&to_write.0, to_write.1 as u64) {
+                            eprintln!("failed write chunk to file ({err})")
+                        }
+                    }));                  
+                };
+
+                for h in handles {
+                    let _ = h.await;
+                }
+
+                if save_cancel_token.is_cancelled() {
+                    if std::fs::remove_file(save_to.as_path()).is_err() {
+                        eprintln!("failed remove canceled download file");
+                    }
+                    return
+                }
+
+                if std::fs::rename(save_to.as_path(), save_to.with_file_name(filename)).is_err() {
+                    eprintln!("failed rename download file");
+                };
+            });
+
+            // download stage
             for ch_idx in 0..download_info.chunks_count {
                 let sem = sem.clone();
-                if download_cancel.try_recv().is_ok() { return }
-
                 let http_cfg = cfg.clone();
                 let tx = tx.clone();
                 let mut connections = connections.clone();
-                
-                if download_cancel.try_recv().is_ok() { return }
+
+                let cancel_token = cancel_token.clone();
                 tokio::spawn(async move {
                     let offset = download_info.chunk_size * ch_idx as i64;
-                    let _perm = sem.acquire().await.unwrap();
+
+                    let _perm = tokio::select! {
+                        _ = cancel_token.cancelled() => {
+                            return
+                        }
+                        permit = sem.acquire() => match permit {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!("Failed to acquire semaphore: {:?}", e);
+                                return;
+                            }
+                        }
+                    };
+
                     match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
                         Ok(v) => {
                             connections.increase_progress(download_info.uuid).await;
-                            let _ = tx.send((Some(v.content.unwrap().bytes().await.unwrap().to_vec()), offset)).await;
+                            let _ = tx.send((v.content.unwrap().bytes().await.unwrap().to_vec(), offset)).await;
                         },
                         Err(err) => {
+                            cancel_token.cancel();
                             match err {
                                 Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
                                 _ => eprintln!("err: {}", err),
-                            }
-                            let _ = tx.send((None, offset)).await;
+                            };
                         }
-                    }
+                    };
                 });
-                if download_cancel.try_recv().is_ok() { return }
-            }
-        });
-
-        // save stage
-        tokio::spawn(async move {
-            let mut canceled = false;
-            let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
-            for _ in 0..download_info.chunks_count {
-                let v = rx.recv().await.unwrap_or_default();
-                let f = file.clone();
-
-                if save_cancel.try_recv().is_ok() {
-                    canceled = true;
-                    break
-                }
-                
-                handles.push(tokio::task::spawn_blocking(move || {
-                    if let Some(chunk) = v.0 {
-                        if let Err(err) = f.write_at(&chunk, v.1 as u64) {
-                            eprintln!("failed write chunk to file ({err})")
-                        }
-                    } else {
-                        eprintln!("return a null chunk to write")
-                    }
-                }));
             };
-
-            for h in handles {
-                let _ = h.await;
-            }
-
-            if canceled {
-                if std::fs::remove_file(save_to.as_path()).is_err() {
-                    eprintln!("failed remove canceled download file");
-                }
-                return
-            }
-
-            if std::fs::rename(save_to.as_path(), save_to.with_file_name(filename)).is_err() {
-                eprintln!("failed rename download file");
-            };
-        });
-
-        Ok(download_info.uuid)
+            Ok(())
+        })
     }
 }
 
