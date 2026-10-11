@@ -1,0 +1,57 @@
+syntax = "proto3";
+package data;
+option go_package = "github.com/braginantonev/mhserver/proto/data";
+
+import "google/protobuf/empty.proto";
+
+service DataService {
+    rpc SaveFile (stream SaveFileChunk) returns (google.protobuf.Empty);
+    rpc ReadFile (RequiredFile) returns (stream Chunk);
+    rpc GetSum (RequiredFile) returns (SHASum);
+    rpc GetFiles (Directory) returns (FilesList);
+	rpc GetAvailableDiskSpace (google.protobuf.Empty) returns (Size);
+	rpc CreateDir (Directory) returns (google.protobuf.Empty);
+	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
+    rpc RemoveFile (RequiredFile) returns (google.protobuf.Empty);
+}
+
+message Directory {
+    string value = 2;
+}
+
+message RequiredFile {
+    Directory dir = 1;
+    string name = 2;
+    optional uint64 newSize = 3;
+}
+
+message Chunk {
+    bytes data = 1;
+    uint64 offset = 2;
+}
+
+message SaveFileChunk {
+    oneof Info {
+        RequiredFile meta = 1;
+        Chunk chunk = 2;
+    }
+}
+
+message SHASum {
+    bytes value = 1;
+}
+
+message FileInfo {
+    string name = 1;
+    bool isDir = 2;
+    uint64 size = 3;
+    uint64 modTime = 4;
+}
+
+message FilesList {
+    repeated FileInfo value = 1;
+}
+
+message Size {
+    uint64 value = 1;
+}
