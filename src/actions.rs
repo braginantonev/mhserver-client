@@ -1,5 +1,9 @@
 use {
-    super::{File, MainWindow, NotificationType, repository::filetypes::FileTypes}, 
+    super::{
+        File, MainWindow, NotificationType,
+        repository::filetypes::FileTypes,
+        api::FilesList,
+    }, 
     crate::{
         service::{ServiceError, files::connections::ConnectionInfo},
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State
@@ -94,7 +98,7 @@ impl From<ServiceError> for MainActions {
 
 pub enum FilesActions {
     /// Update files in data service. Required the files, and server path, where is this files located. 
-    UpdateFilesList(Vec<api::models::FilesListInner>, String),
+    UpdateFilesList(FilesList, String),
 
     UpdateLoadFiles(Vec<ConnectionInfo>),
 
@@ -110,15 +114,15 @@ impl UiActions for FilesActions {
         match self {
             FilesActions::UpdateFilesList(files, from) => {
                 let icons = win.global::<FileIcons>().as_weak();
-                let mut files: Vec<File> = files
+                let mut files: Vec<File> = files.value
                     .iter()
                     .map(|f| {
                         File {
                             icon: FileTypes::from(f).to_slint_image(icons.clone()),
                             name: f.name.to_shared_string(),
                             server_path: from.to_shared_string(),
-                            is_dir: f.is_dir.unwrap_or(false),
-                            size: f.size.unwrap_or(0) as i32,
+                            is_dir: f.is_dir,
+                            size: f.size as i32,
                         }
                     })
                     .collect();
