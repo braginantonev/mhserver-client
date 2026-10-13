@@ -1,35 +1,14 @@
 use {
     super::ServiceError,
     crate::UpdateStatus, 
-    api::{
-        apis::{configuration::Configuration, default_api::{ping as tools_ping, users_login, users_register, version}}, 
-        models::{UserLoginRequest, UserRegisterRequest},
-    }, 
     semver::Version,
 };
 
-pub async fn login(api_cfg: &Configuration, user: UserLoginRequest) -> Result<String, ServiceError> {
-    match users_login(api_cfg, user).await {
-        Ok(resp) => Ok(resp.content.unwrap()),
-        Err(err) => Err(ServiceError::from(err))
-    }
-}
 
-pub async fn register(api_cfg: &Configuration, user: UserRegisterRequest) -> Result<(), ServiceError> {
-    match users_register(api_cfg, user).await {
-        Ok(_) => Ok(()),
-        Err(err) => Err(ServiceError::from(err)),
-    }
-}
-
-pub async fn ping(api_cfg: &Configuration) -> Result<(), ServiceError> {
-    match tools_ping(api_cfg).await {
-        Ok(_) => Ok(()),
-        Err(err) => Err(ServiceError::from(err)),
-    }
-}
 
 pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, ServiceError> {
+
+    /*
     let server_version = match version(api_cfg).await {
         Ok(v) => v.content.unwrap(),
         Err(err) => return Err(ServiceError::from(err)),
@@ -62,6 +41,8 @@ pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, Serv
     if Version::parse(&last_app_ver).unwrap() > Version::parse(crate::APPLICATION_VERSION).unwrap() {
         return Ok(UpdateStatus::Available);
     }
+
+    */
 
     Ok(UpdateStatus::NotNeeded)
 }
