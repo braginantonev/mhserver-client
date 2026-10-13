@@ -1,6 +1,8 @@
 use {
-    crate::FileIcons, 
-    api::models::FilesListInner, 
+    crate::{
+        FileIcons,
+        api::FileInfo,
+    }, 
     slint::Weak,
 };
 
@@ -31,9 +33,9 @@ impl FileTypes {
     }
 }
 
-impl From<&FilesListInner> for FileTypes {
-    fn from(value: &FilesListInner) -> Self {
-        if value.is_dir != None {
+impl From<&FileInfo> for FileTypes {
+    fn from(value: &FileInfo) -> Self {
+        if value.is_dir {
             return FileTypes::Directory
         }
 

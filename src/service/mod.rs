@@ -1,20 +1,21 @@
 /// This crate used for service-requests to server.
 /// All structs have initialized once config
 
+pub mod auth;
 pub mod files;
 pub mod preparing;
 
-use api::apis::Error;
+use tonic::Status;
 
 #[derive(Clone)]
 pub struct ServiceError {
     label: String,
     desc: Option<String>,
-    code: Option<reqwest::StatusCode>,
+    code: Option<tonic::Code>,
 }
 
 impl ServiceError {
-    pub fn new(label: &str, desc: Option<String>, code: Option<reqwest::StatusCode>) -> Self {
+    pub fn new(label: &str, desc: Option<String>, code: Option<tonic::Code>) -> Self {
         Self { label: label.to_owned(), desc, code }
     }
 
@@ -29,20 +30,16 @@ impl ServiceError {
         }
     }
 
-    pub fn code(&self) -> Option<reqwest::StatusCode> {
+    pub fn code(&self) -> Option<tonic::Code> {
         self.code
     }
 
     pub fn with_label(mut self, label: &str) -> Self {
-        if !self.label.is_empty() {
-            let old_label = &self.label.clone();
-            self = self.with_desc(old_label);
-        }
         self.label = label.to_owned();
         self
     }
 
-    pub fn with_desc(mut self, desc: &str) -> Self {
+    pub fn push_desc(mut self, desc: &str) -> Self {
         self.desc = Some(match self.desc {
             Some(mut v) => {
                 v.push('\n');
@@ -55,18 +52,9 @@ impl ServiceError {
     }
 }
 
-impl<T> From<Error<T>> for ServiceError {
-    fn from(value: Error<T>) -> Self {
-        match value {
-            Error::ReqwestMiddleware(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
-            Error::Reqwest(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
-            Error::Serde(err) => ServiceError { label: String::from("request parse error"), desc: Some(err.to_string()), code: None },
-            Error::Io(err) => ServiceError { label: err.to_string(), desc: None, code: None },
-            Error::ResponseError(c) => {
-                let label = c.content;
-                ServiceError { label: String::from(label.strip_suffix('\n').unwrap_or(&label)), desc: None, code: Some(c.status) }
-            },
-        }
+impl From<Status> for ServiceError {
+    fn from(value: Status) -> Self {
+        Self::new("service error", Some(value.message().to_owned()), Some(value.code()))
     }
 }
 
