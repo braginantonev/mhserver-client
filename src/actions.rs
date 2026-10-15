@@ -1,15 +1,9 @@
 use {
     super::{
-        File, MainWindow, NotificationType,
-        repository::filetypes::FileTypes,
-        api::FilesList,
-    }, 
-    crate::{
-        service::{ServiceError, files::connections::ConnectionInfo},
-        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State
-    },
-    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, 
-    reqwest::StatusCode, std::rc::Rc,
+        File, MainWindow, NotificationType, api::FilesList, repository::filetypes::FileTypes,
+    }, crate::{
+        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}
+    }, slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc, tonic::Code,
 };
 
 pub trait UiActions: TryFrom<ServiceError> {
@@ -34,8 +28,8 @@ pub enum PreparingActions {
 impl TryFrom<ServiceError> for PreparingActions {
     type Error = ();
     fn try_from(value: ServiceError) -> Result<Self, Self::Error> {
-        match value.code().unwrap_or_default() {
-            StatusCode::UNAUTHORIZED => Ok(PreparingActions::ForceAuthorization),
+        match value.code().unwrap_or(Code::Ok) {
+            Code::Unauthenticated => Ok(PreparingActions::ForceAuthorization),
             _ => Err(())
         }
     }
@@ -88,7 +82,7 @@ impl From<ServiceError> for MainActions {
     fn from(value: ServiceError) -> Self {
         if let Some(code) = value.code() {
             match code {
-                StatusCode::SERVICE_UNAVAILABLE => return MainActions::ServiceUnavailable,
+                Code::Unauthenticated => return MainActions::ServiceUnavailable,
                 _ => (),
             };
         }
