@@ -3,13 +3,10 @@ mod path;
 pub mod dirs;
 
 use {
-    super::ServiceError, crate::{config::files::FileServiceConfig, repository::ratelimit}, api::{
-        apis::{Error, configuration::Configuration, default_api::*}, 
-        models::{ConnectionMode, ConnectionRequest, FilesListInner, SaveChunk},
-    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::{sync::Semaphore, task::JoinHandle}, uuid::Uuid,
+    super::ServiceError, crate::{api::{self, data_service_client::DataServiceClient}, config::files::FileServiceConfig}, futures_util::StreamExt, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::task::JoinHandle, tonic::transport::Channel, uuid::Uuid,
 };
 
-pub struct Size(i64);
+pub struct Size(u64);
 
 impl Size {
     /// Return eye candy size. Example: `12 mb`, `1 gb` etc
@@ -26,15 +23,15 @@ impl Size {
 }
 
 #[derive(Clone)]
-struct FilesList(Vec<FilesListInner>);
+struct FilesList(Vec<api::FileInfo>);
 
 impl FilesList {
     pub fn new() -> Self {
         FilesList(Vec::new())
     }
 
-    pub fn back_dir(&self) -> FilesListInner {
-        FilesListInner { name: "..".to_owned(), is_dir: Some(true), size: None, mod_time: 0 }
+    pub fn back_dir(&self) -> api::FileInfo {
+        api::FileInfo { name: "..".to_owned(), is_dir: true, size: 0, mod_time: 0 }
     }
 
     /// Return yourself but with back dir in start of vec
@@ -46,7 +43,7 @@ impl FilesList {
     }
 
     pub fn remove(&mut self, target: &str, is_dir: bool) {
-        self.0.remove(self.0.iter().position(|f| f.name == target && f.is_dir.unwrap_or(false) == is_dir ).expect("dir to remove not found"));
+        self.0.remove(self.0.iter().position(|f| f.name == target && f.is_dir == is_dir).expect("dir to remove not found"));
     }
 }
 
@@ -56,63 +53,22 @@ impl Default for FilesList {
     }
 }
 
-// todo: temporary, remove in api 3.x
-struct RequestsPool {
-    low_priority_sem: Arc<Semaphore>,
-    high_priority: Arc<Configuration>,
-    low_priority: Arc<Configuration>
-}
-
-impl RequestsPool {
-    pub fn new(base_api_cfg: Configuration, base_client: reqwest::Client) -> Self {
-        let mut high_priority = base_api_cfg.clone(); 
-        high_priority.client = reqwest_middleware::ClientBuilder::new(base_client.clone())
-            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(500)))) // tmp
-            .build();
-
-        let mut low_priority = base_api_cfg;
-        low_priority.client = reqwest_middleware::ClientBuilder::new(base_client)
-            .with(ratelimit::RateLimitMiddleware::new(ratelimit::RequestQueue::new(tokio::time::Duration::from_millis(56)))) // tmp
-            .build();
-
-        Self { 
-            low_priority_sem: Arc::new(Semaphore::new(20)),
-            high_priority: Arc::new(high_priority),
-            low_priority: Arc::new(low_priority), 
-        }
-    }
-
-    pub fn high_priority(&self) -> Arc<Configuration> {
-        self.high_priority.clone()
-    }
-
-    pub fn low_priority(&self) -> (Arc<Configuration>, Arc<Semaphore>) {
-        (self.low_priority.clone(), self.low_priority_sem.clone())
-    }
-}
-
-impl Default for RequestsPool {
-    fn default() -> Self {
-        Self { low_priority_sem: Arc::new(Semaphore::const_new(0)), high_priority: Arc::new(Configuration::default()), low_priority: Arc::new(Configuration::default()) }
-    }
-}
-
 pub struct FileManager {
     cfg: FileServiceConfig,
+    client: DataServiceClient<Channel>,
     active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
     connections: connections::Connections,
-    request_pool: RequestsPool,
 }
 
 impl FileManager {
-    pub fn new() -> Self {
+    pub fn new(cfg: FileServiceConfig, client: DataServiceClient<Channel>) -> Self {
         Self { 
-            cfg: FileServiceConfig::default(),
+            cfg,
+            client,
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
-            request_pool: RequestsPool::default(),
         }
     }
 
@@ -121,18 +77,18 @@ impl FileManager {
     }
 
     /// Get a cached files list 
-    pub fn cached_files(&self) -> Vec<FilesListInner> {
+    pub fn cached_files(&self) -> Vec<api::FileInfo> {
         if self.active_dir.to_string() != "/" { self.cached_files.with_back().0 } else { self.cached_files.0.clone() }
     }
 
     /// Go to next folder, and return files list
-    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<FilesListInner>, ServiceError> {
+    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<api::FileInfo>, ServiceError> {
         self.active_dir.push(dir_name);
         self.get_files(None).await
     }
 
     /// Go to previous folder, and return files list
-    pub async fn prev(&mut self) -> Result<Vec<FilesListInner>, ServiceError> {
+    pub async fn prev(&mut self) -> Result<Vec<api::FileInfo>, ServiceError> {
         self.active_dir.pop();
         self.get_files(None).await
     }
@@ -143,19 +99,19 @@ impl FileManager {
 
     //* API requests
 
-    pub async fn available_space(&self) -> Result<Size, ServiceError> {
-        match files_get_available_space(&self.request_pool.high_priority()).await {
-            Ok(v) => Ok(Size(v.content.unwrap_or_default())),
+    pub async fn available_space(&mut self) -> Result<Size, ServiceError> {
+        match self.client.get_available_disk_space(()).await {
+            Ok(v) => Ok(Size(v.get_ref().value)),
             Err(err) => Err(ServiceError::from(err))
         }
     }
 
     pub async fn make_dir(&mut self, from: Option<path::ServerPath>, new_dir: &str) -> Result<(), ServiceError> {
         let from = from.unwrap_or(self.current_dir());
-        match files_make_directory(&self.request_pool.high_priority(), &from.with(new_dir).to_string()).await {
+        match self.client.create_dir(api::Directory { value: from.with(new_dir).to_string() }).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
-                self.cached_files.0.push(FilesListInner { name: new_dir.to_owned(), is_dir: Some(true), size: None, mod_time: 0 });
+                self.cached_files.0.push(api::FileInfo { name: new_dir.to_owned(), is_dir: true, size: 0, mod_time: 0 });
                 Ok(())
             },
             Err(err) => Err(ServiceError::from(err))
@@ -163,7 +119,7 @@ impl FileManager {
     }
 
     pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), ServiceError> {
-        match files_remove_directory(&self.request_pool.high_priority(), &self.current_dir().with(target_dir).to_string()).await {
+        match self.client.remove_dir(api::Directory { value: self.current_dir().with(target_dir).to_string() }).await {
             Ok(_) => {
                 self.cached_files.remove(target_dir, true);
                 Ok(())
@@ -173,20 +129,13 @@ impl FileManager {
     }
 
     /// Get files list from server and save to local cache
-    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<FilesListInner>, ServiceError> {
-        match get_files_list(&self.request_pool.high_priority(), &from.unwrap_or(self.current_dir().into())).await {
+    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<api::FileInfo>, ServiceError> {
+        match self.client.get_files(api::Directory { value: from.unwrap_or(self.current_dir().into()) }).await {
             Ok(res ) => {
-                self.cached_files = FilesList(res.content.unwrap());
+                self.cached_files = FilesList(res.get_ref().value.clone());
                 Ok(self.cached_files())
             },
-            Err(err) => match err {
-                // If dir don't have files, serde understand this like null response on required field 
-                Error::Serde(_) => {
-                    self.cached_files = FilesList::default();
-                    Ok(self.cached_files())
-                }, 
-                _ => Err(ServiceError::from(err))
-            }
+            Err(err) => Err(ServiceError::from(err))
         }
     }
 
@@ -202,7 +151,7 @@ impl FileManager {
     pub fn upload_file(&mut self, to: Option<path::ServerPath>, os_file_path: PathBuf) -> JoinHandle<Result<(), ServiceError>> {
         let upload_to = to.unwrap_or(self.current_dir()).into();
         let mut connections = self.connections.clone();
-        let (cfg, sem) = self.request_pool.low_priority();
+        let mut client = self.client.clone();
 
         // save file
         tokio::spawn(async move {
@@ -219,90 +168,53 @@ impl FileManager {
                 Err(err) => return Err(ServiceError::new("failed upload file", Some(err.to_string()), None)),
             };
 
-            let conn_req = ConnectionRequest {
-                directory: upload_to,
-                filename: filename.clone(),
-                size: Some(file_meta.len() as i64),
-            };
-            
-            let save_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdwr, conn_req).await {
-                Ok(conn) => conn.content.unwrap(),
-                Err(err) => return Err(ServiceError::from(err).with_label("failed upload file").with_desc(from)),
+            let conn_req = api::RequiredFile {
+                dir: Some(api::Directory { value: upload_to }),
+                name: filename.clone(),
+                new_size: Some(file_meta.len() as u64),
             };
 
-            let conn_record = connections::ConnectionInner::new(filename, save_info.chunks_count).upload_conn();
+            let conn_record = connections::ConnectionInner::new(filename, todo!()).upload_conn();
             let cancel_token = conn_record.cancel_token();
 
-            connections.add(save_info.uuid, conn_record).await;
+            connections.add(todo!(), conn_record).await;
+            let mut offset: u64 = 0;
             
-            for ch_idx in 0..save_info.chunks_count {
-                let sem = sem.clone();
-                
-                if cancel_token.is_cancelled() {
-                    return Ok(())
+            let stream = async_stream::stream! {
+                const CHUNK_SIZE: usize = 1024 * 1024;
+                yield api::SaveFileChunk {
+                    info: Some(api::save_file_chunk::Info::Meta(conn_req)),
+                };
+
+                loop {
+                    if cancel_token.is_cancelled() {
+                        return Ok(());
+                    }
+        
+                    let mut save_chunk = vec![0u8; CHUNK_SIZE];
+                    let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
+
+                    yield api::SaveFileChunk {
+                        info: Some(api::save_file_chunk::Info::Chunk(api::Chunk {
+                            data: save_chunk[..read].to_vec(),
+                            offset,
+                        }))
+                    };
+
+                    offset += CHUNK_SIZE as u64;
                 }
-
-                let offset = save_info.chunk_size * ch_idx as i64;
-                let file = file.clone();
-
-                // read file part (chunk) to upload
-                let chunk = tokio::task::spawn_blocking(move || {
-                    let mut save_chunk = vec![0u8; save_info.chunk_size as usize];
-                    let read = file.read_at(save_chunk.as_mut_slice(), offset as u64).expect("failed read chunk from file");
-                    save_chunk[..read].to_vec()
-                });
-
-                let mut connections = connections.clone();
-                let http_cfg = cfg.clone();
-
-                let cancel_token = cancel_token.clone();
-
-                tokio::spawn(async move {
-                    let chunk = tokio::select! {
-                        _ = cancel_token.cancelled() => {
-                            return
-                        }
-                        got_chunk = chunk => match got_chunk {
-                            Ok(data) => data,
-                            Err(e) => {
-                                eprintln!("Failed to receive chunk: {:?}", e);
-                                return;
-                            }
-                        }
-                    };
-
-                    let _perm = tokio::select! {
-                        _ = cancel_token.cancelled() => {
-                            return
-                        }
-                        permit = sem.acquire() => match permit {
-                            Ok(p) => p,
-                            Err(e) => {
-                                eprintln!("Failed to acquire semaphore: {:?}", e);
-                                return;
-                            }
-                        }
-                    };
-
-                    match files_save_chunk(&http_cfg, save_info.uuid.to_string().as_str(), SaveChunk::new(chunk, offset)).await {
-                        Ok(_) => {
-                            connections.increase_progress(save_info.uuid).await;
-                        },
-                        Err(err) => {
-                            cancel_token.cancel();
-                            match err {
-                                Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
-                                _ => eprintln!("err: {}", err),
-                            }
-                        }
-                    };
-                });
             };
+
+            if let Err(status) = client.save_file(stream).await {
+                return Err(ServiceError::from(status));
+            }
+
             Ok(())
         })
     }
 
     pub fn download_file(&mut self, from: Option<String>, filename: String) -> JoinHandle<Result<(), ServiceError>> {
+        let client = self.client.clone();
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
 
@@ -312,7 +224,6 @@ impl FileManager {
         }
 
         let mut connections = self.connections.clone();
-        let (cfg, sem) = self.request_pool.low_priority();
 
         tokio::spawn(async move {
             if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
@@ -321,132 +232,35 @@ impl FileManager {
 
             let save_to = save_to.join(filename.clone() + ".part");
             let file = match File::create(save_to.as_path()) {
-                Ok(f) => Arc::new(f),
+                Ok(f) => f,
                 Err(err) => return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&from).with_desc(&filename)),
             };
 
-            let conn_req = ConnectionRequest {
-                directory: from.clone(),
-                filename: filename.clone(),
-                size: None,
+            let conn_req = api::RequiredFile {
+                dir: Some(api::Directory{ value: from.clone() }),
+                name: filename,
+                new_size: None,
             };
             
-            let download_info = match files_create_connection(&cfg.clone(), ConnectionMode::Rdonly, conn_req).await {
-                Ok(conn) => conn,
-                Err(err) => return Err(ServiceError::from(err)
-                    .with_label("failed download file")
-                    .with_desc(&from)
-                    .with_desc(&filename)
-                ),
-            };
-
-            let download_info = download_info.content.unwrap();
-
-            if let Err(err) = file.set_len(download_info.chunk_size as u64 * download_info.chunks_count as u64) {
-                let _ = std::fs::remove_file(save_to.as_path());
-                return Err(ServiceError::new("failed download file", Some(err.to_string()), None).with_desc(&from).with_desc(&filename));
-            }
-
-            let conn_record = connections::ConnectionInner::new(filename.clone(), download_info.chunks_count);
+            let conn_record = connections::ConnectionInner::new(filename.clone(), todo!());
             let cancel_token = conn_record.cancel_token();
 
-            connections.add(download_info.uuid, conn_record).await;
-            
-            let (tx, mut rx) = tokio::sync::mpsc::channel::<(Vec<u8>, i64)>(5);
+            connections.add(todo!(), conn_record).await;
 
-            // save stage
-            let save_cancel_token = cancel_token.child_token();
-            tokio::spawn(async move {
-                let mut handles = Vec::with_capacity(download_info.chunks_count as usize);
-                for _ in 0..download_info.chunks_count {
-                    let to_write = tokio::select! {
-                        _ = save_cancel_token.cancelled() => {
-                            break
-                        }
-                        v = rx.recv() => match v {
-                            Some(v) => v,
-                            None => continue
-                        }
-                    };
-                    
-                    let f = file.clone();
-
-                    handles.push(tokio::task::spawn_blocking(move || {
-                        if let Err(err) = f.write_at(&to_write.0, to_write.1 as u64) {
-                            eprintln!("failed write chunk to file ({err})")
-                        }
-                    }));                  
-                };
-
-                for h in handles {
-                    let _ = h.await;
-                }
-
-                if save_cancel_token.is_cancelled() {
-                    if std::fs::remove_file(save_to.as_path()).is_err() {
-                        eprintln!("failed remove canceled download file");
-                    }
-                    return
-                }
-
-                if std::fs::rename(save_to.as_path(), save_to.with_file_name(filename)).is_err() {
-                    eprintln!("failed rename download file");
-                };
-            });
-
-            // download stage
-            for ch_idx in 0..download_info.chunks_count {
-                let sem = sem.clone();
-                let http_cfg = cfg.clone();
-                let tx = tx.clone();
-                let mut connections = connections.clone();
-
-                let cancel_token = cancel_token.clone();
-                tokio::spawn(async move {
-                    let offset = download_info.chunk_size * ch_idx as i64;
-
-                    let _perm = tokio::select! {
-                        _ = cancel_token.cancelled() => {
-                            return
-                        }
-                        permit = sem.acquire() => match permit {
-                            Ok(p) => p,
-                            Err(e) => {
-                                eprintln!("Failed to acquire semaphore: {:?}", e);
-                                return;
-                            }
-                        }
-                    };
-
-                    match files_get_chunk(&http_cfg, download_info.uuid.to_string().as_str(), ch_idx).await {
-                        Ok(v) => {
-                            connections.increase_progress(download_info.uuid).await;
-                            let _ = tx.send((v.content.unwrap().bytes().await.unwrap().to_vec(), offset)).await;
-                        },
-                        Err(err) => {
-                            cancel_token.cancel();
-                            match err {
-                                Error::ResponseError(c) => eprintln!("resp err: {}", c.content),
-                                _ => eprintln!("err: {}", err),
-                            };
-                        }
-                    };
-                });
+            let stream = match client.read_file(conn_req).await {
+                Ok(res) => res.into_inner(),
+                Err(status) => return Err(ServiceError::from(status))
             };
+
+            while let Some(chunk) = stream.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(status) => return Err(ServiceError::from(status)),
+                };
+                file.write_at(&chunk.data, chunk.offset);
+            };
+
             Ok(())
         })
-    }
-}
-
-impl super::Service for FileManager {
-    fn update_config(&mut self, client: reqwest::Client, app_cfg: crate::config::app::ApplicationConfig) {
-        let server_api_conf = app_cfg.server_api_config();
-        let mut api_cfg = Configuration::new();
-        api_cfg.base_path = server_api_conf.base_path().to_owned();
-        api_cfg.bearer_access_token = Some(server_api_conf.jwt().to_owned());
-    
-        
-        self.request_pool = RequestsPool::new(api_cfg.clone(), client);
-        self.cfg = FileServiceConfig::new(api_cfg, app_cfg.download_dir())
     }
 }
