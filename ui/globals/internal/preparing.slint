@@ -1,3 +1,5 @@
+import { PreparingStates } from "../state/enums.slint";
+
 export enum UpdateStatus {
     Required,
     Available,
@@ -10,7 +12,7 @@ export global PreparingInternal {
     in-out property <bool> prepare-needed: false;
     in-out property <UpdateStatus> update-status: UpdateStatus.NotNeeded;
 
-    callback handle_state();
+    callback handle_state(PreparingStates);
 
     callback login(string, string); // username, password
     callback register(string, string, string, string); // username, password, verify password, register key

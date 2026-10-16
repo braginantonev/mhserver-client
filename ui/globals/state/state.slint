@@ -1,24 +1,6 @@
-import { PreparingInternal } from "internal/preparing.slint";
-import { MainInternal, Services } from "internal/main.slint";
-
-export enum PreparingStates {
-    // Main preparing states
-    Greeting,
-    Update,
-    Connection, 
-    Login,
-    End,
-
-    // Additional preparing states
-    // By default this states not using in standard state change
-    // Use this states only by force change
-    Register
-}
-
-export enum ApplicationStates {
-    Preparing, 
-    Main
-}
+import { PreparingStates, ApplicationStates } from "enums.slint"; 
+import { PreparingInternal } from "../internal/preparing.slint";
+import { MainInternal, Services } from "../internal/main.slint";
 
 export global State {
     out property <ApplicationStates> application: Preparing;
@@ -58,7 +40,7 @@ export global State {
         }
 
         PreparingInternal.prepare-needed = false;
-        PreparingInternal.handle_state();
+        PreparingInternal.handle_state(preparing);
         debug("[UI]: handle next state", preparing);
     }
 
