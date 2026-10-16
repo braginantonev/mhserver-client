@@ -39,7 +39,7 @@ impl ServiceError {
         self
     }
 
-    pub fn push_desc(mut self, desc: &str) -> Self {
+    pub fn with_desc(mut self, desc: &str) -> Self {
         self.desc = Some(match self.desc {
             Some(mut v) => {
                 v.push('\n');
@@ -56,8 +56,4 @@ impl From<Status> for ServiceError {
     fn from(value: Status) -> Self {
         Self::new("service error", Some(value.message().to_owned()), Some(value.code()))
     }
-}
-
-pub trait Service {
-    fn update_config(&mut self, http_client: reqwest::Client, app_cfg: crate::config::app::ApplicationConfig);
 }

@@ -1,12 +1,9 @@
 use {
     super::ServiceError,
     crate::UpdateStatus, 
-    semver::Version,
 };
 
-
-
-pub async fn update_status(api_cfg: &Configuration) -> Result<UpdateStatus, ServiceError> {
+pub async fn update_status() -> Result<UpdateStatus, ServiceError> {
 
     /*
     let server_version = match version(api_cfg).await {

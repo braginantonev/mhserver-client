@@ -188,7 +188,7 @@ impl FileManager {
 
                 loop {
                     if cancel_token.is_cancelled() {
-                        return Ok(());
+                        return;
                     }
         
                     let mut save_chunk = vec![0u8; CHUNK_SIZE];
