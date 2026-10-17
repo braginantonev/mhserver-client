@@ -1,17 +1,15 @@
 use std::path::PathBuf;
-use api::apis::configuration::Configuration;
 
 use crate::service::files::dirs::default_download_dir;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {
-    api_conf: Configuration,
     download_dir: PathBuf,
 }
 
 impl FileServiceConfig {
-    pub fn new(api_conf: Configuration, download_dir: Option<PathBuf>) -> Self {
-        Self { api_conf, download_dir: download_dir.unwrap_or(default_download_dir()) }
+    pub fn new(download_dir: Option<PathBuf>) -> Self {
+        Self { download_dir: download_dir.unwrap_or(default_download_dir()) }
     }
 
     pub fn download_dir(&self) -> PathBuf {
@@ -21,6 +19,6 @@ impl FileServiceConfig {
 
 impl Default for FileServiceConfig {
     fn default() -> Self {
-        Self { api_conf: Configuration::default(), download_dir: default_download_dir() }
+        Self { download_dir: default_download_dir() }
     }
 }

@@ -2,7 +2,7 @@ use {
     super::{
         File, MainWindow, NotificationType, api::FilesList, repository::filetypes::FileTypes,
     }, crate::{
-        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}
+        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}
     }, slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc, tonic::Code,
 };
 
@@ -22,14 +22,16 @@ pub enum PreparingActions {
     /// Invoke next() method of State global
     InvokeNextState,
 
-    ForceAuthorization,
+    InvokePreparing,
+
+    ForceState(PreparingStates),
 }
 
 impl TryFrom<ServiceError> for PreparingActions {
     type Error = ();
     fn try_from(value: ServiceError) -> Result<Self, Self::Error> {
         match value.code().unwrap_or(Code::Ok) {
-            Code::Unauthenticated => Ok(PreparingActions::ForceAuthorization),
+            Code::Unauthenticated => Ok(PreparingActions::ForceState(PreparingStates::Login)),
             _ => Err(())
         }
     }
@@ -41,8 +43,11 @@ impl UiActions for PreparingActions {
             PreparingActions::InvokeNextState => {
                 win.global::<State>().invoke_next();
             },
-            PreparingActions::ForceAuthorization => {
-                win.global::<State>().invoke_force_preparing_state(PreparingStates::Login);
+            PreparingActions::InvokePreparing => {
+                win.global::<PreparingInternal>().set_prepare_needed(true);
+            }
+            PreparingActions::ForceState(state) => {
+                win.global::<State>().invoke_force_preparing_state(state);
             },
         }
     }

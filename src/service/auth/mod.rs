@@ -1,3 +1,5 @@
+pub mod extend;
+
 use {
     crate::api::{self, auth_service_client::AuthServiceClient},
     super::ServiceError,

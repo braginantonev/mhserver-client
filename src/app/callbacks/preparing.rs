@@ -1,20 +1,16 @@
 use {
     crate::{
-        actions::{MainActions, PreparingActions, UiActions},
-        NotificationType, OS, PreparingInternal, PreparingSettings, app::Application, service::preparing
-    }, 
-    api::apis::configuration::Configuration, reqwest::Client, slint::ComponentHandle
+        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, State, actions::{MainActions, PreparingActions, UiActions}, api, app::Application, service::{preparing, auth::extend::is_jwt_expired}
+    }, slint::ComponentHandle, tonic::transport::{Channel, Endpoint, Error},
 };
 
-fn api_cfg(client: Client, base_path: String) -> Configuration {
-    let mut cfg = Configuration::new();
-    cfg.client = reqwest_middleware::ClientWithMiddleware::from(client);
-    cfg.base_path = base_path;
-    cfg
+#[inline]
+async fn try_connect_to_server(address: &'static str) -> Result<Channel, Error> {
+    return Endpoint::from_static(address).connect_timeout(std::time::Duration::from_secs(5)).connect().await
 }
 
 impl Application {
-    pub fn init_preparing_callbacks(&self) {
+    pub fn init_preparing(&self) {
         let win_weak = self.ui_window.as_weak();
         let preparing_internal = self.ui_window.global::<PreparingInternal>();
 
@@ -23,6 +19,115 @@ impl Application {
 
         #[cfg(target_os = "windows")]
         self.ui_window.global::<PreparingSettings>().set_current_os(OS::Windows);
+
+        preparing_internal.on_handle_state({
+            let win = win_weak.clone();
+            let cfg = self.cfg.clone();
+            let chan = self.chan.clone();
+
+            move |state: PreparingStates| {
+                let win = win.clone();
+                let cfg = cfg.clone();
+                let chan = chan.clone();
+
+                tokio::spawn(async move {
+                    let need_user_action: bool = match state {
+                        PreparingStates::Greeting => return, // greeting will invoke next for self
+
+                        PreparingStates::Connection => {
+                            // Client inet can be dropped. We can't init channel again (idk how), so one way to reload - restart app.
+                            // This is sad, but for now it's one choice.
+                            if chan.get().is_some() {
+                                return MainActions::ShowNotification(
+                                    "Failed connect to server".to_owned(), 
+                                    "Server is off or address was changed\n Please restart the application".to_owned(),
+                                    NotificationType::Error
+                                ).run_in_event_loop(win); 
+                            }
+
+                            let address = cfg.read().await.server_api_config().base_path();
+                            if address.is_empty() {
+                                true;
+                            }
+
+                            match try_connect_to_server(address).await {
+                                Ok(c) => {
+                                    chan.set(c);
+                                    false
+                                },
+                                Err(_) => {
+                                    MainActions::ShowNotification(
+                                        "Failed connect to server".to_owned(), 
+                                        "Server is off or address was changed".to_owned(), 
+                                        NotificationType::Error
+                                    ).run_in_event_loop(win);
+                                    true
+                                },
+                            }
+                        },
+
+                        PreparingStates::Update => /*match preparing::update_status(&api_cfg).await*/ {
+                            /*
+                            Ok(st ) => match st {
+                                UpdateStatus::Available => true,
+                                UpdateStatus::CantCheck => {
+                                    MainActions::ShowNotification("failed check update".to_owned(), String::default(), crate::NotificationType::Info).run(win.clone_strong());
+                                    false
+                                },
+                                _ => false
+                            },
+                            Err(err) => {
+                                MainActions::from(err).run(win.clone_strong());
+                                false
+                            }*/
+
+                            // temporary dropped. fix in 3.x
+                            false
+                        },
+
+                        PreparingStates::Login => {
+                            let bearer_token = cfg.read().await.server_api_config().jwt();
+                            if bearer_token.is_empty() {
+                                true;
+                            }
+
+                            match is_jwt_expired(bearer_token) {
+                                Ok(b) => b,
+                                Err(err) => {
+                                    MainActions::ShowNotification("Failed check auth expiration".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win);
+                                    true
+                                },
+                            }
+                        },
+
+                        PreparingStates::Register => false,
+                        PreparingStates::End => false,
+                    };
+
+                    if need_user_action {
+                        PreparingActions::InvokePreparing.run_in_event_loop(win);
+                    } else {
+                        PreparingActions::InvokeNextState.run_in_event_loop(win);
+                    }
+                });  
+            }
+        });
+        
+        preparing_internal.on_update_services({
+            let update_cfg = self.cfg.clone();
+            let client = self.base_client.clone();
+            move || {
+                let update_cfg = update_cfg.clone();
+                let services = services.clone();
+                let client = client.clone();
+                tokio::spawn(async move {
+                    let update_cfg = update_cfg.read().await;
+                    for s in services {
+                        s.write().await.update_config(client.clone(), update_cfg.clone());
+                    }
+                });
+            }
+        });
 
         preparing_internal.on_connect({
             let win = win_weak.clone();

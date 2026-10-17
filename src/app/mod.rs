@@ -1,16 +1,16 @@
 pub mod errors;
 pub mod callbacks;
-mod init;
 
 use {
     crate::{MainWindow, config::app::ApplicationConfig}, 
     errors::{ApplicationError, ApplicationErrors}, 
-    slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock
+    slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
+    std::sync::OnceLock
 };
 
 pub struct Application {
     ui_window: MainWindow,
-    base_client: reqwest::Client,
+    chan: Arc<OnceLock<tonic::transport::Channel>>,
     cfg: Arc<RwLock<ApplicationConfig>>,
 }
 
@@ -21,16 +21,6 @@ impl Application {
             Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateWindow(err.to_string()))),
         };
 
-        let base_client = match reqwest::Client::builder()
-            .tls_info(true)
-            .tls_backend_native()
-            .danger_accept_invalid_certs(true)
-            .timeout(std::time::Duration::new(2, 0))
-            .build() {
-                Ok(cl) => cl,
-                Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateHttpClient(err.to_string())))
-            };
-
         let cfg = Arc::new(RwLock::new(match ApplicationConfig::from_file() {
             Ok(res) => res,
             Err(_) => ApplicationConfig::default()
@@ -38,11 +28,9 @@ impl Application {
 
         let s = Self {
             ui_window: win,
-            base_client,
+            chan: Arc::new(OnceLock::new()), 
             cfg,
         };
-
-        s.init();
 
         Ok(s)
     }
