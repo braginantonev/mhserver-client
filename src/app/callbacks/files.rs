@@ -1,17 +1,24 @@
 use {
     crate::{
-        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, app::Application, service::files::{dirs::Directory, FileManager},
-    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::{sync::RwLock}
+        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, api::FilesList, app::Application, config::files::FileServiceConfig, service::files::{FileManager, dirs::Directory},
+    }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
-    pub fn init_files_callbacks(&self, files_service: Arc<RwLock<FileManager>>) {
+    pub fn init_files_service(&self) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
+
+        let service_cfg = {
+            let app_cfg = self.cfg.blocking_read();
+            FileServiceConfig::new(app_cfg.download_dir())
+        };
+
+        let mut service = Arc::new(RwLock::new(FileManager::new(service_cfg, todo!("wrap client to option"))));
         
         internal.on_update_list({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move || {
                 let win = win.clone();
@@ -21,11 +28,11 @@ impl Application {
                     let files = service.write().await.get_files(None).await; 
 
                     match files {
-                        Ok(res) => FilesActions::UpdateFilesList(res, String::from("/")).run_in_event_loop(win.clone()),
+                        Ok(res) => FilesActions::UpdateFilesList(FilesList{ value: res }, String::from("/")).run_in_event_loop(win.clone()),
                         Err(err) => return AnyActions::from(err).run_in_event_loop(win), // actions because, user can be unauthorized 
                     };
 
-                    match service.read().await.available_space().await {
+                    match service.write().await.available_space().await {
                         Ok(s) => FilesActions::UpdateAvailableSpace(s.to_string_candy()).run_in_event_loop(win),
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -35,7 +42,7 @@ impl Application {
 
         internal.on_cd({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |target| {
                 let win = win.clone();
@@ -49,7 +56,7 @@ impl Application {
                     } else {
                         lock.prev().await
                     } {
-                        Ok(files) => FilesActions::UpdateFilesList(files, lock.current_dir().into()).run_in_event_loop(win.clone()),
+                        Ok(files) => FilesActions::UpdateFilesList(FilesList { value: files }, lock.current_dir().into()).run_in_event_loop(win.clone()),
                         Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
                     };
                     FilesActions::UpdateCurrentDirectory(lock.current_dir().into()).run_in_event_loop(win);
@@ -59,7 +66,7 @@ impl Application {
 
         internal.on_mkdir({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
@@ -73,7 +80,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            FilesActions::UpdateFilesList(files, from.into()).run_in_event_loop(win);
+                            FilesActions::UpdateFilesList(FilesList { value: files }, from.into()).run_in_event_loop(win);
                         },
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -83,7 +90,7 @@ impl Application {
 
         internal.on_rmdir({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
@@ -97,7 +104,7 @@ impl Application {
                                 let lock = service.read().await;
                                 (lock.cached_files(), lock.current_dir())
                             };
-                            FilesActions::UpdateFilesList(files, from.into()).run_in_event_loop(win);
+                            FilesActions::UpdateFilesList(FilesList { value: files }, from.into()).run_in_event_loop(win);
                         },
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -108,7 +115,7 @@ impl Application {
 
         internal.on_upload_files({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move || {
                 let win = win.clone();
@@ -144,7 +151,7 @@ impl Application {
 
         internal.on_upload_folders({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move || {
                 let win = win.clone();
@@ -190,7 +197,7 @@ impl Application {
 
         internal.on_download_file({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |filename| {
                 let win = win.clone();
@@ -206,7 +213,7 @@ impl Application {
 
         internal.on_download_directory({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
@@ -240,7 +247,7 @@ impl Application {
         });
 
         internal.on_cancel_load({
-            let service = files_service.clone();
+            let service = service.clone();
 
             move |uuid| {
                 let service = service.clone();
@@ -252,7 +259,7 @@ impl Application {
 
         internal.on_update_load_files({
             let win = win.clone();
-            let service = files_service.clone();
+            let service = service.clone();
 
             FilesActions::UpdateLoadFiles(vec![]).run_in_event_loop(win.clone()); // set default value
 

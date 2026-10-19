@@ -3,7 +3,7 @@ mod path;
 pub mod dirs;
 
 use {
-    super::ServiceError, crate::{api::{self, data_service_client::DataServiceClient}, config::files::FileServiceConfig}, futures_util::StreamExt, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::task::JoinHandle, tonic::transport::Channel, uuid::Uuid,
+    super::ServiceError, crate::{api::{self, data_service_client::DataServiceClient}, config::files::FileServiceConfig}, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::task::JoinHandle, tokio_stream::StreamExt, tonic::transport::Channel, uuid::Uuid,
 };
 
 pub struct Size(u64);
@@ -238,7 +238,7 @@ impl FileManager {
 
             let conn_req = api::RequiredFile {
                 dir: Some(api::Directory{ value: from.clone() }),
-                name: filename,
+                name: filename.clone(),
                 new_size: None,
             };
             

@@ -5,12 +5,12 @@ use {
     crate::{MainWindow, config::app::ApplicationConfig}, 
     errors::{ApplicationError, ApplicationErrors}, 
     slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
-    std::sync::OnceLock
 };
+
 
 pub struct Application {
     ui_window: MainWindow,
-    chan: Arc<OnceLock<tonic::transport::Channel>>,
+    chan: Arc<std::sync::OnceLock<tonic::transport::Channel>>,
     cfg: Arc<RwLock<ApplicationConfig>>,
 }
 
@@ -28,15 +28,24 @@ impl Application {
 
         let s = Self {
             ui_window: win,
-            chan: Arc::new(OnceLock::new()), 
+            chan: Arc::default(), 
             cfg,
         };
 
         Ok(s)
     }
 
+    fn init_callbacks(&self) {
+        self.init_window_callbacks();
+        self.init_preparing();
+        self.init_auth();
+        self.init_files_service();
+    }
+
     pub async fn run(&self) -> Result<(), ApplicationError> {
+        self.init_callbacks();
         let res = self.ui_window.run();
+
         self.cfg.read().await.save_to_file();
         match res {
             Ok(_) => Ok(()),

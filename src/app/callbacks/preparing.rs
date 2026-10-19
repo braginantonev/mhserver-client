@@ -1,12 +1,12 @@
 use {
     crate::{
-        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, State, actions::{MainActions, PreparingActions, UiActions}, api, app::Application, service::{preparing, auth::extend::is_jwt_expired}
+        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::{auth::extend::is_jwt_expired}
     }, slint::ComponentHandle, tonic::transport::{Channel, Endpoint, Error},
 };
 
 #[inline]
-async fn try_connect_to_server(address: &'static str) -> Result<Channel, Error> {
-    return Endpoint::from_static(address).connect_timeout(std::time::Duration::from_secs(5)).connect().await
+async fn try_connect_to_server(address: String) -> Result<Channel, Error> {
+    return Endpoint::from_shared(address)?.connect_timeout(std::time::Duration::from_secs(5)).connect().await
 }
 
 impl Application {
@@ -35,22 +35,17 @@ impl Application {
                         PreparingStates::Greeting => return, // greeting will invoke next for self
 
                         PreparingStates::Connection => {
-                            // Client inet can be dropped. We can't init channel again (idk how), so one way to reload - restart app.
-                            // This is sad, but for now it's one choice.
                             if chan.get().is_some() {
                                 return MainActions::ShowNotification(
                                     "Failed connect to server".to_owned(), 
-                                    "Server is off or address was changed\n Please restart the application".to_owned(),
+                                    "Server is off or address was changed\nPlease restart application".to_owned(),
                                     NotificationType::Error
-                                ).run_in_event_loop(win); 
+                                ).run_in_event_loop(win);
                             }
 
-                            let address = cfg.read().await.server_api_config().base_path();
-                            if address.is_empty() {
-                                true;
-                            }
+                            let address = String::from(cfg.read().await.server_api_config().base_path());
 
-                            match try_connect_to_server(address).await {
+                            address.is_empty() || match try_connect_to_server(address).await {
                                 Ok(c) => {
                                     chan.set(c);
                                     false
@@ -60,7 +55,7 @@ impl Application {
                                         "Failed connect to server".to_owned(), 
                                         "Server is off or address was changed".to_owned(), 
                                         NotificationType::Error
-                                    ).run_in_event_loop(win);
+                                    ).run_in_event_loop(win.clone());
                                     true
                                 },
                             }
@@ -86,15 +81,12 @@ impl Application {
                         },
 
                         PreparingStates::Login => {
-                            let bearer_token = cfg.read().await.server_api_config().jwt();
-                            if bearer_token.is_empty() {
-                                true;
-                            }
+                            let api_cfg = cfg.read().await.server_api_config().clone();
 
-                            match is_jwt_expired(bearer_token) {
+                            api_cfg.jwt().is_empty() || match is_jwt_expired(api_cfg.jwt()) {
                                 Ok(b) => b,
                                 Err(err) => {
-                                    MainActions::ShowNotification("Failed check auth expiration".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win);
+                                    MainActions::ShowNotification("Failed check auth expiration".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone());
                                     true
                                 },
                             }
@@ -112,94 +104,38 @@ impl Application {
                 });  
             }
         });
-        
-        preparing_internal.on_update_services({
-            let update_cfg = self.cfg.clone();
-            let client = self.base_client.clone();
-            move || {
-                let update_cfg = update_cfg.clone();
-                let services = services.clone();
-                let client = client.clone();
-                tokio::spawn(async move {
-                    let update_cfg = update_cfg.read().await;
-                    for s in services {
-                        s.write().await.update_config(client.clone(), update_cfg.clone());
-                    }
-                });
-            }
-        });
 
         preparing_internal.on_connect({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
-            let http_client = self.base_client.clone();
+            let chan = self.chan.clone();
 
             move |srv_addr| {
                 let win = win.clone();
                 let cfg = cfg.clone();
-                let http_client = http_client.clone();
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
-                    match preparing::ping(&api_cfg(http_client, srv_addr.to_string())).await {
-                        Ok(_) => {
-                            cfg.write().await.server_api_config_mut().set_base_path(srv_addr.as_str());
-                            PreparingActions::InvokeNextState.run_in_event_loop(win);
-                        },
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
-                    };
-                });
-            }
-        });
-
-        preparing_internal.on_login({
-            let win = win_weak.clone();
-            let cfg = self.cfg.clone();
-            let http_client = self.base_client.clone();
-
-            move |username, password| {
-                let win = win.clone();
-                let cfg = cfg.clone();
-                let http_client = http_client.clone();
-
-                tokio::spawn(async move {
-                    let base_path = cfg.read().await.server_api_config().base_path().to_owned();
-                    match preparing::login(
-                        &api_cfg(http_client, base_path),
-                        api::models::UserLoginRequest::new(username.to_string(), password.to_string())
-                    ).await {
-                        Ok(jwt) => {
-                            cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
-                            PreparingActions::InvokeNextState.run_in_event_loop(win);
-                        },
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
-                    };
-                });
-            }
-        });
-
-        preparing_internal.on_register({
-            let win = win_weak.clone();
-            let cfg = self.cfg.clone();
-            let http_client = self.base_client.clone();
-
-            move |username, password, verify, key| {
-                let win = win.clone();
-                let cfg = cfg.clone();
-                let http_client = http_client.clone();
-
-                tokio::spawn(async move {
-                    if password != verify {
-                        MainActions::ShowNotification("Password and verify password not ident".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win);
-                        return
+                    if chan.get().is_some() {
+                        return MainActions::ShowNotification(
+                            "Failed connect to server".to_owned(), 
+                            "Server is off or address was changed\nPlease restart application".to_owned(),
+                            NotificationType::Error
+                        ).run_in_event_loop(win);
                     }
 
-                    let base_path = cfg.read().await.server_api_config().base_path().to_owned();
-                    match preparing::register(
-                        &api_cfg(http_client, base_path),
-                        api::models::UserRegisterRequest::new(username.to_string(), password.to_string(), key.to_string())
-                    ).await {
-                        Ok(_) => PreparingActions::InvokeNextState.run_in_event_loop(win),
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                    match try_connect_to_server(srv_addr.to_string()).await {
+                        Ok(c) => {
+                            cfg.write().await.server_api_config_mut().set_base_path(&srv_addr);
+                            chan.set(c); 
+                        },
+                        Err(err) => {
+                            MainActions::ShowNotification(
+                                "Failed connect to server".to_owned(), 
+                                err.to_string(), 
+                                NotificationType::Error
+                            ).run_in_event_loop(win);
+                        },
                     };
                 });
             }
