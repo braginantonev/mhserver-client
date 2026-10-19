@@ -35,15 +35,15 @@ impl Application {
         Ok(s)
     }
 
-    fn init_callbacks(&self) {
+    async fn init_callbacks(&self) {
         self.init_window_callbacks();
         self.init_preparing();
         self.init_auth();
-        self.init_files_service();
+        self.init_files_service().await;
     }
 
     pub async fn run(&self) -> Result<(), ApplicationError> {
-        self.init_callbacks();
+        self.init_callbacks().await;
         let res = self.ui_window.run();
 
         self.cfg.read().await.save_to_file();

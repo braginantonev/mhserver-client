@@ -1,38 +1,40 @@
 use {
     crate::{
-        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, api::FilesList, app::Application, config::files::FileServiceConfig, service::files::{FileManager, dirs::Directory},
+        FilesInternal, actions::{AnyActions, FilesActions, MainActions, UiActions}, api::{FilesList, data_service_client::DataServiceClient}, app::Application, config::files::FileServiceConfig, service::files::{FileManager, dirs::Directory},
     }, slint::ComponentHandle, std::{str::FromStr, sync::Arc}, tokio::sync::RwLock
 };
 
 impl Application {
-    pub fn init_files_service(&self) {
+    pub async fn init_files_service(&self) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
 
         let service_cfg = {
-            let app_cfg = self.cfg.blocking_read();
+            let app_cfg = self.cfg.read().await;
             FileServiceConfig::new(app_cfg.download_dir())
         };
 
-        let mut service = Arc::new(RwLock::new(FileManager::new(service_cfg, todo!("wrap client to option"))));
+        let service = Arc::new(RwLock::new(FileManager::new(service_cfg)));
         
         internal.on_update_list({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move || {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
-                    let files = service.write().await.get_files(None).await; 
+                    let files = service.write().await.get_files(client.clone(), None).await; 
 
                     match files {
                         Ok(res) => FilesActions::UpdateFilesList(FilesList{ value: res }, String::from("/")).run_in_event_loop(win.clone()),
                         Err(err) => return AnyActions::from(err).run_in_event_loop(win), // actions because, user can be unauthorized 
                     };
 
-                    match service.write().await.available_space().await {
+                    match service.read().await.available_space(client).await {
                         Ok(s) => FilesActions::UpdateAvailableSpace(s.to_string_candy()).run_in_event_loop(win),
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };
@@ -42,19 +44,21 @@ impl Application {
 
         internal.on_cd({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move |target| {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
                     let mut lock = service.write().await;
 
                     match if target != ".." {
-                        lock.next(target.as_str()).await
+                        lock.next(client, target.as_str()).await
                     } else {
-                        lock.prev().await
+                        lock.prev(client).await
                     } {
                         Ok(files) => FilesActions::UpdateFilesList(FilesList { value: files }, lock.current_dir().into()).run_in_event_loop(win.clone()),
                         Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
@@ -66,14 +70,16 @@ impl Application {
 
         internal.on_mkdir({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
-                    let resp = service.write().await.make_dir(None, dir_name.as_str()).await;
+                    let resp = service.write().await.make_dir(client, None, dir_name.as_str()).await;
                     match resp {
                         Ok(_) => {
                             let (files, from) = {
@@ -90,14 +96,16 @@ impl Application {
 
         internal.on_rmdir({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
-                    let resp = service.write().await.remove_dir(dir_name.as_str()).await;
+                    let resp = service.write().await.remove_dir(client, dir_name.as_str()).await;
                     match resp {
                         Ok(_) => {
                             let (files, from) = {
@@ -115,11 +123,13 @@ impl Application {
 
         internal.on_upload_files({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move || {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
                     let current_dir = service.read().await.current_dir();
@@ -137,7 +147,7 @@ impl Application {
                     let mut handles = Vec::with_capacity(files.len());
                     for f in files {
                         // todo: use single lock in api 3.x if it's will be needed
-                        handles.push(service.write().await.upload_file(Some(current_dir.clone()), f.path().to_path_buf()));
+                        handles.push(service.write().await.upload_file(client.clone(), Some(current_dir.clone()), f.path().to_path_buf()));
                     }
 
                     for h in handles {
@@ -151,11 +161,13 @@ impl Application {
 
         internal.on_upload_folders({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move || {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
                     let current_dir = service.read().await.current_dir();
@@ -174,13 +186,13 @@ impl Application {
                     for dir in dirs {
                         let mut files = Directory::from_recursive(dir.path()).read();
                         while let Some(files) = files.recv().await {
-                            if let Err(err) = service.write().await.make_dir(Some(current_dir.clone()), files.0.to_string().trim_start_matches('/').trim_end_matches('/')).await {
+                            if let Err(err) = service.write().await.make_dir(client.clone(), Some(current_dir.clone()), files.0.to_string().trim_start_matches('/').trim_end_matches('/')).await {
                                 MainActions::from(err).run_in_event_loop(win.clone());
                                 continue
                             };
 
                             for f in files.1 {
-                                handles.push(service.write().await.upload_file(Some(files.0.clone()), f));
+                                handles.push(service.write().await.upload_file(client.clone(), Some(files.0.clone()), f));
                             }
                         }
                     }
@@ -197,14 +209,16 @@ impl Application {
 
         internal.on_download_file({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move |filename| {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
                 
                 tokio::spawn(async move {
-                    if let Err(err) = service.write().await.download_file(None, filename.to_string()).await.unwrap() {
+                    if let Err(err) = service.write().await.download_file(client, None, filename.to_string()).await.unwrap() {
                         MainActions::from(err).run_in_event_loop(win.clone());
                     };
                 });
@@ -213,17 +227,19 @@ impl Application {
 
         internal.on_download_directory({
             let win = win.clone();
+            let chan = self.chan.clone();
             let service = service.clone();
 
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
+                let client = DataServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
                     let mut from = service.read().await.current_dir().to_string() + &dir_name;
                     from.push('/');
                     
-                    let download_files = match service.write().await.get_files(Some(from.clone())).await {
+                    let download_files = match service.write().await.get_files(client.clone(), Some(from.clone())).await {
                         Ok(files) => files,
                         Err(err) => {
                             MainActions::from(err).run_in_event_loop(win);
@@ -234,7 +250,7 @@ impl Application {
                     let mut handles = Vec::with_capacity(download_files.len());
                     for file in download_files {
                         // todo: use single lock in api 3.x if it's will be needed
-                        handles.push(service.write().await.download_file(Some(from.clone()), file.name.clone()));
+                        handles.push(service.write().await.download_file(client.clone(), Some(from.clone()), file.name.clone()));
                     }
                     
                     for h in handles {

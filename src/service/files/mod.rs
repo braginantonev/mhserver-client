@@ -3,8 +3,10 @@ mod path;
 pub mod dirs;
 
 use {
-    super::ServiceError, crate::{api::{self, data_service_client::DataServiceClient}, config::files::FileServiceConfig}, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::task::JoinHandle, tokio_stream::StreamExt, tonic::transport::Channel, uuid::Uuid,
+    super::ServiceError, crate::{api::{self, data_service_client::DataServiceClient}, config::files::FileServiceConfig}, std::{collections::btree_set::SymmetricDifference, fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio::task::JoinHandle, tokio_stream::StreamExt, tonic::{client, transport::Channel}, uuid::Uuid,
 };
+
+type Client = DataServiceClient<Channel>;
 
 pub struct Size(u64);
 
@@ -55,17 +57,15 @@ impl Default for FilesList {
 
 pub struct FileManager {
     cfg: FileServiceConfig,
-    client: DataServiceClient<Channel>,
     active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
     connections: connections::Connections,
 }
 
 impl FileManager {
-    pub fn new(cfg: FileServiceConfig, client: DataServiceClient<Channel>) -> Self {
+    pub fn new(cfg: FileServiceConfig)-> Self {
         Self { 
             cfg,
-            client,
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             connections: connections::Connections::new(),
@@ -82,15 +82,15 @@ impl FileManager {
     }
 
     /// Go to next folder, and return files list
-    pub async fn next(&mut self, dir_name: &str) -> Result<Vec<api::FileInfo>, ServiceError> {
+    pub async fn next(&mut self, client: Client, dir_name: &str) -> Result<Vec<api::FileInfo>, ServiceError> {
         self.active_dir.push(dir_name);
-        self.get_files(None).await
+        self.get_files(client, None).await
     }
 
     /// Go to previous folder, and return files list
-    pub async fn prev(&mut self) -> Result<Vec<api::FileInfo>, ServiceError> {
+    pub async fn prev(&mut self, client: Client) -> Result<Vec<api::FileInfo>, ServiceError> {
         self.active_dir.pop();
-        self.get_files(None).await
+        self.get_files(client, None).await
     }
 
     pub async fn cancel_load(&mut self, id: Uuid) {
@@ -99,16 +99,16 @@ impl FileManager {
 
     //* API requests
 
-    pub async fn available_space(&mut self) -> Result<Size, ServiceError> {
-        match self.client.get_available_disk_space(()).await {
+    pub async fn available_space(&self, mut client: Client) -> Result<Size, ServiceError> {
+        match client.get_available_disk_space(()).await {
             Ok(v) => Ok(Size(v.get_ref().value)),
             Err(err) => Err(ServiceError::from(err))
         }
     }
 
-    pub async fn make_dir(&mut self, from: Option<path::ServerPath>, new_dir: &str) -> Result<(), ServiceError> {
+    pub async fn make_dir(&mut self, mut client: Client, from: Option<path::ServerPath>, new_dir: &str) -> Result<(), ServiceError> {
         let from = from.unwrap_or(self.current_dir());
-        match self.client.create_dir(api::Directory { value: from.with(new_dir).to_string() }).await {
+        match client.create_dir(api::Directory { value: from.with(new_dir).to_string() }).await {
             Ok(_) => {
                 // Append new dir to files list instead a send request to server, to reduce the load on it.
                 self.cached_files.0.push(api::FileInfo { name: new_dir.to_owned(), is_dir: true, size: 0, mod_time: 0 });
@@ -118,10 +118,14 @@ impl FileManager {
         }
     }
 
-    pub async fn remove_dir(&mut self, target_dir: &str) -> Result<(), ServiceError> {
-        match self.client.remove_dir(api::Directory { value: self.current_dir().with(target_dir).to_string() }).await {
+    pub async fn remove_dir(&mut self, mut client: Client, target_dir: &str) -> Result<(), ServiceError> {
+        let request = api::Directory { 
+            value: self.current_dir().with(target_dir).to_string() 
+        };
+
+        match client.remove_dir(request).await {
             Ok(_) => {
-                self.cached_files.remove(target_dir, true);
+                self.cached_files.remove(target_dir, true); // remove dir without get files from server
                 Ok(())
             },
             Err(err) => Err(ServiceError::from(err))
@@ -129,8 +133,12 @@ impl FileManager {
     }
 
     /// Get files list from server and save to local cache
-    pub async fn get_files(&mut self, from: Option<String>) -> Result<Vec<api::FileInfo>, ServiceError> {
-        match self.client.get_files(api::Directory { value: from.unwrap_or(self.current_dir().into()) }).await {
+    pub async fn get_files(&mut self, mut client: Client, from: Option<String>) -> Result<Vec<api::FileInfo>, ServiceError> {
+        let request = api::Directory { 
+            value: from.unwrap_or(self.current_dir().to_string()) 
+        };
+
+        match client.get_files(request).await {
             Ok(res ) => {
                 self.cached_files = FilesList(res.get_ref().value.clone());
                 Ok(self.cached_files())
@@ -148,10 +156,9 @@ impl FileManager {
     }
 
     /// Save file to the server. That function return JoinHandle with error, if he exist
-    pub fn upload_file(&mut self, to: Option<path::ServerPath>, os_file_path: PathBuf) -> JoinHandle<Result<(), ServiceError>> {
+    pub fn upload_file(&mut self, client: Client, to: Option<path::ServerPath>, os_file_path: PathBuf) -> JoinHandle<Result<(), ServiceError>> {
         let upload_to = to.unwrap_or(self.current_dir()).into();
         let mut connections = self.connections.clone();
-        let mut client = self.client.clone();
 
         // save file
         tokio::spawn(async move {
@@ -213,8 +220,7 @@ impl FileManager {
         })
     }
 
-    pub fn download_file(&mut self, from: Option<String>, filename: String) -> JoinHandle<Result<(), ServiceError>> {
-        let client = self.client.clone();
+    pub fn download_file(&mut self, client: Client, from: Option<String>, filename: String) -> JoinHandle<Result<(), ServiceError>> {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
 
