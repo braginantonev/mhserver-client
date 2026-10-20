@@ -1,7 +1,7 @@
 use {
     super::{api::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
     crate::{
-        service::{files::connections::ConnectionInfo, ServiceError},
+        service::{files::loader::{Load, LoadID}, ServiceError},
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,
         PreparingInternal, PreparingStates, State,
     },
@@ -104,7 +104,7 @@ pub enum FilesActions {
     /// Update files in data service. Required the files, and server path, where is this files located.
     UpdateFilesList(FilesList, String),
 
-    UpdateLoadFiles(Vec<ConnectionInfo>),
+    UpdateLoadFiles(Vec<(LoadID, Load)>),
 
     UpdateCurrentDirectory(String),
 
@@ -136,12 +136,13 @@ impl UiActions for FilesActions {
             FilesActions::UpdateLoadFiles(files) => {
                 win.global::<FilesInternal>()
                     .set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(
-                        files.iter().map(|conn| LoadFile {
-                            connID: conn.id.to_shared_string(),
-                            is_upload: conn.is_upload,
-                            name: conn.filename.to_shared_string(),
-                            progress: conn.load_progress,
-                            previous: conn.previous_progress,
+                        files.iter().map(|load| LoadFile {
+                            id: load.0.to_shared_string(),
+                            is_upload: load.1.is_upload(),
+                            name: load.1.file().to_shared_string(),
+                            progress: load.1.completed_percent().unwrap_or(-1.0),
+                            loaded: load.1.loaded().to_string_candy().into(),
+                            previous: load.1.completed_percent().unwrap_or(-1.0), // temp
                         }),
                     ))));
             }

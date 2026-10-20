@@ -8,7 +8,7 @@ use {
         FilesInternal,
     },
     slint::ComponentHandle,
-    std::{str::FromStr, sync::Arc},
+    std::sync::Arc,
     tokio::sync::RwLock,
 };
 
@@ -333,7 +333,7 @@ impl Application {
                     service
                         .write()
                         .await
-                        .cancel_load(id)
+                        .cancel_load(id.parse().unwrap()) // I guarantee the string is u64
                         .await;
                 });
             }

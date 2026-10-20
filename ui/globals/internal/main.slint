@@ -34,10 +34,11 @@ export struct File {
 }
 
 export struct LoadFile {
-    connID: string,
+    id: string, // slint don't support rust u64 type. So we use string instead 
     is_upload: bool,
     name: string,
     progress: float,
+    loaded: string, // we use eye candy value, not size in bytes
     previous: float,
 }
 
