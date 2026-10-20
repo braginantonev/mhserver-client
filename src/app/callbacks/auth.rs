@@ -1,5 +1,11 @@
+use crate::{
+    actions::{MainActions, PreparingActions, UiActions},
+    api::{self, auth_service_client::AuthServiceClient},
+    app::Application,
+    service::auth::Authenticator,
+    NotificationType, PreparingInternal,
+};
 use slint::ComponentHandle;
-use crate::{NotificationType, PreparingInternal, actions::{MainActions, PreparingActions, UiActions}, api::{self, auth_service_client::AuthServiceClient}, app::Application, service::auth::Authenticator};
 
 impl Application {
     pub fn init_auth(&self) {
@@ -16,17 +22,24 @@ impl Application {
                 let win = win.clone();
                 let cfg = cfg.clone();
 
-                let mut client = Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
+                let mut client =
+                    Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
 
                 tokio::spawn(async move {
-                    match client.login(api::User {
-                        name: username.into(),
-                        password: password.into(),
-                    }).await {
+                    match client
+                        .login(api::User {
+                            name: username.into(),
+                            password: password.into(),
+                        })
+                        .await
+                    {
                         Ok(jwt) => {
-                            cfg.write().await.server_api_config_mut().set_jwt(jwt.as_str());
+                            cfg.write()
+                                .await
+                                .server_api_config_mut()
+                                .set_jwt(jwt.as_str());
                             PreparingActions::InvokeNextState.run_in_event_loop(win);
-                        },
+                        }
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     }
                 });
@@ -41,21 +54,29 @@ impl Application {
                 let win = win.clone();
 
                 if password != verify {
-                    MainActions::ShowNotification("Password and verify password not ident".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win);
-                    return
+                    MainActions::ShowNotification(
+                        "Password and verify password not ident".to_owned(),
+                        String::default(),
+                        NotificationType::Info,
+                    )
+                    .run_in_event_loop(win);
+                    return;
                 }
 
-                let mut client = Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
+                let mut client =
+                    Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
 
                 tokio::spawn(async move {
-                    match client.register(api::RegisterRequest{
-                        user: Some(api::User{
-                            name: username.into(),
-                            password: password.into(),
-                        }),
-                        secret_key: key.into()
-                    }
-                    ).await {
+                    match client
+                        .register(api::RegisterRequest {
+                            user: Some(api::User {
+                                name: username.into(),
+                                password: password.into(),
+                            }),
+                            secret_key: key.into(),
+                        })
+                        .await
+                    {
                         Ok(_) => PreparingActions::InvokeNextState.run_in_event_loop(win),
                         Err(err) => MainActions::from(err).run_in_event_loop(win),
                     };

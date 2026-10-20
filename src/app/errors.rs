@@ -1,10 +1,13 @@
-use std::{error::Error, fmt::{Display, Formatter, Result}};
+use std::{
+    error::Error,
+    fmt::{Display, Formatter, Result},
+};
 
 #[derive(Debug)]
 pub enum ApplicationErrors {
     FailedCreateWindow(String),
     FailedCreateHttpClient(String),
-    WindowError(String)
+    WindowError(String),
 }
 
 impl ApplicationErrors {
@@ -21,13 +24,14 @@ impl ApplicationErrors {
             ApplicationErrors::FailedCreateWindow(desc) => desc,
             ApplicationErrors::FailedCreateHttpClient(desc) => desc,
             ApplicationErrors::WindowError(desc) => desc,
-        }.as_str()
+        }
+        .as_str()
     }
 }
 
 #[derive(Debug)]
 pub struct ApplicationError {
-    err: ApplicationErrors
+    err: ApplicationErrors,
 }
 
 impl Display for ApplicationError {

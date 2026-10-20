@@ -9,7 +9,9 @@ pub struct FileServiceConfig {
 
 impl FileServiceConfig {
     pub fn new(download_dir: Option<PathBuf>) -> Self {
-        Self { download_dir: download_dir.unwrap_or(default_download_dir()) }
+        Self {
+            download_dir: download_dir.unwrap_or(default_download_dir()),
+        }
     }
 
     pub fn download_dir(&self) -> PathBuf {
@@ -19,6 +21,8 @@ impl FileServiceConfig {
 
 impl Default for FileServiceConfig {
     fn default() -> Self {
-        Self { download_dir: default_download_dir() }
+        Self {
+            download_dir: default_download_dir(),
+        }
     }
 }

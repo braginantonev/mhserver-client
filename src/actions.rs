@@ -1,16 +1,20 @@
 use {
-    super::{
-        File, MainWindow, NotificationType, api::FilesList, repository::filetypes::FileTypes,
-    }, crate::{
-        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal, PreparingInternal, PreparingStates, State, service::{ServiceError, files::connections::ConnectionInfo}
-    }, slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak}, std::rc::Rc, tonic::Code,
+    super::{api::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
+    crate::{
+        service::{files::connections::ConnectionInfo, ServiceError},
+        FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,
+        PreparingInternal, PreparingStates, State,
+    },
+    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak},
+    std::rc::Rc,
+    tonic::Code,
 };
 
 pub trait UiActions: TryFrom<ServiceError> {
     fn run(self, win: MainWindow);
     fn run_in_event_loop(self, weak_win: Weak<MainWindow>)
     where
-        Self: Sized + Send + 'static
+        Self: Sized + Send + 'static,
     {
         let _ = weak_win.upgrade_in_event_loop(move |win| {
             self.run(win);
@@ -32,7 +36,7 @@ impl TryFrom<ServiceError> for PreparingActions {
     fn try_from(value: ServiceError) -> Result<Self, Self::Error> {
         match value.code().unwrap_or(Code::Ok) {
             Code::Unauthenticated => Ok(PreparingActions::ForceState(PreparingStates::Login)),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -42,13 +46,13 @@ impl UiActions for PreparingActions {
         match self {
             PreparingActions::InvokeNextState => {
                 win.global::<State>().invoke_next();
-            },
+            }
             PreparingActions::InvokePreparing => {
                 win.global::<PreparingInternal>().set_prepare_needed(true);
             }
             PreparingActions::ForceState(state) => {
                 win.global::<State>().invoke_force_preparing_state(state);
-            },
+            }
         }
     }
 }
@@ -67,15 +71,16 @@ impl UiActions for MainActions {
         match self {
             MainActions::ExitApp => {
                 win.global::<MainInternal>().invoke_quit();
-            },
+            }
             MainActions::ShowNotification(label, desc, r#type) => {
-                win.global::<NotificationsInternal>().invoke_push(NotificationInfo {
-                    id: 0, // will be override in callback
-                    r#type,
-                    label: label.to_shared_string(),
-                    description: desc.to_shared_string(),
-                });
-            },
+                win.global::<NotificationsInternal>()
+                    .invoke_push(NotificationInfo {
+                        id: 0, // will be override in callback
+                        r#type,
+                        label: label.to_shared_string(),
+                        description: desc.to_shared_string(),
+                    });
+            }
             MainActions::ServiceUnavailable => {
                 win.global::<MainInternal>().set_service_available(false);
             }
@@ -96,7 +101,7 @@ impl From<ServiceError> for MainActions {
 }
 
 pub enum FilesActions {
-    /// Update files in data service. Required the files, and server path, where is this files located. 
+    /// Update files in data service. Required the files, and server path, where is this files located.
     UpdateFilesList(FilesList, String),
 
     UpdateLoadFiles(Vec<ConnectionInfo>),
@@ -113,38 +118,56 @@ impl UiActions for FilesActions {
         match self {
             FilesActions::UpdateFilesList(files, from) => {
                 let icons = win.global::<FileIcons>().as_weak();
-                let mut files: Vec<File> = files.value
+                let mut files: Vec<File> = files
+                    .value
                     .iter()
-                    .map(|f| {
-                        File {
-                            icon: FileTypes::from(f).to_slint_image(icons.clone()),
-                            name: f.name.to_shared_string(),
-                            server_path: from.to_shared_string(),
-                            is_dir: f.is_dir,
-                            size: f.size as i32,
-                        }
+                    .map(|f| File {
+                        icon: FileTypes::from(f).to_slint_image(icons.clone()),
+                        name: f.name.to_shared_string(),
+                        server_path: from.to_shared_string(),
+                        is_dir: f.is_dir,
+                        size: f.size as i32,
                     })
                     .collect();
                 files.sort_by_key(|k| !k.is_dir);
-                win.global::<FilesInternal>().set_showed_files(ModelRc::from(Rc::new(VecModel::from(files))));
-            },
+                win.global::<FilesInternal>()
+                    .set_showed_files(ModelRc::from(Rc::new(VecModel::from(files))));
+            }
             FilesActions::UpdateLoadFiles(files) => {
-                win.global::<FilesInternal>().set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(files.iter().map(|conn| {
-                    LoadFile { connID: conn.id.to_shared_string(), is_upload: conn.is_upload, name: conn.filename.to_shared_string(), progress: conn.load_progress, previous: conn.previous_progress }
-                })))));
-            },
+                win.global::<FilesInternal>()
+                    .set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(
+                        files.iter().map(|conn| LoadFile {
+                            connID: conn.id.to_shared_string(),
+                            is_upload: conn.is_upload,
+                            name: conn.filename.to_shared_string(),
+                            progress: conn.load_progress,
+                            previous: conn.previous_progress,
+                        }),
+                    ))));
+            }
             FilesActions::UpdateCurrentDirectory(target) => {
-                win.global::<FilesInternal>().set_current_directory(target.to_shared_string());
-            },
+                win.global::<FilesInternal>()
+                    .set_current_directory(target.to_shared_string());
+            }
             FilesActions::UpdateAvailableSpace(size) => {
-                win.global::<FilesInternal>().set_available_space(size.to_shared_string());
-            },
+                win.global::<FilesInternal>()
+                    .set_available_space(size.to_shared_string());
+            }
             FilesActions::NotifyLoadedFile(name, is_upload) => {
                 if is_upload {
-                    MainActions::ShowNotification("File uploaded".to_owned(), name, NotificationType::Upload)
+                    MainActions::ShowNotification(
+                        "File uploaded".to_owned(),
+                        name,
+                        NotificationType::Upload,
+                    )
                 } else {
-                    MainActions::ShowNotification("File downloaded".to_owned(), name, NotificationType::Download)
-                }.run(win);
+                    MainActions::ShowNotification(
+                        "File downloaded".to_owned(),
+                        name,
+                        NotificationType::Download,
+                    )
+                }
+                .run(win);
             }
         }
     }
@@ -169,7 +192,7 @@ impl UiActions for AnyActions {
             AnyActions::Preparing(preparing_actions) => preparing_actions.run(win),
             AnyActions::Main(main_actions) => main_actions.run(win),
             AnyActions::Files(files_actions) => files_actions.run(win),
-        }  
+        }
     }
 }
 
@@ -184,7 +207,7 @@ impl From<ServiceError> for AnyActions {
         }
 
         if let Ok(act) = FilesActions::try_from(value.clone()) {
-            return AnyActions::Files(act)
+            return AnyActions::Files(act);
         }
 
         AnyActions::Main(MainActions::from(value))

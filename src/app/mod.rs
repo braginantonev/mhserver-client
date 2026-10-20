@@ -1,12 +1,13 @@
-pub mod errors;
 pub mod callbacks;
+pub mod errors;
 
 use {
-    crate::{MainWindow, config::app::ApplicationConfig}, 
-    errors::{ApplicationError, ApplicationErrors}, 
-    slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
+    crate::{config::app::ApplicationConfig, MainWindow},
+    errors::{ApplicationError, ApplicationErrors},
+    slint::ComponentHandle,
+    std::sync::Arc,
+    tokio::sync::RwLock,
 };
-
 
 pub struct Application {
     ui_window: MainWindow,
@@ -18,17 +19,21 @@ impl Application {
     pub fn new() -> Result<Self, ApplicationError> {
         let win = match MainWindow::new() {
             Ok(win) => win,
-            Err(err) => return Err(ApplicationError::new(ApplicationErrors::FailedCreateWindow(err.to_string()))),
+            Err(err) => {
+                return Err(ApplicationError::new(
+                    ApplicationErrors::FailedCreateWindow(err.to_string()),
+                ))
+            }
         };
 
         let cfg = Arc::new(RwLock::new(match ApplicationConfig::from_file() {
             Ok(res) => res,
-            Err(_) => ApplicationConfig::default()
+            Err(_) => ApplicationConfig::default(),
         }));
 
         let s = Self {
             ui_window: win,
-            chan: Arc::default(), 
+            chan: Arc::default(),
             cfg,
         };
 
@@ -49,7 +54,9 @@ impl Application {
         self.cfg.read().await.save_to_file();
         match res {
             Ok(_) => Ok(()),
-            Err(err) => Err(ApplicationError::new(ApplicationErrors::WindowError(err.to_string())))
+            Err(err) => Err(ApplicationError::new(ApplicationErrors::WindowError(
+                err.to_string(),
+            ))),
         }
     }
 }

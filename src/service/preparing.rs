@@ -1,10 +1,6 @@
-use {
-    super::ServiceError,
-    crate::UpdateStatus, 
-};
+use {super::ServiceError, crate::UpdateStatus};
 
 pub async fn update_status() -> Result<UpdateStatus, ServiceError> {
-
     /*
     let server_version = match version(api_cfg).await {
         Ok(v) => v.content.unwrap(),
@@ -17,7 +13,7 @@ pub async fn update_status() -> Result<UpdateStatus, ServiceError> {
     };
 
     let current_api = Version::parse(api::API_VERSION).unwrap();
-    
+
     if server_version.major < current_api.major {
         return Ok(UpdateStatus::ServerOld);
     }
@@ -46,18 +42,34 @@ pub async fn update_status() -> Result<UpdateStatus, ServiceError> {
 
 #[cfg(target_os = "windows")]
 pub async fn download_update(api_cfg: &Configuration) -> Result<(), ServiceError> {
-    use {
-        futures_util::stream::StreamExt, system_interface::io::IoExt
-    };
+    use {futures_util::stream::StreamExt, system_interface::io::IoExt};
 
-    let updated_app = match std::fs::File::create(std::env::temp_dir().join("mhserver-client.update")) {
-        Ok(v) => v,
-        Err(err) => return Err(ServiceError::new("failed create update file", Some(err.to_string()), None)),
-    };
+    let updated_app =
+        match std::fs::File::create(std::env::temp_dir().join("mhserver-client.update")) {
+            Ok(v) => v,
+            Err(err) => {
+                return Err(ServiceError::new(
+                    "failed create update file",
+                    Some(err.to_string()),
+                    None,
+                ))
+            }
+        };
 
-    let last_app_ver = match api_cfg.client.get("https://raw.githubusercontent.com/braginantonev/mhserver-client/main/VERSION").send().await {
+    let last_app_ver = match api_cfg
+        .client
+        .get("https://raw.githubusercontent.com/braginantonev/mhserver-client/main/VERSION")
+        .send()
+        .await
+    {
         Ok(resp) => resp.text().await.unwrap(),
-        Err(err) => return Err(ServiceError::new("failed download update", Some(err.to_string()), None)),
+        Err(err) => {
+            return Err(ServiceError::new(
+                "failed download update",
+                Some(err.to_string()),
+                None,
+            ))
+        }
     };
 
     let mut stream = match api_cfg.client
@@ -78,4 +90,4 @@ pub async fn download_update(api_cfg: &Configuration) -> Result<(), ServiceError
     let _ = updated_app.flush();
 
     Ok(())
-} 
+}

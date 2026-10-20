@@ -1,12 +1,20 @@
 use {
     crate::{
-        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::{auth::extend::is_jwt_expired}
-    }, slint::ComponentHandle, tonic::transport::{Channel, Endpoint, Error},
+        actions::{MainActions, PreparingActions, UiActions},
+        app::Application,
+        service::auth::extend::is_jwt_expired,
+        NotificationType, PreparingInternal, PreparingSettings, PreparingStates, OS,
+    },
+    slint::ComponentHandle,
+    tonic::transport::{Channel, Endpoint, Error},
 };
 
 #[inline]
 async fn try_connect_to_server(address: String) -> Result<Channel, Error> {
-    return Endpoint::from_shared(address)?.connect_timeout(std::time::Duration::from_secs(5)).connect().await
+    return Endpoint::from_shared(address)?
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .connect()
+        .await;
 }
 
 impl Application {
@@ -15,10 +23,14 @@ impl Application {
         let preparing_internal = self.ui_window.global::<PreparingInternal>();
 
         #[cfg(target_os = "linux")]
-        self.ui_window.global::<PreparingSettings>().set_current_os(OS::Linux);
+        self.ui_window
+            .global::<PreparingSettings>()
+            .set_current_os(OS::Linux);
 
         #[cfg(target_os = "windows")]
-        self.ui_window.global::<PreparingSettings>().set_current_os(OS::Windows);
+        self.ui_window
+            .global::<PreparingSettings>()
+            .set_current_os(OS::Windows);
 
         preparing_internal.on_handle_state({
             let win = win_weak.clone();
@@ -118,24 +130,30 @@ impl Application {
                 tokio::spawn(async move {
                     if chan.get().is_some() {
                         return MainActions::ShowNotification(
-                            "Failed connect to server".to_owned(), 
-                            "Server is off or address was changed\nPlease restart application".to_owned(),
-                            NotificationType::Error
-                        ).run_in_event_loop(win);
+                            "Failed connect to server".to_owned(),
+                            "Server is off or address was changed\nPlease restart application"
+                                .to_owned(),
+                            NotificationType::Error,
+                        )
+                        .run_in_event_loop(win);
                     }
 
                     match try_connect_to_server(srv_addr.to_string()).await {
                         Ok(c) => {
-                            cfg.write().await.server_api_config_mut().set_base_path(&srv_addr);
-                            chan.set(c); 
-                        },
+                            cfg.write()
+                                .await
+                                .server_api_config_mut()
+                                .set_base_path(&srv_addr);
+                            chan.set(c);
+                        }
                         Err(err) => {
                             MainActions::ShowNotification(
-                                "Failed connect to server".to_owned(), 
-                                err.to_string(), 
-                                NotificationType::Error
-                            ).run_in_event_loop(win);
-                        },
+                                "Failed connect to server".to_owned(),
+                                err.to_string(),
+                                NotificationType::Error,
+                            )
+                            .run_in_event_loop(win);
+                        }
                     };
                 });
             }
@@ -152,18 +170,23 @@ impl Application {
 
                 tokio::spawn(async move {
                     match preparing::download_update(&api_cfg(http_client, "".to_owned())).await {
-                        Ok(_) => MainActions::ShowNotification("update downloaded".to_owned(), String::default(), NotificationType::Info).run_in_event_loop(win.clone()),
+                        Ok(_) => MainActions::ShowNotification(
+                            "update downloaded".to_owned(),
+                            String::default(),
+                            NotificationType::Info,
+                        )
+                        .run_in_event_loop(win.clone()),
                         Err(err) => {
                             MainActions::from(err).run_in_event_loop(win);
                             return;
                         }
                     };
-                    
+
                     std::process::Command::new("cmd")
                         .args(&["/c", "start", "/b", "update_windows.bat"])
                         .spawn()
                         .expect("Failed to start update");
-                    
+
                     MainActions::ExitApp.run_in_event_loop(win);
                 });
             }

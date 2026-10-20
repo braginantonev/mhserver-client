@@ -1,11 +1,11 @@
 #![windows_subsystem = "windows"]
 
-mod config;
-mod app;
-mod service;
 mod actions;
-mod repository;
+mod app;
+mod config;
 mod override_slint;
+mod repository;
+mod service;
 
 slint::include_modules!();
 
@@ -26,9 +26,9 @@ async fn main() -> Result<(), app::errors::ApplicationError> {
         .require_opengl()
         .select()
         .expect("Unable to create Slint backend with OpenGL ES renderer");
-    
+
     let app = app::Application::new()?;
-    
+
     app.run().await?;
 
     Ok(())

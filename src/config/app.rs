@@ -1,14 +1,16 @@
 use {
-    super::api::ServerApiConfiguration, 
-    serde::{Deserialize, Serialize}, 
-    std::{env, fs, path::PathBuf}
+    super::api::ServerApiConfiguration,
+    serde::{Deserialize, Serialize},
+    std::{env, fs, path::PathBuf},
 };
 
 const CONFIG_PATH: &str = ".config/mhserver-client";
 const CONFIG_FILENAME: &str = "general.conf";
 
 fn config_dir() -> PathBuf {
-    env::home_dir().expect("failed get home dir").join(CONFIG_PATH)
+    env::home_dir()
+        .expect("failed get home dir")
+        .join(CONFIG_PATH)
 }
 
 fn config_file() -> PathBuf {
@@ -24,8 +26,10 @@ pub struct ApplicationConfig {
 impl ApplicationConfig {
     pub fn from_file() -> Result<Self, std::io::Error> {
         match fs::read_to_string(config_file()) {
-            Ok(read) => Ok(toml::from_str(read.as_str()).expect("failed convert toml file to Config")),
-            Err(err) => Err(err)
+            Ok(read) => {
+                Ok(toml::from_str(read.as_str()).expect("failed convert toml file to Config"))
+            }
+            Err(err) => Err(err),
         }
     }
 
@@ -36,7 +40,7 @@ impl ApplicationConfig {
 
         let _ = fs::write(
             config_file(),
-            toml::to_string_pretty(&self).expect("failed serialize config to string")
+            toml::to_string_pretty(&self).expect("failed serialize config to string"),
         );
     }
 

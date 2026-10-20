@@ -1,8 +1,5 @@
 use {
-    crate::{
-        FileIcons,
-        api::FileInfo,
-    }, 
+    crate::{api::FileInfo, FileIcons},
     slint::Weak,
 };
 
@@ -14,7 +11,7 @@ pub enum FileTypes {
     Video,
     Music,
     Executable,
-    Undefined
+    Undefined,
 }
 
 impl FileTypes {
@@ -36,7 +33,7 @@ impl FileTypes {
 impl From<&FileInfo> for FileTypes {
     fn from(value: &FileInfo) -> Self {
         if value.is_dir {
-            return FileTypes::Directory
+            return FileTypes::Directory;
         }
 
         FileTypes::from(if !value.name.contains('.') {
@@ -56,7 +53,7 @@ impl From<&str> for FileTypes {
             "png" | "jpg" | "jpeg" | "webp" | "gif" => FileTypes::Image,
             "mp4" => FileTypes::Video,
             "mp3" | "flac" => FileTypes::Music,
-            _ => FileTypes::Undefined
+            _ => FileTypes::Undefined,
         }
     }
 }

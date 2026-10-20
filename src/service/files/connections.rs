@@ -1,6 +1,9 @@
 use {
-    std::{collections::HashMap, sync::Arc}, 
-    tokio::sync::{RwLock, broadcast::{Receiver, Sender, channel}},
+    std::{collections::HashMap, sync::Arc},
+    tokio::sync::{
+        broadcast::{channel, Receiver, Sender},
+        RwLock,
+    },
     tokio_util::sync::CancellationToken,
     uuid::Uuid,
 };
@@ -13,12 +16,19 @@ pub struct ConnectionInner {
     loaded: i32, // count of saved or loaded chunks
     previous: i32,
 
-    cancel: CancellationToken
+    cancel: CancellationToken,
 }
 
 impl ConnectionInner {
     pub fn new(filename: String, chunks_count: i32) -> Self {
-        Self { is_upload: false, filename, chunks_count, loaded: 0, previous: 0, cancel: CancellationToken::new() }
+        Self {
+            is_upload: false,
+            filename,
+            chunks_count,
+            loaded: 0,
+            previous: 0,
+            cancel: CancellationToken::new(),
+        }
     }
 
     pub fn upload_conn(mut self) -> Self {
@@ -28,7 +38,7 @@ impl ConnectionInner {
 
     pub fn cancel_token(&self) -> CancellationToken {
         self.cancel.clone()
-    } 
+    }
 
     pub fn cancel(&self) {
         self.cancel.cancel();
@@ -46,7 +56,13 @@ pub struct ConnectionInfo {
 impl ConnectionInfo {
     pub fn new(id: Uuid, conn_inner: &ConnectionInner) -> Self {
         let chunks_count = conn_inner.chunks_count as f32;
-        Self { id, is_upload: conn_inner.is_upload, filename: conn_inner.filename.clone(), load_progress: conn_inner.loaded as f32 / chunks_count, previous_progress: conn_inner.previous as f32 / chunks_count }
+        Self {
+            id,
+            is_upload: conn_inner.is_upload,
+            filename: conn_inner.filename.clone(),
+            load_progress: conn_inner.loaded as f32 / chunks_count,
+            previous_progress: conn_inner.previous as f32 / chunks_count,
+        }
     }
 }
 
@@ -55,14 +71,14 @@ pub type CompletedLoad = (String, bool);
 #[derive(Clone)]
 pub struct Connections {
     inner: Arc<RwLock<HashMap<Uuid, ConnectionInner>>>,
-    completed: Arc<RwLock<Vec<CompletedLoad>>>
+    completed: Arc<RwLock<Vec<CompletedLoad>>>,
 }
 
 impl Connections {
     pub fn new() -> Self {
-        let s = Self { 
+        let s = Self {
             inner: Arc::new(RwLock::new(HashMap::new())),
-            completed: Arc::new(RwLock::new(Vec::new()))
+            completed: Arc::new(RwLock::new(Vec::new())),
         };
         s.start_cleaner();
         s
@@ -88,7 +104,8 @@ impl Connections {
                 }
 
                 let mut lock = conns.write().await;
-                let completed_items: Vec<CompletedLoad> = to_remove.into_iter()
+                let completed_items: Vec<CompletedLoad> = to_remove
+                    .into_iter()
                     .filter_map(|k| lock.remove(&k))
                     .map(|v| (v.filename, v.is_upload))
                     .collect();
@@ -96,14 +113,14 @@ impl Connections {
                 if !completed_items.is_empty() {
                     completed.write().await.extend(completed_items);
                 }
-            }            
+            }
         });
-    } 
+    }
 
     pub async fn completed(&self) -> Vec<CompletedLoad> {
         let mut lock = self.completed.write().await;
         lock.drain(..).collect()
-    } 
+    }
 
     pub async fn progress_list(&self) -> Vec<ConnectionInfo> {
         let mut lock = self.inner.write().await;

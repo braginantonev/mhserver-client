@@ -1,10 +1,13 @@
 use {
-    std::sync::Arc, 
-    tokio::{time::Duration, sync::mpsc::{Receiver, Sender, channel}},
+    std::sync::Arc,
+    tokio::{
+        sync::mpsc::{channel, Receiver, Sender},
+        time::Duration,
+    },
 };
 
 //todo: use on ping services, when this will be possible in server API
-/*#[allow(dead_code)] 
+/*#[allow(dead_code)]
 pub fn get_delay(rl: &api::apis::RateLimit) -> Duration {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     Duration::from_millis((rl.reset() - now) * 1000 / rl.limit() as u64)
@@ -20,7 +23,9 @@ pub struct Limiter {
 impl Limiter {
     pub fn new(pass_interval: Duration) -> Self {
         let (tx, rx) = channel::<()>(1);
-        let queue = Self { rx: Arc::new(tokio::sync::Mutex::new(rx)) };
+        let queue = Self {
+            rx: Arc::new(tokio::sync::Mutex::new(rx)),
+        };
         queue.start(tx, pass_interval);
         queue
     }

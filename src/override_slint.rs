@@ -1,7 +1,4 @@
-use {
-    super::File,
-    std::cmp::Ordering
-};
+use {super::File, std::cmp::Ordering};
 
 impl Ord for File {
     fn cmp(&self, other: &Self) -> Ordering {
