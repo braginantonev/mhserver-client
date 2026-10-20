@@ -1,20 +1,15 @@
-pub mod connections;
+pub mod loader;
 pub mod dirs;
 mod path;
 
 use {
-    super::ServiceError,
-    crate::{
+    super::ServiceError, crate::{
         api::{self, data_service_client::DataServiceClient},
         config::files::FileServiceConfig,
-    },
-    std::{collections::btree_set::SymmetricDifference, fs::File, path::PathBuf, sync::Arc},
-    system_interface::fs::FileIoExt,
-    tokio::task::JoinHandle,
-    tokio_stream::StreamExt,
-    tonic::{client, transport::Channel},
-    uuid::Uuid,
+    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio_stream::StreamExt, tonic::transport::Channel,
 };
+
+const CHUNK_SIZE: usize = 1024 * 1024;
 
 type Client = DataServiceClient<Channel>;
 
@@ -79,7 +74,7 @@ pub struct FileManager {
     cfg: FileServiceConfig,
     active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
-    connections: connections::Connections,
+    loader: Arc<loader::Loader>,
 }
 
 impl FileManager {
@@ -88,7 +83,7 @@ impl FileManager {
             cfg,
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
-            connections: connections::Connections::new(),
+            loader: Arc::default(),
         }
     }
 
@@ -121,8 +116,8 @@ impl FileManager {
         self.get_files(client, None).await
     }
 
-    pub async fn cancel_load(&mut self, id: Uuid) {
-        self.connections.cancel(id).await;
+    pub async fn cancel_load(&mut self, id: u64) {
+        self.loader.cancel(id).await;
     }
 
     //* API requests
@@ -198,26 +193,23 @@ impl FileManager {
         }
     }
 
-    pub async fn get_load_files(&self) -> Vec<connections::ConnectionInfo> {
-        self.connections.progress_list().await
+    pub async fn get_load_files(&self) -> Vec<(loader::LoadID, loader::Load)> {
+        self.loader.get_uncompleted().await
     }
 
-    pub async fn get_loaded_files(&self) -> Vec<connections::CompletedLoad> {
-        self.connections.completed().await
+    pub async fn get_loaded_files(&self) -> Vec<loader::Load> {
+        self.loader.drain_completed().await
     }
 
     /// Save file to the server. That function return JoinHandle with error, if he exist
     pub async fn upload_file(
         &mut self,
-        client: Client,
+        mut client: Client,
         to: Option<path::ServerPath>,
         os_file_path: PathBuf,
     ) -> Result<(), ServiceError> {
         let upload_to = to.unwrap_or(self.current_dir()).into();
-        let mut connections = self.connections.clone();
-
         let filename = os_file_path.file_name().unwrap().display().to_string();
-        let from = os_file_path.to_str().unwrap_or_default();
 
         let file = match File::open(os_file_path.clone()) {
             Ok(f) => Arc::new(f),
@@ -247,23 +239,16 @@ impl FileManager {
             new_size: Some(file_meta.len() as u64),
         };
 
-        let conn_record = connections::ConnectionInner::new(filename, todo!()).upload_conn();
-        let cancel_token = conn_record.cancel_token();
+        let load_id = self.loader.add(loader::Load::new(true, os_file_path.display().to_string(), Some(file_meta.len() as usize))).await;
 
-        connections.add(todo!(), conn_record).await;
+        let stream_loader = self.loader.clone();
         let mut offset: u64 = 0;
-
         let stream = async_stream::stream! {
-            const CHUNK_SIZE: usize = 1024 * 1024;
             yield api::SaveFileChunk {
                 info: Some(api::save_file_chunk::Info::Meta(conn_req)),
             };
 
-            loop {
-                if cancel_token.is_cancelled() {
-                    return;
-                }
-
+            while offset < file_meta.len() {
                 let mut save_chunk = vec![0u8; CHUNK_SIZE];
                 let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
 
@@ -275,19 +260,24 @@ impl FileManager {
                 };
 
                 offset += CHUNK_SIZE as u64;
+                if !stream_loader.increase_loaded(load_id, read).await {
+                    break
+                }
             }
         };
 
-        if let Err(status) = client.save_file(stream).await {
-            return Err(ServiceError::from(status));
+        match client.save_file(stream).await {
+            Ok(_) => {
+                self.loader.set_complete(load_id);
+                Ok(())
+            },
+            Err(status) => Err(ServiceError::from(status)),
         }
-
-        Ok(())
     }
 
     pub async fn download_file(
         &mut self,
-        client: Client,
+        mut client: Client,
         from: Option<String>,
         filename: String,
     ) -> Result<(), ServiceError> {
@@ -298,8 +288,6 @@ impl FileManager {
         if with_dirs {
             save_to = save_to.join(&from[1..]);
         }
-
-        let mut connections = self.connections.clone();
 
         if let Err(err) = std::fs::create_dir_all(save_to.as_path()) {
             return Err(
@@ -329,23 +317,31 @@ impl FileManager {
             new_size: None,
         };
 
-        let conn_record = connections::ConnectionInner::new(filename.clone(), todo!());
-        let cancel_token = conn_record.cancel_token();
+        // temp `i32::MAX`. Add meta in proto
 
-        connections.add(todo!(), conn_record).await;
-
-        let stream = match client.read_file(conn_req).await {
+        let mut stream = match client.read_file(conn_req).await {
             Ok(res) => res.into_inner(),
             Err(status) => return Err(ServiceError::from(status)),
         };
+
+        let load_id = self.loader.add(loader::Load::new(false, save_to.display().to_string(), None)).await; 
 
         while let Some(chunk) = stream.next().await {
             let chunk = match chunk {
                 Ok(c) => c,
                 Err(status) => return Err(ServiceError::from(status)),
             };
-            file.write_at(&chunk.data, chunk.offset);
+
+            if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
+                return Err(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename))
+            }
+
+            if !self.loader.increase_loaded(load_id, chunk.data.len()).await {
+                break
+            }
         }
+
+        self.loader.set_complete(load_id);
 
         Ok(())
     }

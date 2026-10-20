@@ -178,11 +178,11 @@ impl Application {
                             client.clone(),
                             Some(current_dir.clone()),
                             f.path().to_path_buf(),
-                        ));
+                        ).await);
                     }
 
                     for h in handles {
-                        if let Err(err) = h.await.unwrap() {
+                        if let Err(err) = h {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
@@ -240,13 +240,13 @@ impl Application {
                                     client.clone(),
                                     Some(files.0.clone()),
                                     f,
-                                ));
+                                ).await);
                             }
                         }
                     }
 
                     for h in handles {
-                        if let Err(err) = h.await.unwrap() {
+                        if let Err(err) = h {
                             MainActions::from(err).run_in_event_loop(win.clone());
                             continue;
                         }
@@ -271,7 +271,6 @@ impl Application {
                         .await
                         .download_file(client, None, filename.to_string())
                         .await
-                        .unwrap()
                     {
                         MainActions::from(err).run_in_event_loop(win.clone());
                     };
@@ -313,11 +312,11 @@ impl Application {
                             client.clone(),
                             Some(from.clone()),
                             file.name.clone(),
-                        ));
+                        ).await);
                     }
 
                     for h in handles {
-                        if let Err(err) = h.await.unwrap() {
+                        if let Err(err) = h {
                             MainActions::from(err).run_in_event_loop(win.clone());
                         }
                     }
@@ -328,13 +327,13 @@ impl Application {
         internal.on_cancel_load({
             let service = service.clone();
 
-            move |uuid| {
+            move |id| {
                 let service = service.clone();
                 tokio::spawn(async move {
                     service
                         .write()
                         .await
-                        .cancel_load(uuid::Uuid::from_str(uuid.as_str()).unwrap())
+                        .cancel_load(id)
                         .await;
                 });
             }
@@ -360,7 +359,7 @@ impl Application {
 
                     // Show downloaded files
                     complete.into_iter().for_each(|load| {
-                        FilesActions::NotifyLoadedFile(load.0, load.1)
+                        FilesActions::NotifyLoadedFile(load.file(), load.is_upload())
                             .run_in_event_loop(win.clone())
                     });
                 });
