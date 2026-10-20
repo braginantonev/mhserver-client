@@ -13,19 +13,26 @@ const CHUNK_SIZE: usize = 1024 * 1024;
 
 type Client = DataServiceClient<Channel>;
 
-pub struct Size(u64);
+#[derive(Clone)]
+pub struct Size(usize);
 
 impl Size {
     /// Return eye candy size. Example: `12 mb`, `1 gb` etc
     pub fn to_string_candy(&self) -> String {
         const EXTENSIONS: [&str; 5] = ["b", "kb", "mb", "gb", "tb"];
-        let mut size = self.0 as f64;
+        let mut size = self.0 as f32;
         let mut i = 0;
         while size > 1024.0 && i < EXTENSIONS.len() - 1 {
             size = size / 1024.0;
             i += 1;
         }
         format!("{} {}", size as f32, EXTENSIONS[i])
+    }
+}
+
+impl Into<usize> for Size {
+    fn into(self) -> usize {
+        self.0
     }
 }
 
@@ -124,7 +131,7 @@ impl FileManager {
 
     pub async fn available_space(&self, mut client: Client) -> Result<Size, ServiceError> {
         match client.get_available_disk_space(()).await {
-            Ok(v) => Ok(Size(v.get_ref().value)),
+            Ok(v) => Ok(Size(v.get_ref().value as usize)),
             Err(err) => Err(ServiceError::from(err)),
         }
     }
@@ -239,7 +246,7 @@ impl FileManager {
             new_size: Some(file_meta.len() as u64),
         };
 
-        let load_id = self.loader.add(loader::Load::new(true, os_file_path.display().to_string(), Some(file_meta.len() as usize))).await;
+        let load_id = self.loader.add(loader::Load::new(true, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
 
         let stream_loader = self.loader.clone();
         let mut offset: u64 = 0;
@@ -268,7 +275,7 @@ impl FileManager {
 
         match client.save_file(stream).await {
             Ok(_) => {
-                self.loader.set_complete(load_id);
+                self.loader.set_complete(load_id).await;
                 Ok(())
             },
             Err(status) => Err(ServiceError::from(status)),
@@ -341,7 +348,7 @@ impl FileManager {
             }
         }
 
-        self.loader.set_complete(load_id);
+        self.loader.set_complete(load_id).await;
 
         Ok(())
     }

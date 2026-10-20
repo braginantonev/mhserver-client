@@ -1,4 +1,5 @@
 use {
+    super::Size,
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{RwLock, Mutex},
 };
@@ -7,17 +8,17 @@ use {
 pub struct Load {
     is_upload: bool,
     file: String,
-    to_load: Option<usize>,
-    loaded: usize, // count of saved or loaded chunks
+    to_load: Option<Size>,
+    loaded: Size, // count of saved or loaded chunks
 }
 
 impl Load {
-    pub fn new(is_upload: bool, file: String, to_load: Option<usize>) -> Self {
+    pub fn new(is_upload: bool, file: String, to_load: Option<Size>) -> Self {
         Self {
             is_upload,
             file,
             to_load,
-            loaded: 0,
+            loaded: Size(0),
         }
     }
 
@@ -29,12 +30,15 @@ impl Load {
         self.file.clone()
     }
 
-    /// Return percent between 0.0 and 1.0 if `to_load` size is known.
-    /// If `to_load` size not set - return loaded size
-    pub fn completed(&self) -> Result<f32, usize> {
-        match self.to_load {
-            Some(v) => Ok(v as f32 / self.loaded as f32),
-            None => Err(self.loaded)
+    pub fn loaded(&self) -> Size {
+        self.loaded.clone()
+    }
+
+    /// Return loaded percent between 0.0 and 1.0 if `to_load` size is known
+    pub fn completed_percent(&self) -> Option<f32> {
+        match &self.to_load {
+            Some(v) => Some(v.0 as f32 / self.loaded.0 as f32),
+            None => None
         }
     }
 }
@@ -92,7 +96,7 @@ impl Loader {
     /// Return true if `loaded` from `Load` was increased.
     pub async fn increase_loaded(&self, id: u64, v: usize) -> bool {
         if let Some(conn) = self.loads.write().await.get_mut(&id) {
-            conn.loaded += v;
+            conn.loaded.0 += v;
             return true;
         }
         false
