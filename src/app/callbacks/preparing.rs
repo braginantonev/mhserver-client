@@ -122,6 +122,7 @@ impl Application {
                                 .server_api_config_mut()
                                 .set_base_path(&srv_addr);
                             *chan.write().await = Some(c);
+                            PreparingActions::InvokeNextState.run_in_event_loop(win);
                         }
                         Err(err) => {
                             MainActions::ShowNotification(
