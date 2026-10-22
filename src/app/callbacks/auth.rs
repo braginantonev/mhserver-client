@@ -1,14 +1,18 @@
-use crate::{
-    actions::{MainActions, PreparingActions, UiActions},
-    api::{self, auth_service_client::AuthServiceClient},
-    app::Application,
-    service::auth::Authenticator,
-    NotificationType, PreparingInternal,
+use {
+    crate::{
+        actions::{MainActions, PreparingActions, UiActions},
+        api::{self, auth_service_client::AuthServiceClient},
+        app::Application,
+        service::auth::Authenticator,
+        NotificationType, PreparingInternal,
+    },
+    slint::ComponentHandle,
+    std::sync::Arc,
+    tokio::sync::RwLock,
 };
-use slint::ComponentHandle;
 
 impl Application {
-    pub fn init_auth(&self) {
+    pub fn init_auth(&self, service: Arc<RwLock<Authenticator>>) {
         let win_weak = self.ui_window.as_weak();
         let preparing_internal = self.ui_window.global::<PreparingInternal>();
         let chan = self.chan.clone();
@@ -17,17 +21,17 @@ impl Application {
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
             let chan = chan.clone();
+            let service = service.clone();
 
             move |username, password| {
                 let win = win.clone();
                 let cfg = cfg.clone();
-
-                let mut client =
-                    Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
+                let service = service.clone();
+                let client = AuthServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
-                    match client
-                        .login(api::User {
+                    match service.read().await
+                        .login(client, api::User {
                             name: username.into(),
                             password: password.into(),
                         })
@@ -49,6 +53,7 @@ impl Application {
         preparing_internal.on_register({
             let win = win_weak.clone();
             let chan = chan.clone();
+            let service = service.clone();
 
             move |username, password, verify, key| {
                 let win = win.clone();
@@ -63,12 +68,12 @@ impl Application {
                     return;
                 }
 
-                let mut client =
-                    Authenticator::new(AuthServiceClient::new(chan.get().unwrap().clone()));
+                let service = service.clone();
+                let client = AuthServiceClient::new(chan.get().unwrap().clone());
 
                 tokio::spawn(async move {
-                    match client
-                        .register(api::RegisterRequest {
+                    match service.read().await
+                        .register(client, api::RegisterRequest {
                             user: Some(api::User {
                                 name: username.into(),
                                 password: password.into(),
