@@ -24,9 +24,10 @@ impl Application {
             move || {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     let files = service.write().await.get_files(client.clone(), None).await;
 
                     match files {
@@ -55,9 +56,10 @@ impl Application {
             move |target| {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     let mut lock = service.write().await;
 
                     match if target != ".." {
@@ -86,9 +88,11 @@ impl Application {
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
+
                     let resp = service
                         .write()
                         .await
@@ -117,9 +121,11 @@ impl Application {
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
+
                     let resp = service
                         .write()
                         .await
@@ -148,9 +154,10 @@ impl Application {
             move || {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     let current_dir = service.read().await.current_dir();
 
                     let files = rfd::AsyncFileDialog::new()
@@ -190,9 +197,10 @@ impl Application {
             move || {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     let current_dir = service.read().await.current_dir();
 
                     let dirs = rfd::AsyncFileDialog::new()
@@ -255,9 +263,10 @@ impl Application {
             move |filename| {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     if let Err(err) = service
                         .write()
                         .await
@@ -278,9 +287,10 @@ impl Application {
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
-                let client = DataServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = DataServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     let mut from = service.read().await.current_dir().to_string() + &dir_name;
                     from.push('/');
 

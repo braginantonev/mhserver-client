@@ -12,7 +12,7 @@ use {
 
 pub struct Application {
     ui_window: MainWindow,
-    chan: Arc<std::sync::OnceLock<tonic::transport::Channel>>,
+    chan: Arc<RwLock<Option<tonic::transport::Channel>>>,
     cfg: Arc<RwLock<ApplicationConfig>>,
 }
 

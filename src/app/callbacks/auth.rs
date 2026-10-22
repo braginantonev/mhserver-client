@@ -27,9 +27,10 @@ impl Application {
                 let win = win.clone();
                 let cfg = cfg.clone();
                 let service = service.clone();
-                let client = AuthServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     match service.read().await
                         .login(client, api::User {
                             name: username.into(),
@@ -69,9 +70,10 @@ impl Application {
                 }
 
                 let service = service.clone();
-                let client = AuthServiceClient::new(chan.get().unwrap().clone());
+                let chan = chan.clone();
 
                 tokio::spawn(async move {
+                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().clone());
                     match service.read().await
                         .register(client, api::RegisterRequest {
                             user: Some(api::User {

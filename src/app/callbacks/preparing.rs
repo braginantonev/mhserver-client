@@ -1,12 +1,7 @@
 use {
     crate::{
-        actions::{MainActions, PreparingActions, UiActions},
-        app::Application,
-        service::auth::extend::is_jwt_expired,
-        NotificationType, PreparingInternal, PreparingSettings, PreparingStates, OS,
-    },
-    slint::ComponentHandle,
-    tonic::transport::{Channel, Endpoint, Error},
+        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::auth::extend::is_jwt_expired,
+    }, slint::ComponentHandle, tonic::transport::{Channel, Endpoint, Error},
 };
 
 #[inline]
@@ -47,19 +42,11 @@ impl Application {
                         PreparingStates::Greeting => return, // greeting will invoke next for self
 
                         PreparingStates::Connection => {
-                            if chan.get().is_some() {
-                                return MainActions::ShowNotification(
-                                    "Failed connect to server".to_owned(), 
-                                    "Server is off or address was changed\nPlease restart application".to_owned(),
-                                    NotificationType::Error
-                                ).run_in_event_loop(win);
-                            }
-
                             let address = String::from(cfg.read().await.server_api_config().base_path());
 
                             address.is_empty() || match try_connect_to_server(address).await {
                                 Ok(c) => {
-                                    chan.set(c);
+                                    *chan.write().await = Some(c);
                                     false
                                 },
                                 Err(_) => {
@@ -128,23 +115,13 @@ impl Application {
                 let chan = chan.clone();
 
                 tokio::spawn(async move {
-                    if chan.get().is_some() {
-                        return MainActions::ShowNotification(
-                            "Failed connect to server".to_owned(),
-                            "Server is off or address was changed\nPlease restart application"
-                                .to_owned(),
-                            NotificationType::Error,
-                        )
-                        .run_in_event_loop(win);
-                    }
-
                     match try_connect_to_server(srv_addr.to_string()).await {
                         Ok(c) => {
                             cfg.write()
                                 .await
                                 .server_api_config_mut()
                                 .set_base_path(&srv_addr);
-                            chan.set(c);
+                            *chan.write().await = Some(c);
                         }
                         Err(err) => {
                             MainActions::ShowNotification(
