@@ -3,7 +3,6 @@ use {
         actions::{AnyActions, FilesActions, MainActions, UiActions},
         api::{data_service_client::DataServiceClient, FilesList},
         app::Application,
-        config::files::FileServiceConfig,
         service::files::{dirs::Directory, FileManager},
         FilesInternal,
     },
@@ -13,16 +12,9 @@ use {
 };
 
 impl Application {
-    pub async fn init_files_service(&self) {
+    pub fn init_files_service(&self, service: Arc<RwLock<FileManager>>) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
-
-        let service_cfg = {
-            let app_cfg = self.cfg.read().await;
-            FileServiceConfig::new(app_cfg.download_dir())
-        };
-
-        let service = Arc::new(RwLock::new(FileManager::new(service_cfg)));
 
         internal.on_update_list({
             let win = win.clone();
