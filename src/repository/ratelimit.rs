@@ -1,46 +1,50 @@
-use {
-    std::sync::Arc,
-    tokio::{
-        sync::mpsc::{channel, Receiver, Sender},
-        time::Duration,
-    },
+use tokio::{
+    sync::mpsc::{Receiver, Sender, channel},
+    time::Duration,
 };
 
-//todo: use on ping services, when this will be possible in server API
-/*#[allow(dead_code)]
-pub fn get_delay(rl: &api::apis::RateLimit) -> Duration {
-    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    Duration::from_millis((rl.reset() - now) * 1000 / rl.limit() as u64)
+#[derive(Clone)]
+pub struct Rate {
+    limit: usize,
+    window: Duration,
 }
-*/
+
+impl Rate {
+    pub fn new(limit: usize, time_window: Duration) -> Self {
+        Self { limit, window: time_window }
+    }
+}
 
 /// The request queue provided the wait() to distribute the sending of requests to the ratelimit time window.
 /// This is simple lock with one timer.
 pub struct Limiter {
-    rx: Arc<tokio::sync::Mutex<Receiver<()>>>,
+    rate: Rate,
+    receiver: Receiver<()>
 }
 
 impl Limiter {
-    pub fn new(pass_interval: Duration) -> Self {
-        let (tx, rx) = channel::<()>(1);
-        let queue = Self {
-            rx: Arc::new(tokio::sync::Mutex::new(rx)),
+    pub fn new(rate: Rate) -> Self {
+        let (rx, tx) = channel(rate.limit); 
+        let limiter = Self {
+            rate: rate,
+            receiver: tx,
         };
-        queue.start(tx, pass_interval);
-        queue
+
+        limiter.start(rx);
+        limiter
     }
 
-    fn start(&self, tx: Sender<()>, interval: Duration) {
+    fn start(&self, rx: Sender<()>) {
+        let mut ticker = tokio::time::interval(self.rate.window / self.rate.limit as u32);
         tokio::spawn(async move {
             loop {
-                let _ = tx.send(()).await;
-                tokio::time::sleep(interval).await;
+                ticker.tick().await;
+                let _ = rx.send(()).await;
             }
         });
     }
 
-    pub async fn wait(&self) {
-        let rx = self.rx.clone();
-        rx.lock().await.recv().await;
+    pub fn wait(&mut self) {
+        self.receiver.blocking_recv();
     }
 }
