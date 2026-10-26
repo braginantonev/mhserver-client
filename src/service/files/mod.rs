@@ -6,12 +6,12 @@ use {
     super::ServiceError, crate::{
         api::{self, data_service_client::DataServiceClient},
         config::files::FileServiceConfig,
-    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio_stream::StreamExt, tonic::transport::Channel,
+    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio_stream::StreamExt,
 };
 
 const CHUNK_SIZE: usize = 1024 * 1024;
 
-type Client = DataServiceClient<Channel>;
+type Client = DataServiceClient<crate::repository::transport::Channel>;
 
 #[derive(Clone)]
 pub struct Size(usize);

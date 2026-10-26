@@ -1,5 +1,6 @@
 use crate::repository::ratelimit::{Limiter, Rate};
 
+#[derive(Clone)]
 pub struct LimiterInterceptor {
     unary: Limiter,
     stream: Limiter  

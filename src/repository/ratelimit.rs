@@ -1,6 +1,8 @@
-use tokio::{
-    sync::mpsc::{Receiver, Sender, channel},
-    time::Duration,
+use {
+    tokio::{
+        sync::mpsc::{Receiver, Sender, channel},
+        time::Duration,
+    },
 };
 
 #[derive(Clone)]
@@ -15,11 +17,13 @@ impl Rate {
     }
 }
 
+type Token = ();
+
 /// The request queue provided the wait() to distribute the sending of requests to the ratelimit time window.
-/// This is simple lock with one timer.
+/// This is simple non thread-safe struct.
 pub struct Limiter {
     rate: Rate,
-    receiver: Receiver<()>
+    receiver: Receiver<Token>
 }
 
 impl Limiter {
@@ -34,7 +38,7 @@ impl Limiter {
         limiter
     }
 
-    fn start(&self, rx: Sender<()>) {
+    fn start(&self, rx: Sender<Token>) {
         let mut ticker = tokio::time::interval(self.rate.window / self.rate.limit as u32);
         tokio::spawn(async move {
             loop {
@@ -46,5 +50,11 @@ impl Limiter {
 
     pub fn wait(&mut self) {
         self.receiver.blocking_recv();
+    }
+}
+
+impl Clone for Limiter {
+    fn clone(&self) -> Self {
+        Self::new(self.rate.clone())
     }
 }

@@ -1,15 +1,30 @@
 use {
     crate::{
-        config::files::FileServiceConfig, service::{auth::Authenticator, *},
-    }, std::sync::Arc, tokio::sync::RwLock,
+        config::files::FileServiceConfig, 
+        interceptors,
+        service::*,
+    },
+    tonic::service::interceptor::InterceptorLayer,
+    std::sync::Arc, 
+    tokio::sync::RwLock,
 };
+
+pub fn build_intercepted_channel(
+    inner: tonic::transport::Channel,
+    jwt: &str,
+) -> crate::repository::transport::Channel {
+    tower::ServiceBuilder::new()
+        .layer(InterceptorLayer::new(interceptors::ratelimit::LimiterInterceptor::default()))
+        .layer(InterceptorLayer::new(interceptors::auth::AuthInterceptor::new(jwt)))
+        .service(inner)
+}
 
 impl super::Application {
     pub async fn init_services(&self) {
         let app_cfg = self.cfg.read().await;
 
         // Auth service
-        let auth_service = Arc::new(RwLock::new(Authenticator::new())); // Arc and RwLock mb for future
+        let auth_service = Arc::new(RwLock::new(auth::Authenticator::new())); // Arc and RwLock mb for future
         self.init_auth(auth_service);
 
         // Files service

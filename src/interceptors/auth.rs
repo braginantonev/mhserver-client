@@ -1,6 +1,8 @@
 use std::str::FromStr;
 use tonic::metadata::AsciiMetadataValue;
+use tonic::service::Interceptor;
 
+#[derive(Clone)]
 pub struct AuthInterceptor {
     token: AsciiMetadataValue
 }
@@ -11,9 +13,9 @@ impl AuthInterceptor {
     }
 }
 
-impl tonic::service::Interceptor for AuthInterceptor {
+impl Interceptor for AuthInterceptor {
     fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
         let _ = request.metadata_mut().insert("authorization", self.token.clone());
         Ok(request)
     }
-}   
+}

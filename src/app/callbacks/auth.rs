@@ -30,7 +30,7 @@ impl Application {
                 let chan = chan.clone();
 
                 tokio::spawn(async move {
-                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().clone());
+                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
                     match service.read().await
                         .login(client, api::User {
                             name: username.into(),
@@ -73,7 +73,7 @@ impl Application {
                 let chan = chan.clone();
 
                 tokio::spawn(async move {
-                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().clone());
+                    let client = AuthServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
                     match service.read().await
                         .register(client, api::RegisterRequest {
                             user: Some(api::User {

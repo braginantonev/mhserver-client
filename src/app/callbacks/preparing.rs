@@ -1,15 +1,16 @@
 use {
     crate::{
         NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::auth::extend::is_jwt_expired,
-    }, slint::ComponentHandle, tonic::transport::{Channel, Endpoint, Error},
+        app::{transport::Channel, di::build_intercepted_channel},
+    }, slint::ComponentHandle, tonic::transport::{Endpoint, Error},
 };
 
 #[inline]
-async fn try_connect_to_server(address: String) -> Result<Channel, Error> {
-    return Endpoint::from_shared(address)?
+async fn try_connect_to_server(address: String) -> Result<tonic::transport::Channel, Error> {
+    Endpoint::from_shared(address)?
         .connect_timeout(std::time::Duration::from_secs(5))
         .connect()
-        .await;
+        .await
 }
 
 impl Application {
@@ -46,7 +47,7 @@ impl Application {
 
                             address.is_empty() || match try_connect_to_server(address).await {
                                 Ok(c) => {
-                                    *chan.write().await = Some(c);
+                                    *chan.write().await = Some(Channel::new(c.clone(), build_intercepted_channel(c, "")));
                                     false
                                 },
                                 Err(_) => {
@@ -92,7 +93,14 @@ impl Application {
                         },
 
                         PreparingStates::Register => false,
-                        PreparingStates::End => false,
+
+                        PreparingStates::End => {
+                            let mut lock = chan.write().await;
+                            let inner_chan = lock.as_ref().unwrap().inner();
+                            let jwt = cfg.read().await.server_api_config().jwt().to_owned();
+                            *lock = Some(Channel::new(inner_chan.clone(), build_intercepted_channel(inner_chan, &jwt)));
+                            false
+                        },
                     };
 
                     if need_user_action {
@@ -121,7 +129,7 @@ impl Application {
                                 .await
                                 .server_api_config_mut()
                                 .set_base_path(&srv_addr);
-                            *chan.write().await = Some(c);
+                            *chan.write().await = Some(Channel::new(c.clone(), build_intercepted_channel(c, "")));
                             PreparingActions::InvokeNextState.run_in_event_loop(win);
                         }
                         Err(err) => {

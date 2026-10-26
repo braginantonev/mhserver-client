@@ -21,6 +21,7 @@ prost = "0.14.4"
 tonic-prost = "0.14.6"
 async-stream = "0.3.6"
 base64 = "0.23.1"
+tower = "0.5.3"
 
 [build-dependencies]
 slint-build = "1.15.1"

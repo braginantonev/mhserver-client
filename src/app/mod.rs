@@ -1,18 +1,15 @@
 pub mod errors;
 mod callbacks;
 mod di;
+mod transport;
 
 use {
-    crate::{config::app::ApplicationConfig, MainWindow},
-    errors::{ApplicationError, ApplicationErrors},
-    slint::ComponentHandle,
-    std::sync::Arc,
-    tokio::sync::RwLock,
+    crate::{MainWindow, config::app::ApplicationConfig}, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
 };
 
 pub struct Application {
     ui_window: MainWindow,
-    chan: Arc<RwLock<Option<tonic::transport::Channel>>>,
+    chan: Arc<RwLock<Option<transport::Channel>>>,
     cfg: Arc<RwLock<ApplicationConfig>>,
 }
 
