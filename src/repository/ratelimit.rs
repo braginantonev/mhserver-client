@@ -39,10 +39,10 @@ impl Limiter {
     }
 
     fn start(&self, rx: Sender<Token>) {
-        let mut ticker = tokio::time::interval(self.rate.window / self.rate.limit as u32);
+        let interval = self.rate.window / self.rate.limit as u32;
         tokio::spawn(async move {
             loop {
-                ticker.tick().await;
+                tokio::time::sleep(interval).await;
                 let _ = rx.send(()).await;
             }
         });
