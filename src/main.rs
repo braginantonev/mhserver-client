@@ -6,6 +6,7 @@ mod config;
 mod override_slint;
 mod repository;
 mod service;
+mod interceptors;
 
 slint::include_modules!();
 
