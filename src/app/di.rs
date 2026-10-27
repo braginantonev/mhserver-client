@@ -1,12 +1,18 @@
 use {
     crate::{
         config::files::FileServiceConfig, 
-        interceptors,
+        interceptors::{
+            ratelimit::{LimiterInterceptor, LimiterLayer},
+            auth::{AuthInterceptor, AuthLayer},
+        },
+        repository::ratelimit::Rate,
         service::*,
     },
-    tonic::service::interceptor::InterceptorLayer,
     std::sync::Arc, 
-    tokio::sync::RwLock,
+    tokio::{
+        time::Duration,
+        sync::RwLock,
+    }
 };
 
 pub fn build_intercepted_channel(
@@ -14,8 +20,8 @@ pub fn build_intercepted_channel(
     jwt: &str,
 ) -> crate::repository::transport::Channel {
     tower::ServiceBuilder::new()
-        .layer(InterceptorLayer::new(interceptors::ratelimit::LimiterInterceptor::default()))
-        .layer(InterceptorLayer::new(interceptors::auth::AuthInterceptor::new(jwt)))
+        .layer(LimiterLayer::new(LimiterInterceptor::new(Rate::new(5, Duration::from_secs(1)), Rate::new(40, Duration::from_secs(1)))))
+        .layer(AuthLayer::new(AuthInterceptor::new(jwt)))
         .service(inner)
 }
 
