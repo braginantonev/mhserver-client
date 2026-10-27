@@ -1,6 +1,10 @@
 use {
+    std::sync::Arc,
     tokio::{
-        sync::mpsc::{Receiver, Sender, channel},
+        sync::{
+            Mutex,
+            mpsc::{Receiver, Sender, channel},
+        },
         time::Duration,
     },
 };
@@ -20,26 +24,21 @@ impl Rate {
 type Token = ();
 
 /// The request queue provided the wait() to distribute the sending of requests to the ratelimit time window.
-/// This is simple non thread-safe struct.
+/// This is thread-safe struct.
+#[derive(Clone)]
 pub struct Limiter {
-    rate: Rate,
-    receiver: Receiver<Token>
+    receiver: Arc<Mutex<Receiver<Token>>>
 }
 
 impl Limiter {
     pub fn new(rate: Rate) -> Self {
         let (rx, tx) = channel(rate.limit); 
-        let limiter = Self {
-            rate: rate,
-            receiver: tx,
-        };
-
-        limiter.start(rx);
+        let limiter = Self { receiver: Arc::new(Mutex::new(tx)) };
+        limiter.start(rx, rate.window / rate.limit as u32);
         limiter
     }
 
-    fn start(&self, rx: Sender<Token>) {
-        let interval = self.rate.window / self.rate.limit as u32;
+    fn start(&self, rx: Sender<Token>, interval: Duration) {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(interval).await;
@@ -48,13 +47,7 @@ impl Limiter {
         });
     }
 
-    pub fn wait(&mut self) {
-        self.receiver.blocking_recv();
-    }
-}
-
-impl Clone for Limiter {
-    fn clone(&self) -> Self {
-        Self::new(self.rate.clone())
+    pub async fn wait(&self) {
+        self.receiver.lock().await.recv().await;
     }
 }
