@@ -1,8 +1,19 @@
 use {
     crate::{
-        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, actions::{MainActions, PreparingActions, UiActions}, app::Application, service::auth::extend::is_jwt_expired,
-        app::{transport::Channel, di::build_intercepted_channel},
-    }, slint::ComponentHandle, tonic::transport::{Endpoint, Error},
+        actions::{MainActions, PreparingActions, UiActions},
+        service::{
+            preparing,
+            auth::extend::is_jwt_expired,
+        },
+        app::{
+            transport::Channel, 
+            di::build_intercepted_channel
+        },
+        app::Application,
+        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, UpdateStatus
+    }, 
+    slint::ComponentHandle, 
+    tonic::transport::{Endpoint, Error},
 };
 
 #[inline]
@@ -61,23 +72,15 @@ impl Application {
                             }
                         },
 
-                        PreparingStates::Update => /*match preparing::update_status(&api_cfg).await*/ {
-                            /*
+                        PreparingStates::Update => match preparing::check_update().await {
                             Ok(st ) => match st {
-                                UpdateStatus::Available => true,
-                                UpdateStatus::CantCheck => {
-                                    MainActions::ShowNotification("failed check update".to_owned(), String::default(), crate::NotificationType::Info).run(win.clone_strong());
-                                    false
-                                },
+                                UpdateStatus::Available | UpdateStatus::Required => true,
                                 _ => false
                             },
                             Err(err) => {
-                                MainActions::from(err).run(win.clone_strong());
+                                MainActions::from(err).run_in_event_loop(win.clone());
                                 false
-                            }*/
-
-                            // temporary dropped. fix in 3.x
-                            false
+                            }
                         },
 
                         PreparingStates::Login => {
@@ -145,23 +148,15 @@ impl Application {
             }
         });
 
-        #[cfg(target_os = "windows")]
         preparing_internal.on_update_windows({
             let win = win_weak.clone();
-            let http_client = self.base_client.clone();
 
             move || {
                 let win = win.clone();
-                let http_client = http_client.clone();
 
                 tokio::spawn(async move {
-                    match preparing::download_update(&api_cfg(http_client, "".to_owned())).await {
-                        Ok(_) => MainActions::ShowNotification(
-                            "update downloaded".to_owned(),
-                            String::default(),
-                            NotificationType::Info,
-                        )
-                        .run_in_event_loop(win.clone()),
+                    match preparing::download_update().await {
+                        Ok(_) => MainActions::ShowNotification("update downloaded".to_owned(), String::default(), NotificationType::Info,).run_in_event_loop(win.clone()),
                         Err(err) => {
                             MainActions::from(err).run_in_event_loop(win);
                             return;

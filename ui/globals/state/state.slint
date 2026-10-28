@@ -19,14 +19,14 @@ export global State {
     public function next() {
         // Main preparing states
         if preparing == PreparingStates.Greeting {
-            preparing = PreparingStates.Connection;
-        } 
-        else if preparing == PreparingStates.Connection {
             preparing = PreparingStates.Update;
         } 
         else if preparing == PreparingStates.Update {
-            preparing = PreparingStates.Login;
+            preparing = PreparingStates.Connection;
         }
+        else if preparing == PreparingStates.Connection {
+            preparing = PreparingStates.Login;
+        } 
         else if preparing == PreparingStates.Login {
             preparing = PreparingStates.End;
         } 
@@ -35,7 +35,7 @@ export global State {
         }
 
         // Additional preparing states
-        if preparing == PreparingStates.Register {
+        else if preparing == PreparingStates.Register {
             preparing = PreparingStates.Login;
         }
 
