@@ -6,7 +6,6 @@ use std::{
 #[derive(Debug)]
 pub enum ApplicationErrors {
     FailedCreateWindow(String),
-    FailedCreateHttpClient(String),
     WindowError(String),
 }
 
@@ -14,7 +13,6 @@ impl ApplicationErrors {
     fn name<'a>(&self) -> &'a str {
         match self {
             ApplicationErrors::FailedCreateWindow(_) => "failed create main window",
-            ApplicationErrors::FailedCreateHttpClient(_) => "failed create client window",
             ApplicationErrors::WindowError(_) => "window error",
         }
     }
@@ -22,7 +20,6 @@ impl ApplicationErrors {
     fn desc(&self) -> &str {
         match self {
             ApplicationErrors::FailedCreateWindow(desc) => desc,
-            ApplicationErrors::FailedCreateHttpClient(desc) => desc,
             ApplicationErrors::WindowError(desc) => desc,
         }
         .as_str()
