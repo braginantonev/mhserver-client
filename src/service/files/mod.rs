@@ -273,11 +273,11 @@ impl FileManager {
             }
         };
 
-        match client.save_file(stream).await {
-            Ok(_) => {
-                self.loader.set_complete(load_id).await;
-                Ok(())
-            },
+        let upload_result = client.save_file(stream).await;
+        self.loader.set_complete(load_id).await;
+
+        match upload_result {
+            Ok(_) => Ok(()),
             Err(status) => Err(ServiceError::from(status)),
         }
     }
@@ -324,8 +324,6 @@ impl FileManager {
             new_size: None,
         };
 
-        // temp `i32::MAX`. Add meta in proto
-
         let mut stream = match client.read_file(conn_req).await {
             Ok(res) => res.into_inner(),
             Err(status) => return Err(ServiceError::from(status)),
@@ -333,14 +331,19 @@ impl FileManager {
 
         let load_id = self.loader.add(loader::Load::new(false, save_to.display().to_string(), None)).await; 
 
+        let mut download_err: Option<ServiceError> = None;
         while let Some(chunk) = stream.next().await {
             let chunk = match chunk {
                 Ok(c) => c,
-                Err(status) => return Err(ServiceError::from(status)),
+                Err(status) => {
+                    download_err = Some(ServiceError::from(status));
+                    break
+                }
             };
 
             if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
-                return Err(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename))
+                download_err = Some(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename));
+                break
             }
 
             if !self.loader.increase_loaded(load_id, chunk.data.len()).await {
@@ -350,6 +353,9 @@ impl FileManager {
 
         self.loader.set_complete(load_id).await;
 
-        Ok(())
+        match download_err {
+            Some(err) => return Err(err),
+            None => Ok(()),
+        }
     }
 }
