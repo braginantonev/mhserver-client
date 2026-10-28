@@ -3,7 +3,11 @@ use {
         actions::{AnyActions, FilesActions, MainActions, UiActions},
         api::{data_service_client::DataServiceClient, FilesList},
         app::Application,
-        service::files::{dirs::Directory, FileManager},
+        service::files::{
+            dirs::Directory,
+            loader::{LoadStatus, LoadType},
+            FileManager
+        },
         FilesInternal,
     },
     slint::ComponentHandle,
@@ -361,8 +365,11 @@ impl Application {
 
                     // Show downloaded files
                     complete.into_iter().for_each(|load| {
-                        FilesActions::NotifyLoadedFile(load.file(), load.is_upload())
-                            .run_in_event_loop(win.clone())
+                        match load.status() {
+                            LoadStatus::Completed => FilesActions::NotifyLoadedFile(load.file(), load.typ())
+                                .run_in_event_loop(win.clone()),
+                            _ => {},
+                        }
                     });
                 });
             }

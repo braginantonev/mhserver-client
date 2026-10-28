@@ -3,10 +3,18 @@ pub mod dirs;
 mod path;
 
 use {
-    super::ServiceError, crate::{
+    super::ServiceError, 
+    crate::{
         api::{self, data_service_client::DataServiceClient},
         config::files::FileServiceConfig,
-    }, std::{fs::File, path::PathBuf, sync::Arc}, system_interface::fs::FileIoExt, tokio_stream::StreamExt,
+    }, 
+    std::{
+        fs::File, 
+        path::PathBuf, 
+        sync::Arc
+    }, 
+    system_interface::fs::FileIoExt, 
+    tokio_stream::StreamExt,
 };
 
 const CHUNK_SIZE: usize = 1024 * 1024;
@@ -124,7 +132,7 @@ impl FileManager {
     }
 
     pub async fn cancel_load(&mut self, id: u64) {
-        self.loader.cancel(id).await;
+        self.loader.cancel_load(id).await;
     }
 
     //* API requests
@@ -246,7 +254,7 @@ impl FileManager {
             new_size: Some(file_meta.len() as u64),
         };
 
-        let load_id = self.loader.add(loader::Load::new(true, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
 
         let stream_loader = self.loader.clone();
         let mut offset: u64 = 0;
@@ -273,12 +281,15 @@ impl FileManager {
             }
         };
 
-        let upload_result = client.save_file(stream).await;
-        self.loader.set_complete(load_id).await;
-
-        match upload_result {
-            Ok(_) => Ok(()),
-            Err(status) => Err(ServiceError::from(status)),
+        match client.save_file(stream).await {
+            Ok(_) => {
+                self.loader.complete_load(load_id).await;
+                Ok(())
+            },
+            Err(status) => {
+                self.loader.drop_load(load_id).await;
+                Err(ServiceError::from(status))
+            }
         }
     }
 
@@ -329,7 +340,7 @@ impl FileManager {
             Err(status) => return Err(ServiceError::from(status)),
         };
 
-        let load_id = self.loader.add(loader::Load::new(false, save_to.display().to_string(), None)).await; 
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await; 
 
         let mut download_err: Option<ServiceError> = None;
         while let Some(chunk) = stream.next().await {
@@ -351,11 +362,15 @@ impl FileManager {
             }
         }
 
-        self.loader.set_complete(load_id).await;
-
         match download_err {
-            Some(err) => return Err(err),
-            None => Ok(()),
+            Some(err) => {
+                self.loader.drop_load(load_id).await;
+                Err(err)
+            }
+            None => {
+                self.loader.complete_load(load_id).await;
+                Ok(())
+            },
         }
     }
 }

@@ -1,7 +1,7 @@
 use {
     super::{api::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
     crate::{
-        service::{files::loader::{Load, LoadID}, ServiceError},
+        service::{files::loader::*, ServiceError},
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,
         PreparingInternal, PreparingStates, State,
     },
@@ -110,7 +110,7 @@ pub enum FilesActions {
 
     UpdateAvailableSpace(String),
 
-    NotifyLoadedFile(String, bool),
+    NotifyLoadedFile(String, LoadType),
 }
 
 impl UiActions for FilesActions {
@@ -138,7 +138,7 @@ impl UiActions for FilesActions {
                     .set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(
                         files.iter().map(|load| LoadFile {
                             id: load.0.to_shared_string(),
-                            is_upload: load.1.is_upload(),
+                            is_upload: load.1.typ() == LoadType::Upload,
                             name: load.1.file().to_shared_string(),
                             progress: load.1.completed_percent().unwrap_or(-1.0),
                             loaded: load.1.loaded().to_string_candy().into(),
@@ -154,19 +154,18 @@ impl UiActions for FilesActions {
                 win.global::<FilesInternal>()
                     .set_available_space(size.to_shared_string());
             }
-            FilesActions::NotifyLoadedFile(name, is_upload) => {
-                if is_upload {
-                    MainActions::ShowNotification(
+            FilesActions::NotifyLoadedFile(name, load_type) => {
+                match load_type {
+                    LoadType::Download => MainActions::ShowNotification(
                         "File uploaded".to_owned(),
                         name,
-                        NotificationType::Upload,
-                    )
-                } else {
-                    MainActions::ShowNotification(
+                        NotificationType::Download,
+                    ),
+                    LoadType::Upload => MainActions::ShowNotification(
                         "File downloaded".to_owned(),
                         name,
-                        NotificationType::Download,
-                    )
+                        NotificationType::Upload,
+                    ),
                 }
                 .run(win);
             }
