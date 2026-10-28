@@ -6,13 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 slint = "1.15.1"
-tokio = { version = "1.49.0", default-features = false, features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.19", default-features = false }
 tokio-stream = "0.1.19"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.228", default-features = false, features = ["derive"] }
 serde_json = "1.0.154"
 toml = "0.9.11"
-uuid = "1.23.1"
 system-interface = "0.27.3"
 rfd = "0.17.2"
 semver = "1.0.28"
