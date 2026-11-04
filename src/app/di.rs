@@ -34,7 +34,7 @@ impl super::Application {
         self.init_auth(auth_service);
 
         // Files service
-        let files_cfg = FileServiceConfig::new(app_cfg.download_dir());
+        let files_cfg = FileServiceConfig::new(app_cfg.download_dir(), app_cfg.server_throughput());
         let files_service = Arc::new(RwLock::new(files::FileManager::new(files_cfg)));
         self.init_files_service(files_service);
     }

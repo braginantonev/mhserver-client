@@ -9,6 +9,7 @@ use {
             FileManager
         },
         FilesInternal,
+        NotificationType,
     },
     slint::ComponentHandle,
     std::sync::Arc,
@@ -175,18 +176,25 @@ impl Application {
                     };
 
                     let mut handles = Vec::with_capacity(files.len());
+
+                    let mut lock = service.write().await;
                     for f in files {
-                        // todo: use single lock in api 3.x if it's will be needed
-                        handles.push(service.write().await.upload_file(
-                            client.clone(),
-                            Some(current_dir.clone()),
-                            f.path().to_path_buf(),
-                        ).await);
+                        match lock.upload_file(client.clone(), Some(current_dir.clone()), f.path().to_path_buf()).await {
+                            Ok(h) => handles.push(h),
+                            Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                        }
                     }
+                    drop(lock);
 
                     for h in handles {
-                        if let Err(err) = h {
-                            MainActions::from(err).run_in_event_loop(win.clone());
+                        match h.await {
+                            Ok(k) => {
+                                if let Err(err) = k {
+                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                }
+                            },
+                            Err(err) => 
+                                MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         }
                     }
                 });
@@ -239,20 +247,25 @@ impl Application {
                                 continue;
                             };
 
+                            let mut lock = service.write().await;
                             for f in files.1 {
-                                handles.push(service.write().await.upload_file(
-                                    client.clone(),
-                                    Some(files.0.clone()),
-                                    f,
-                                ).await);
+                                match lock.upload_file(client.clone(), Some(files.0.clone()), f).await {
+                                    Ok(h) => handles.push(h),
+                                    Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                                }
                             }
                         }
                     }
 
                     for h in handles {
-                        if let Err(err) = h {
-                            MainActions::from(err).run_in_event_loop(win.clone());
-                            continue;
+                        match h.await {
+                            Ok(k) => {
+                                if let Err(err) = k {
+                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                }
+                            },
+                            Err(err) => 
+                                MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         }
                     }
                 });
@@ -271,13 +284,25 @@ impl Application {
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
-                    if let Err(err) = service
+                    let resp = service
                         .write()
                         .await
                         .download_file(client, None, filename.to_string())
-                        .await
-                    {
-                        MainActions::from(err).run_in_event_loop(win.clone());
+                        .await;
+                    
+                    match resp {
+                        Ok(h) => {
+                            match h.await {
+                                Ok(k) => {
+                                    if let Err(err) = k {
+                                        MainActions::from(err).run_in_event_loop(win.clone());
+                                    }
+                                },
+                                Err(err) => 
+                                    MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                            }
+                        },
+                        Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
                     };
                 });
             }
@@ -312,19 +337,24 @@ impl Application {
                     };
 
                     let mut handles = Vec::with_capacity(download_files.len());
+                    let mut lock = service.write().await;
                     for file in download_files {
-                        // todo: use single lock in api 3.x if it's will be needed
-                        handles.push(service.write().await.download_file(
-                            client.clone(),
-                            Some(from.clone()),
-                            file.name.clone(),
-                        ).await);
+                        match lock.download_file(client.clone(), Some(from.clone()), file.name.clone()).await {
+                            Ok(h) => handles.push(h),
+                            Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                        }
                     }
+                    drop(lock);
 
                     for h in handles {
-                        if let Err(err) = h {
-                            MainActions::from(err).run_in_event_loop(win.clone());
-                        }
+                        match h.await {
+                            Ok(resp) => {
+                                if let Err(err) = resp {
+                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                }
+                            },
+                            Err(err) => MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                        };
                     }
                 });
             }

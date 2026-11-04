@@ -9,6 +9,18 @@ use {
     },
 };
 
+pub struct StreamThrottle(Duration);
+
+impl StreamThrottle {
+    pub fn new(server_throughput: usize, part_size: usize) -> Self {
+        Self(Duration::from_secs(1) / (server_throughput / part_size) as u32)
+    }
+
+    pub fn duration(&self) -> Duration {
+        self.0
+    }
+}
+
 #[derive(Clone)]
 pub struct Rate {
     limit: usize,

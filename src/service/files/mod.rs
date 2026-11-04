@@ -226,7 +226,7 @@ impl FileManager {
         mut client: Client,
         to: Option<path::ServerPath>,
         os_file_path: PathBuf,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<tokio::task::JoinHandle<Result<(), ServiceError>>, ServiceError> {
         let upload_to = to.unwrap_or(self.current_dir()).into();
         let filename = os_file_path.file_name().unwrap().display().to_string();
 
@@ -287,16 +287,20 @@ impl FileManager {
             }
         }.throttle(self.stream_throttle.duration());
 
-        match client.save_file(stream).await {
-            Ok(_) => {
-                self.loader.complete_load(load_id).await;
-                Ok(())
-            },
-            Err(status) => {
-                self.loader.drop_load(load_id).await;
-                Err(ServiceError::from(status))
+        let stream_loader = self.loader.clone();
+
+        Ok(tokio::spawn(async move {
+            match client.save_file(stream).await {
+                Ok(_) => {
+                    stream_loader.complete_load(load_id).await;
+                    Ok(())
+                },
+                Err(status) => {
+                    stream_loader.drop_load(load_id).await;
+                    Err(ServiceError::from(status))
+                }
             }
-        }
+        }))
     }
 
     pub async fn download_file(
@@ -304,7 +308,7 @@ impl FileManager {
         mut client: Client,
         from: Option<String>,
         filename: String,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<tokio::task::JoinHandle<Result<(), ServiceError>>, ServiceError> {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
 
@@ -346,37 +350,40 @@ impl FileManager {
             Err(status) => return Err(ServiceError::from(status)),
         };
 
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await; 
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
+        let loader = self.loader.clone();
 
-        let mut download_err: Option<ServiceError> = None;
-        while let Some(chunk) = stream.next().await {
-            let chunk = match chunk {
-                Ok(c) => c,
-                Err(status) => {
-                    download_err = Some(ServiceError::from(status));
+        Ok(tokio::spawn(async move {
+            let mut download_err: Option<ServiceError> = None;
+            while let Some(chunk) = stream.next().await {
+                let chunk = match chunk {
+                    Ok(c) => c,
+                    Err(status) => {
+                        download_err = Some(ServiceError::from(status));
+                        break
+                    }
+                };
+
+                if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
+                    download_err = Some(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename));
                     break
                 }
-            };
 
-            if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
-                download_err = Some(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename));
-                break
+                if !loader.increase_loaded(load_id, chunk.data.len()).await {
+                    break
+                }
             }
 
-            if !self.loader.increase_loaded(load_id, chunk.data.len()).await {
-                break
+            match download_err {
+                Some(err) => {
+                    loader.drop_load(load_id).await;
+                    Err(err)
+                }
+                None => {
+                    loader.complete_load(load_id).await;
+                    Ok(())
+                },
             }
-        }
-
-        match download_err {
-            Some(err) => {
-                self.loader.drop_load(load_id).await;
-                Err(err)
-            }
-            None => {
-                self.loader.complete_load(load_id).await;
-                Ok(())
-            },
-        }
+        }))
     }
 }
