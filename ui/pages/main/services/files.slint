@@ -187,51 +187,64 @@ component ContextMenu inherits PopupWindow {
 
 //* ------------------- Loader ----------------- *//
 
-component LoadData inherits HorizontalLayout {
+component LoadData {
     in property <LoadFile> info;
+    private property <length> text-size: 8pt;
 
     callback cancel_load(string);
 
-    spacing: 10px;
+    HorizontalLayout {
+        spacing: 10px;
 
-    SimpleButton {
-        icon: Assets.close-icon;
-        icon-color: whitesmoke;
+        VerticalLayout {
+            padding-bottom: 2px;
+            spacing: 3px;
+            horizontal-stretch: 1;
 
-        hover-additional-width: 10px;
+            dataname := Text {
+                text: @tr("Файл: {}", info.name);
+                font-size: text-size;
+                color: gray;
+                overflow: elide;
+                vertical-alignment: center;
+            }
 
-        preferred-width: 12px;
-        preferred-height: 12px;
+            progress_indicator := ProgressIndicator {
+                update_duration: FilesSettings.loader-update-interval;
+                horizontal-stretch: 1;
+                progress: info.progress;
+                color: info.is-upload ? ColorSettings.upload-color : ColorSettings.download-color;
+            }
 
-        clicked => { 
-            self.enabled = false;
-            cancel_load(info.id);
+            // loaded size info
+            Text {
+                text: @tr("Загружено: {} из {}", info.loaded, info.to-load);
+                font-size: text-size;
+                color: gray;
+                vertical-alignment: center;
+            }
         }
-    }
 
-    // progress animation timer
-    Timer {
-        interval: 1ms;
-        running: true;
-        triggered => {
-            progress_indicator.progress = info.progress;
-            self.running = false;
+        SimpleButton {
+            icon: Assets.close-icon;
+            icon-color: whitesmoke;
+
+            hover-additional-width: 10px;
+
+            preferred-width: 12px;
+            preferred-height: 12px;
+
+            clicked => { 
+                self.enabled = false;
+                cancel_load(info.id);
+            }
         }
+
     }
 
-    dataname := Text {
-        text: info.name;
-        width: parent.width / 2;
-        overflow: elide;
-        vertical-alignment: center;
-        horizontal-alignment: center;
-    }
-
-    progress_indicator := ProgressIndicator {
-        y: parent.height / 2 - self.height / 2;
-        update_duration: FilesSettings.loader-update-interval;
-        progress: info.previous;
-        color: info.is-upload ? ColorSettings.upload-color : ColorSettings.download-color;
+    MenuSeparator {
+        y: parent.height;
+        width: parent.width;
     }
 }
 
@@ -267,19 +280,18 @@ component Loader {
         MenuSeparator {}
 
         ScrollView {
-            width: parent.width;
-            viewport-width: self.width;
-            viewport-height: FilesInternal.load-files.length * element_height;
-            horizontal-scrollbar-policy: always-off;
+            content-width: self.width;
+            content-height: FilesInternal.load-files.length * element_height;
 
             VerticalLayout {
-                width: parent.width - 30px;
-                padding-right: 20px;
+                padding: 10px;
+                padding-top: 4px;
+                spacing: 5px;
 
                 for data[i] in FilesInternal.load-files: LoadData {
-                    spacing: 3px;
                     height: element_height;
                     info: data;
+                    horizontal-stretch: 1;
 
                     cancel_load(id) => {
                         FilesInternal.cancel_load(id);
@@ -321,8 +333,8 @@ component FilesWindow {
 
     scroll := ScrollView {
         width: parent.width - 3px; // minus slider width
-        viewport-width: self.width;
-        viewport-height: files_layout.height;
+        content-width: self.width;
+        content-height: files_layout.height;
         horizontal-scrollbar-policy: always-off;
 
         files_layout := GridLayout {
@@ -355,7 +367,7 @@ component FilesWindow {
 
                 context-triggered => {
                     self.selected();
-                    root.context-triggered(self.name, self.x + self.mouse-x + scroll.viewport-x, self.y + self.mouse-y + scroll.viewport-y);
+                    root.context-triggered(self.name, self.x + self.mouse-x + scroll.content-x, self.y + self.mouse-y + scroll.content-y);
                 }
             }
         }

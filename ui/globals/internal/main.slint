@@ -38,8 +38,10 @@ export struct LoadFile {
     is_upload: bool,
     name: string,
     progress: float,
-    loaded: string, // we use eye candy value, not size in bytes
-    previous: float,
+
+    // we use eye candy value, not size in bytes
+    to_load: string,
+    loaded: string, 
 }
 
 export global FilesInternal {

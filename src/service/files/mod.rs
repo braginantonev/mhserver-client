@@ -20,7 +20,7 @@ use {
 
 type Client = FilesServiceClient<crate::repository::transport::Channel>;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Size(usize);
 
 impl Size {
@@ -33,7 +33,7 @@ impl Size {
             size = size / 1024.0;
             i += 1;
         }
-        format!("{} {}", size as f32, EXTENSIONS[i])
+        format!("{:.2} {}", size as f32, EXTENSIONS[i])
     }
 }
 

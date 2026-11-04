@@ -50,7 +50,11 @@ impl Load {
     }
 
     pub fn loaded(&self) -> Size {
-        self.loaded.clone()
+        self.loaded
+    }
+
+    pub fn to_load(&self) -> Size {
+        self.to_load.unwrap_or(Size(0))
     }
 
     /// Return loaded percent between 0.0 and 1.0 if `to_load` size is known

@@ -140,9 +140,9 @@ impl UiActions for FilesActions {
                             id: load.0.to_shared_string(),
                             is_upload: load.1.typ() == LoadType::Upload,
                             name: load.1.file().to_shared_string(),
-                            progress: load.1.completed_percent().unwrap_or(-1.0),
+                            progress: load.1.completed_percent().unwrap_or(1.0),
+                            to_load: load.1.to_load().to_string_candy().into(),
                             loaded: load.1.loaded().to_string_candy().into(),
-                            previous: load.1.completed_percent().unwrap_or(-1.0), // temp
                         }),
                     ))));
             }
