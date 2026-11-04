@@ -37,6 +37,7 @@ impl ServiceError {
         self.code
     }
 
+    #[allow(dead_code)]
     pub fn with_label(mut self, label: &str) -> Self {
         self.label = label.to_owned();
         self
