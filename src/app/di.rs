@@ -20,7 +20,7 @@ pub fn build_intercepted_channel(
     jwt: &str,
 ) -> crate::repository::transport::Channel {
     tower::ServiceBuilder::new()
-        .layer(LimiterLayer::new(LimiterInterceptor::new(Rate::new(5, Duration::from_secs(1)), Rate::new(40, Duration::from_secs(1)))))
+        .layer(LimiterLayer::new(LimiterInterceptor::new(Rate::new(5, Duration::from_secs(1)))))
         .layer(AuthLayer::new(AuthInterceptor::new(jwt)))
         .service(inner)
 }
