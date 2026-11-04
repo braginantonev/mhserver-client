@@ -380,6 +380,7 @@ impl FileManager {
                     Err(err)
                 }
                 None => {
+                    let _ = std::fs::rename(save_to.clone(), save_to.display().to_string().trim_end_matches(".part"));
                     loader.complete_load(load_id).await;
                     Ok(())
                 },

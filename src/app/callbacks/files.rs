@@ -5,7 +5,7 @@ use {
         app::Application,
         service::files::{
             dirs::Directory,
-            loader::{LoadStatus, LoadType},
+            loader::LoadStatus,
             FileManager
         },
         FilesInternal,

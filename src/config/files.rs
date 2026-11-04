@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use crate::service::files::dirs::default_download_dir;
 
-const DEFAULT_CHUNK_SIZE: usize = 10;
+const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {
