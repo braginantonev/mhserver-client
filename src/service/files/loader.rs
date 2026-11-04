@@ -56,7 +56,7 @@ impl Load {
     /// Return loaded percent between 0.0 and 1.0 if `to_load` size is known
     pub fn completed_percent(&self) -> Option<f32> {
         match &self.to_load {
-            Some(v) => Some(v.0 as f32 / self.loaded.0 as f32),
+            Some(v) => Some(self.loaded.0 as f32 / v.0 as f32),
             None => None
         }
     }
