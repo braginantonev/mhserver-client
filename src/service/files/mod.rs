@@ -193,6 +193,28 @@ impl FileManager {
         }
     }
 
+    pub async fn remove_file(
+        &mut self,
+        mut client: Client,
+        target_file: &str,
+    ) -> Result<(), ServiceError> {
+        let request = api::RequiredFile {
+            dir: Some(api::Directory {
+                value: self.current_dir().to_string()
+            }),
+            name: target_file.to_owned(),
+            new_size: None,
+        };
+
+        match client.remove_file(request).await {
+            Ok(_) => {
+                self.cached_files.remove(target_file, false);
+                Ok(())
+            },
+            Err(st) => Err(ServiceError::from(st)),
+        }
+    }
+
     /// Get files list from server and save to local cache
     pub async fn get_files(
         &mut self,

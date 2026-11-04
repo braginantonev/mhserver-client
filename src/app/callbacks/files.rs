@@ -292,7 +292,7 @@ impl Application {
                         .await
                         .download_file(client, None, filename.to_string())
                         .await;
-                    
+
                     match resp {
                         Ok(h) => {
                             match h.await {
@@ -360,6 +360,38 @@ impl Application {
                             },
                             Err(err) => MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         };
+                    }
+                });
+            }
+        });
+
+        internal.on_rmfile({
+            let win = win.clone();
+            let chan = self.chan.clone();
+            let service = service.clone();
+
+            move |target| {
+                let win = win.clone();
+                let chan = chan.clone();
+                let service = service.clone();
+
+                tokio::spawn(async move {
+                    let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
+                    let resp = service
+                        .write()
+                        .await
+                        .remove_file(client, &target)
+                        .await;
+
+                    match resp {
+                        Ok(_) => {
+                            let (files, from) = {
+                                let lock = service.read().await;
+                                (lock.cached_files(), lock.current_dir())
+                            };
+                            FilesActions::UpdateFilesList(FilesList { value: files }, from.to_string()).run_in_event_loop(win);
+                        },
+                        Err(err) => MainActions::from(err).run_in_event_loop(win),
                     }
                 });
             }
