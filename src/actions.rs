@@ -157,12 +157,12 @@ impl UiActions for FilesActions {
             FilesActions::NotifyLoadedFile(name, load_type) => {
                 match load_type {
                     LoadType::Download => MainActions::ShowNotification(
-                        "File uploaded".to_owned(),
+                        "File downloaded".to_owned(),
                         name,
                         NotificationType::Download,
                     ),
                     LoadType::Upload => MainActions::ShowNotification(
-                        "File downloaded".to_owned(),
+                        "File uploaded".to_owned(),
                         name,
                         NotificationType::Upload,
                     ),
