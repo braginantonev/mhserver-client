@@ -14,7 +14,7 @@ use {
 
 // ! RPC's must be sorted for better performance
 const STREAM_RPCS: [&str; 1] = [
-    "/data.DataService/SaveFile"
+    "/files.FilesService/SaveFile"
 ];
 
 #[derive(Clone)]

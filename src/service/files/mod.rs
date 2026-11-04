@@ -5,8 +5,9 @@ mod path;
 use {
     super::ServiceError, 
     crate::{
-        api::{self, data_service_client::DataServiceClient},
+        api::{self, files_service_client::FilesServiceClient},
         config::files::FileServiceConfig,
+        repository::ratelimit::StreamThrottle,
     }, 
     std::{
         fs::File, 
@@ -17,9 +18,7 @@ use {
     tokio_stream::StreamExt,
 };
 
-const CHUNK_SIZE: usize = 1024 * 1024;
-
-type Client = DataServiceClient<crate::repository::transport::Channel>;
+type Client = FilesServiceClient<crate::repository::transport::Channel>;
 
 #[derive(Clone)]
 pub struct Size(usize);
@@ -90,15 +89,20 @@ pub struct FileManager {
     active_dir: path::ServerPath,
     cached_files: FilesList, // for files in active dir
     loader: Arc<loader::Loader>,
+
+    stream_throttle: StreamThrottle,
 }
 
 impl FileManager {
     pub fn new(cfg: FileServiceConfig) -> Self {
+        let stream_throttle = StreamThrottle::new(cfg.server_throughput(), cfg.chunk_size());
+
         Self {
             cfg,
             active_dir: path::ServerPath::new(),
             cached_files: FilesList::new(),
             loader: Arc::default(),
+            stream_throttle,
         }
     }
 
@@ -257,6 +261,8 @@ impl FileManager {
         let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
 
         let stream_loader = self.loader.clone();
+        let chunk_size = self.cfg.chunk_size();
+
         let mut offset: u64 = 0;
         let stream = async_stream::stream! {
             yield api::SaveFileChunk {
@@ -264,7 +270,7 @@ impl FileManager {
             };
 
             while offset < file_meta.len() {
-                let mut save_chunk = vec![0u8; CHUNK_SIZE];
+                let mut save_chunk = vec![0u8; chunk_size];
                 let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
 
                 yield api::SaveFileChunk {
@@ -274,12 +280,12 @@ impl FileManager {
                     }))
                 };
 
-                offset += CHUNK_SIZE as u64;
+                offset += chunk_size as u64;
                 if !stream_loader.increase_loaded(load_id, read).await {
                     break
                 }
             }
-        };
+        }.throttle(self.stream_throttle.duration());
 
         match client.save_file(stream).await {
             Ok(_) => {
