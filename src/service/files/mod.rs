@@ -345,15 +345,16 @@ impl FileManager {
             new_size: None,
         };
 
-        let mut stream = match client.read_file(conn_req).await {
-            Ok(res) => res.into_inner(),
-            Err(status) => return Err(ServiceError::from(status)),
-        };
-
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
         let loader = self.loader.clone();
 
         Ok(tokio::spawn(async move {
+            let mut stream = match client.read_file(conn_req).await {
+                Ok(res) => res.into_inner(),
+                Err(status) => return Err(ServiceError::from(status)),
+            };
+
+            let load_id = loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
+
             let mut download_err: Option<ServiceError> = None;
             while let Some(chunk) = stream.next().await {
                 let chunk = match chunk {

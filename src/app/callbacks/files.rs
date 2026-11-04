@@ -247,9 +247,12 @@ impl Application {
                                 continue;
                             };
 
-                            let mut lock = service.write().await;
                             for f in files.1 {
-                                match lock.upload_file(client.clone(), Some(files.0.clone()), f).await {
+                                match service
+                                    .write()
+                                    .await
+                                    .upload_file(client.clone(), Some(files.0.clone()), f)
+                                    .await {
                                     Ok(h) => handles.push(h),
                                     Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
                                 }
@@ -337,14 +340,16 @@ impl Application {
                     };
 
                     let mut handles = Vec::with_capacity(download_files.len());
-                    let mut lock = service.write().await;
                     for file in download_files {
-                        match lock.download_file(client.clone(), Some(from.clone()), file.name.clone()).await {
+                        match service
+                            .write()
+                            .await
+                            .download_file(client.clone(), Some(from.clone()), file.name.clone())
+                            .await {
                             Ok(h) => handles.push(h),
                             Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
                         }
                     }
-                    drop(lock);
 
                     for h in handles {
                         match h.await {
