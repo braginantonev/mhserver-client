@@ -161,7 +161,7 @@ impl FileManager {
     ) -> Result<(), ServiceError> {
         let from = from.unwrap_or(self.current_dir());
         match client
-            .create_dir(api::Directory {
+            .create_dir(api::TargetDirectory {
                 value: from.with(new_dir).to_string(),
             })
             .await
@@ -185,7 +185,7 @@ impl FileManager {
         mut client: Client,
         target_dir: &str,
     ) -> Result<(), ServiceError> {
-        let request = api::Directory {
+        let request = api::TargetDirectory {
             value: self.current_dir().with(target_dir).to_string(),
         };
 
@@ -203,12 +203,9 @@ impl FileManager {
         mut client: Client,
         target_file: &str,
     ) -> Result<(), ServiceError> {
-        let request = api::RequiredFile {
-            dir: Some(api::Directory {
-                value: self.current_dir().to_string()
-            }),
+        let request = api::TargetFile {
+            directory: self.current_dir().to_string(),
             name: target_file.to_owned(),
-            new_size: None,
         };
 
         match client.remove_file(request).await {
@@ -226,7 +223,7 @@ impl FileManager {
         mut client: Client,
         from: Option<String>,
     ) -> Result<Vec<api::FileInfo>, ServiceError> {
-        let request = api::Directory {
+        let request = api::TargetDirectory {
             value: from.unwrap_or(self.current_dir().to_string()),
         };
 
@@ -279,10 +276,12 @@ impl FileManager {
             }
         };
 
-        let conn_req = api::RequiredFile {
-            dir: Some(api::Directory { value: upload_to }),
-            name: filename.clone(),
-            new_size: Some(file_meta.len() as u64),
+        let conn_req = api::NewFile {
+            target: Some(api::TargetFile {
+                directory: upload_to,
+                name: filename.clone()
+            }),
+            size: file_meta.len() as u64
         };
 
         let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
@@ -292,19 +291,16 @@ impl FileManager {
 
         let mut offset: u64 = 0;
         let stream = async_stream::stream! {
-            yield api::SaveFileChunk {
-                info: Some(api::save_file_chunk::Info::Meta(conn_req)),
+            yield api::SaveFileRequest {
+                info: Some(api::save_file_request::Info::Meta(conn_req)),
             };
 
             while offset < file_meta.len() {
                 let mut save_chunk = vec![0u8; chunk_size];
                 let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
 
-                yield api::SaveFileChunk {
-                    info: Some(api::save_file_chunk::Info::Chunk(api::Chunk {
-                        data: save_chunk[..read].to_vec(),
-                        offset,
-                    }))
+                yield api::SaveFileRequest {
+                    info: Some(api::save_file_request::Info::Chunk(save_chunk[..read].to_vec()))
                 };
 
                 offset += chunk_size as u64;
@@ -364,12 +360,9 @@ impl FileManager {
             }
         };
 
-        let conn_req = api::RequiredFile {
-            dir: Some(api::Directory {
-                value: from.clone(),
-            }),
+        let conn_req = api::TargetFile {
+            directory: from.clone(),
             name: filename.clone(),
-            new_size: None,
         };
 
         let loader = self.loader.clone();
