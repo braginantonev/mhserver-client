@@ -106,7 +106,7 @@ pub enum FilesActions {
 
     UpdateLoadFiles(Vec<(LoadID, Load)>),
 
-    UpdateCurrentDirectory(String),
+    UpdateCurrentDirectory(Vec<String>),
 
     UpdateAvailableSpace(String),
 
@@ -136,7 +136,7 @@ impl UiActions for FilesActions {
             FilesActions::UpdateLoadFiles(files) => {
                 win.global::<FilesInternal>()
                     .set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(
-                        files.iter().map(|load| LoadFile {
+                        files.into_iter().map(|load| LoadFile {
                             id: load.0.to_shared_string(),
                             is_upload: load.1.typ() == LoadType::Upload,
                             name: load.1.file().to_shared_string(),
@@ -146,9 +146,14 @@ impl UiActions for FilesActions {
                         }),
                     ))));
             }
-            FilesActions::UpdateCurrentDirectory(target) => {
-                win.global::<FilesInternal>()
-                    .set_current_directory(target.to_shared_string());
+            FilesActions::UpdateCurrentDirectory(path) => {
+                if path.len() == 0 {
+                    win.global::<FilesInternal>()
+                        .set_path(ModelRc::from(Rc::new(VecModel::from_slice(&["root".to_shared_string()]))));
+                } else {
+                    win.global::<FilesInternal>()
+                        .set_path(ModelRc::from(Rc::new(VecModel::from_iter(path.into_iter().map(|s| s.to_shared_string())))));
+                }
             }
             FilesActions::UpdateAvailableSpace(size) => {
                 win.global::<FilesInternal>()

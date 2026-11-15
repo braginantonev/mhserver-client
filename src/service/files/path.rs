@@ -4,8 +4,8 @@ pub struct ServerPath {
 }
 
 impl ServerPath {
-    pub fn new() -> Self {
-        Self { buff: Vec::new() }
+    pub fn new(inner: Vec<String>) -> Self {
+        Self { buff: inner }
     }
 
     /// Push a single directory.
@@ -21,6 +21,16 @@ impl ServerPath {
     pub fn with(mut self, element: &str) -> Self {
         self.buff.push(element.to_owned());
         self
+    }
+
+    pub fn count(&self) -> usize {
+        self.buff.len()
+    }
+}
+
+impl Default for ServerPath {
+    fn default() -> Self {
+        Self { buff: Vec::new() }
     }
 }
 
@@ -38,5 +48,11 @@ impl ToString for ServerPath {
 impl Into<String> for ServerPath {
     fn into(self) -> String {
         self.to_string()
+    }
+}
+
+impl Into<Vec<String>> for ServerPath {
+    fn into(self) -> Vec<String> {
+        self.buff
     }
 }

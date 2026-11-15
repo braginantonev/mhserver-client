@@ -1,6 +1,6 @@
 pub mod loader;
 pub mod dirs;
-mod path;
+pub mod path;
 
 use {
     super::ServiceError, 
@@ -99,7 +99,7 @@ impl FileManager {
 
         Self {
             cfg,
-            active_dir: path::ServerPath::new(),
+            active_dir: path::ServerPath::default(),
             cached_files: FilesList::new(),
             loader: Arc::default(),
             stream_throttle,
@@ -132,6 +132,11 @@ impl FileManager {
     /// Go to previous folder, and return files list
     pub async fn prev(&mut self, client: Client) -> Result<Vec<api::FileInfo>, ServiceError> {
         self.active_dir.pop();
+        self.get_files(client, None).await
+    }
+
+    pub async fn cd(&mut self, client: Client, target: path::ServerPath) -> Result<Vec<api::FileInfo>, ServiceError> {
+        self.active_dir = target;
         self.get_files(client, None).await
     }
 

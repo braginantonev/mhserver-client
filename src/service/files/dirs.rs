@@ -84,7 +84,7 @@ impl Directory {
     pub fn read(self) -> mpsc::Receiver<(ServerPath, Vec<PathBuf>)> {
         let (tx, rx) = mpsc::channel(50);
         tokio::task::spawn_blocking(move || {
-            let _ = self.read_recursive(ServerPath::new(), tx);
+            let _ = self.read_recursive(ServerPath::default(), tx);
         });
         rx
     }

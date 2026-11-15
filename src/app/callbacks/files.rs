@@ -6,6 +6,7 @@ use {
         service::files::{
             dirs::Directory,
             loader::LoadStatus,
+            path::ServerPath,
             FileManager
         },
         FilesInternal,
@@ -81,6 +82,41 @@ impl Application {
                     };
                     FilesActions::UpdateCurrentDirectory(lock.current_dir().into())
                         .run_in_event_loop(win);
+                });
+            }
+        });
+
+        internal.on_cd_current({
+            let win = win.clone();
+            let chan = self.chan.clone();
+            let service = service.clone();
+
+            move |id| {
+                let win = win.clone();
+                let service = service.clone();
+                let chan = chan.clone();
+
+                let id = id as usize;
+
+                tokio::spawn(async move {
+                    let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
+                    let from = service.read().await.current_dir();
+
+                    if from.count() == 0 || from.count() - 1 == id {
+                        return
+                    }
+
+                    let target = ServerPath::new(Into::<Vec<String>>::into(from).into_iter().take(id + 1).collect());
+                    let to = target.to_string();
+                    match service.write().await.cd(client, target.clone()).await {
+                        Ok(files) => {
+                            FilesActions::UpdateFilesList(FilesList { value: files }, to).run_in_event_loop(win.clone());
+                            FilesActions::UpdateCurrentDirectory(target.into()).run_in_event_loop(win);
+                        },
+                        Err(err) => {
+                            MainActions::from(err).run_in_event_loop(win);
+                        }
+                    }
                 });
             }
         });

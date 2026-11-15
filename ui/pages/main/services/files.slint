@@ -1,6 +1,6 @@
 import { FieldBackground } from "../../../components/fields.slint";
-import { SimpleButton, MenuButton } from "../../../components/button.slint";
-import { LineEdit, ScrollView } from "std-widgets.slint";
+import { SimpleButton, MenuButton, OutlineButton } from "../../../components/button.slint";
+import { LineEdit, ScrollView, Button } from "std-widgets.slint";
 import { ProgressIndicator } from "../../../components/progress_indicator.slint";
 import { FilesSettings, ColorSettings } from "../../../globals/settings.slint";
 import { FilesInternal, LoadFile, File } from "../../../globals/internal/main.slint";
@@ -318,6 +318,42 @@ component Loader {
     ]
 }
 
+//* ------------------ Path ------------------- *//
+
+component PathElement inherits HorizontalLayout {
+    in property <string> name;
+    private property <length> font-size: 16pt;
+
+    callback clicked <=> butt.clicked;
+
+    Text {
+        text: ">";
+        font-size: font-size;
+    }
+
+    butt := OutlineButton {
+        text: name;
+        max-width: 150px;
+        font-size: font-size;
+    }
+}
+
+component Path {
+    HorizontalLayout {
+        alignment: start;
+        spacing: 5px;
+        for file[i] in FilesInternal.path: PathElement {
+            name: file;
+            spacing: parent.spacing;
+
+            clicked => {
+                FilesInternal.cd_current(i)
+            }
+        }
+    }
+}
+
+
 //* ----------------- Service ----------------- *//
 
 component FilesWindow {
@@ -398,12 +434,10 @@ export component FilesServiceField inherits FieldBackground {
         padding-top: fields-padding;
         padding-bottom: fields-padding;
 
-        // file extender
-        Text {
-            x: fields-padding;
-            text: "> " + FilesInternal.current-directory + (FilesInternal.active-file.is-dir ? "" : FilesInternal.active-file.name);
-            vertical-alignment: center;
-            font-size: 18px;
+        Path {
+            x: 5px;
+            max-height: 20px;
+            width: 98%;
         }
 
         MenuSeparator {}
