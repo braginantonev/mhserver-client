@@ -359,8 +359,13 @@ impl Application {
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
-                    let mut from = service.read().await.current_dir().to_string() + &dir_name;
-                    from.push('/');
+                    let from = service.read().await.current_dir().to_string() + &dir_name;
+                    
+                    MainActions::ShowNotification(
+                        "Using unstable method".to_string(), 
+                        "This method is unstable and can work with some troubles".to_string(),
+                        NotificationType::Info
+                    ).run_in_event_loop(win.clone());
 
                     let download_files = match service
                         .write()
