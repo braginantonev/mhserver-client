@@ -23,7 +23,8 @@ impl AuthInterceptor {
     }
     
     pub fn token(&self) -> AsciiMetadataValue {
-        self.token.clone()    }
+        self.token.clone()
+    }
 }
 
 pub struct AuthLayer {
@@ -75,8 +76,6 @@ where
         let token = self.interceptor.token();
 
         Box::pin(async move {
-            println!("{}", req.uri()); // temp
-
             let mut metadata = tonic::metadata::MetadataMap::from_headers(
                 std::mem::take(req.headers_mut())
             );
