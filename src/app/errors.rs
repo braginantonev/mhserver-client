@@ -4,44 +4,26 @@ use std::{
 };
 
 #[derive(Debug)]
-pub enum ApplicationErrors {
-    FailedCreateWindow(String),
-    WindowError(String),
-}
-
-impl ApplicationErrors {
-    fn name<'a>(&self) -> &'a str {
-        match self {
-            ApplicationErrors::FailedCreateWindow(_) => "failed create main window",
-            ApplicationErrors::WindowError(_) => "window error",
-        }
-    }
-
-    fn desc(&self) -> &str {
-        match self {
-            ApplicationErrors::FailedCreateWindow(desc) => desc,
-            ApplicationErrors::WindowError(desc) => desc,
-        }
-        .as_str()
-    }
+pub enum ErrorKind {
+    Window,
 }
 
 #[derive(Debug)]
 pub struct ApplicationError {
-    err: ApplicationErrors,
+    kind: ErrorKind,
+    description: String,
 }
 
 impl Display for ApplicationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        let _ = write!(f, "app error: {}\n", self.err.name());
-        write!(f, "error description: {}", self.err.desc())
+        write!(f, "app error ({:?}): {}", self.kind, self.description)
     }
 }
 
 impl Error for ApplicationError {}
 
-impl ApplicationError {
-    pub fn new(err: ApplicationErrors) -> Self {
-        Self { err: err }
+impl From<slint::PlatformError> for ApplicationError {
+    fn from(value: slint::PlatformError) -> Self {
+        Self { kind: ErrorKind::Window, description: value.to_string() }
     }
 }

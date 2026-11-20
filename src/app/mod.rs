@@ -4,7 +4,7 @@ mod di;
 mod transport;
 
 use {
-    crate::{MainWindow, config::app::ApplicationConfig}, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::{Mutex, RwLock}, tonic::transport::ClientTlsConfig,
+    crate::{MainWindow, config::app::ApplicationConfig}, errors::ApplicationError, slint::ComponentHandle, std::sync::Arc, tokio::sync::{Mutex, RwLock}, tonic::transport::ClientTlsConfig,
 };
 
 pub struct Application {
@@ -19,14 +19,7 @@ pub struct Application {
 
 impl Application {
     pub fn new() -> Result<Self, ApplicationError> {
-        let win = match MainWindow::new() {
-            Ok(win) => win,
-            Err(err) => {
-                return Err(ApplicationError::new(
-                    ApplicationErrors::FailedCreateWindow(err.to_string()),
-                ))
-            }
-        };
+        let win = MainWindow::new().map_err(|x| ApplicationError::from(x))?; 
 
         let mut cfg = ApplicationConfig::from_file().unwrap_or_default();
         cfg.normalize();
@@ -52,14 +45,11 @@ impl Application {
 
     pub async fn run(&self) -> Result<(), ApplicationError> {
         self.init().await;
-        let res = self.ui_window.run();
+        self.ui_window.run().map_err(|x| ApplicationError::from(x))?;
 
+        // Post processing
         self.cfg.read().await.save_to_file();
-        match res {
-            Ok(_) => Ok(()),
-            Err(err) => Err(ApplicationError::new(ApplicationErrors::WindowError(
-                err.to_string(),
-            ))),
-        }
+
+        Ok(())
     }
 }
