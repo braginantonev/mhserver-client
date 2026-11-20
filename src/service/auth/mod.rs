@@ -2,7 +2,7 @@ pub mod extend;
 
 use {
     super::ServiceError,
-    crate::api::{self, auth_service_client::AuthServiceClient},
+    crate::api::v3::{self as api, auth_service_client::AuthServiceClient},
 };
 
 type Client = AuthServiceClient<crate::repository::transport::Channel>;

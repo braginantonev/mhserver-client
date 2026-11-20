@@ -1,5 +1,5 @@
 use {
-    crate::{api::FileInfo, FileIcons},
+    crate::{api::v3::FileInfo, FileIcons},
     slint::Weak,
 };
 

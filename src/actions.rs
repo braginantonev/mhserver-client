@@ -1,5 +1,5 @@
 use {
-    super::{api::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
+    super::{api::v3::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
     crate::{
         service::{files::loader::*, ServiceError},
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,

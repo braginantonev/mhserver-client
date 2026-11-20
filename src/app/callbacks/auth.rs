@@ -1,7 +1,7 @@
 use {
     crate::{
         actions::{MainActions, PreparingActions, UiActions},
-        api::{self, auth_service_client::AuthServiceClient},
+        api::v3::{self as api, auth_service_client::AuthServiceClient},
         app::Application,
         service::auth::Authenticator,
         NotificationType, PreparingInternal,

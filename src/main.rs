@@ -11,8 +11,10 @@ mod interceptors;
 slint::include_modules!();
 
 pub mod api {
-    tonic::include_proto!("auth");
-    tonic::include_proto!("files");
+    pub mod v3 {
+        tonic::include_proto!("auth.v3");
+        tonic::include_proto!("files.v3");
+    }
 }
 
 pub const APPLICATION_VERSION: &str = env!("CARGO_PKG_VERSION");

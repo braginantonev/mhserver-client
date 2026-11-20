@@ -1,7 +1,7 @@
 use {
     crate::{
         actions::{AnyActions, FilesActions, MainActions, UiActions},
-        api::{files_service_client::FilesServiceClient, FilesList},
+        api::v3::{files_service_client::FilesServiceClient, FilesList},
         app::Application,
         service::files::{
             dirs::Directory,

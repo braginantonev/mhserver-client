@@ -5,7 +5,7 @@ pub mod path;
 use {
     super::ServiceError, 
     crate::{
-        api::{self, files_service_client::FilesServiceClient},
+        api::v3::{self as api, files_service_client::FilesServiceClient},
         config::files::FileServiceConfig,
         repository::ratelimit::StreamThrottle,
     }, 
