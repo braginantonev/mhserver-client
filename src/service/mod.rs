@@ -4,7 +4,10 @@ pub mod auth;
 pub mod files;
 pub mod preparing;
 
-use tonic::Status;
+use {
+    std::fmt,
+    tonic::Status,
+};
 
 #[derive(Clone, Debug)]
 pub struct ServiceError {
@@ -56,10 +59,18 @@ impl ServiceError {
     }
 }
 
+impl std::error::Error for ServiceError {}
+
+impl fmt::Display for ServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({}): {}", self.label, self.code.unwrap_or(tonic::Code::Unknown), self.description())
+    }
+}
+
 impl From<Status> for ServiceError {
     fn from(value: Status) -> Self {
         Self::new(
-            "service error",
+            "Service error",
             Some(value.message().to_owned()),
             Some(value.code()),
         )

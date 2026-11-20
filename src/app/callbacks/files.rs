@@ -48,7 +48,7 @@ impl Application {
                     match service.read().await.available_space(client).await {
                         Ok(s) => FilesActions::UpdateAvailableSpace(s.to_string_candy())
                             .run_in_event_loop(win),
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win),
                     };
                 });
             }
@@ -78,7 +78,7 @@ impl Application {
                             lock.current_dir().into(),
                         )
                         .run_in_event_loop(win.clone()),
-                        Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
                     };
                     FilesActions::UpdateCurrentDirectory(lock.current_dir().into())
                         .run_in_event_loop(win);
@@ -114,7 +114,7 @@ impl Application {
                             FilesActions::UpdateCurrentDirectory(target.into()).run_in_event_loop(win);
                         },
                         Err(err) => {
-                            MainActions::from(err).run_in_event_loop(win);
+                            AnyActions::from(err).run_in_event_loop(win);
                         }
                     }
                 });
@@ -148,7 +148,7 @@ impl Application {
                             FilesActions::UpdateFilesList(FilesList { value: files }, from.into())
                                 .run_in_event_loop(win);
                         }
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win),
                     };
                 });
             }
@@ -181,7 +181,7 @@ impl Application {
                             FilesActions::UpdateFilesList(FilesList { value: files }, from.into())
                                 .run_in_event_loop(win);
                         }
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win),
                     };
                 });
             }
@@ -217,7 +217,7 @@ impl Application {
                     for f in files {
                         match lock.upload_file(client.clone(), Some(current_dir.clone()), f.path().to_path_buf()).await {
                             Ok(h) => handles.push(h),
-                            Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                            Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
                         }
                     }
                     drop(lock);
@@ -226,11 +226,11 @@ impl Application {
                         match h.await {
                             Ok(k) => {
                                 if let Err(err) = k {
-                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                    AnyActions::from(err).run_in_event_loop(win.clone());
                                 }
                             },
                             Err(err) => 
-                                MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                                MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         }
                     }
                 });
@@ -279,7 +279,7 @@ impl Application {
                                 )
                                 .await
                             {
-                                MainActions::from(err).run_in_event_loop(win.clone());
+                                AnyActions::from(err).run_in_event_loop(win.clone());
                                 continue;
                             };
 
@@ -290,7 +290,7 @@ impl Application {
                                     .upload_file(client.clone(), Some(files.0.clone()), f)
                                     .await {
                                     Ok(h) => handles.push(h),
-                                    Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                                    Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
                                 }
                             }
                         }
@@ -300,11 +300,11 @@ impl Application {
                         match h.await {
                             Ok(k) => {
                                 if let Err(err) = k {
-                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                    AnyActions::from(err).run_in_event_loop(win.clone());
                                 }
                             },
                             Err(err) => 
-                                MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                                MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         }
                     }
                 });
@@ -334,14 +334,14 @@ impl Application {
                             match h.await {
                                 Ok(k) => {
                                     if let Err(err) = k {
-                                        MainActions::from(err).run_in_event_loop(win.clone());
+                                        AnyActions::from(err).run_in_event_loop(win.clone());
                                     }
                                 },
                                 Err(err) => 
-                                    MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                                    MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                             }
                         },
-                        Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
                     };
                 });
             }
@@ -375,7 +375,7 @@ impl Application {
                     {
                         Ok(files) => files,
                         Err(err) => {
-                            MainActions::from(err).run_in_event_loop(win);
+                            AnyActions::from(err).run_in_event_loop(win);
                             return;
                         }
                     };
@@ -388,7 +388,7 @@ impl Application {
                             .download_file(client.clone(), Some(from.clone()), file.name.clone())
                             .await {
                             Ok(h) => handles.push(h),
-                            Err(err) => MainActions::from(err).run_in_event_loop(win.clone()),
+                            Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
                         }
                     }
 
@@ -396,10 +396,10 @@ impl Application {
                         match h.await {
                             Ok(resp) => {
                                 if let Err(err) = resp {
-                                    MainActions::from(err).run_in_event_loop(win.clone());
+                                    AnyActions::from(err).run_in_event_loop(win.clone());
                                 }
                             },
-                            Err(err) => MainActions::ShowNotification("failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                            Err(err) => MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
                         };
                     }
                 });
@@ -432,7 +432,7 @@ impl Application {
                             };
                             FilesActions::UpdateFilesList(FilesList { value: files }, from.to_string()).run_in_event_loop(win);
                         },
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                        Err(err) => AnyActions::from(err).run_in_event_loop(win),
                     }
                 });
             }

@@ -92,10 +92,11 @@ impl From<ServiceError> for MainActions {
     fn from(value: ServiceError) -> Self {
         if let Some(code) = value.code() {
             match code {
-                Code::Unauthenticated => return MainActions::ServiceUnavailable,
+                Code::Unavailable => return MainActions::ServiceUnavailable,
                 _ => (),
             };
         }
+
         MainActions::ShowNotification(value.label(), value.description(), NotificationType::Error)
     }
 }

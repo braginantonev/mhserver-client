@@ -45,7 +45,7 @@ impl Application {
                                 .set_jwt(jwt.as_str());
                             PreparingActions::InvokeNextState.run_in_event_loop(win);
                         }
-                        Err(err) => MainActions::from(err).run_in_event_loop(win),
+                        Err(err) => MainActions::from(err).run_in_event_loop(win), // Main action, because auth service working in preparing state
                     }
                 });
             }
