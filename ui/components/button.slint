@@ -10,9 +10,8 @@ export component OutlineButton {
 
     hover := Rectangle {
         clip: true;
-        background: #00000000;
         border-radius: 5px;
-        border-color: red;
+        border-color: ColorSettings.field-border-color;
         border-width: touch.has-hover ? 1px : 0px;
         animate border-width {
             duration: 250ms;
