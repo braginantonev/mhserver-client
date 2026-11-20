@@ -1,0 +1,53 @@
+import { PreparingStates, ApplicationStates } from "enums.slint"; 
+import { PreparingInternal } from "../internal/preparing.slint";
+import { MainInternal, Services } from "../internal/main.slint";
+
+export global State {
+    out property <ApplicationStates> application: Preparing;
+    out property <PreparingStates> preparing: Greeting;
+
+    // Force preparing state change
+    public function force_preparing_state(new_state: PreparingStates) {
+        debug("[UI]: force preparing state", new-state);
+        PreparingInternal.prepare-needed = true;
+        preparing = new-state;
+        application = ApplicationStates.Preparing;
+        MainInternal.change_active_service(Services.Empty);
+    }
+
+    // Standard state change
+    public function next() {
+        // Main preparing states
+        if preparing == PreparingStates.Greeting {
+            preparing = PreparingStates.Update;
+        } 
+        else if preparing == PreparingStates.Update {
+            preparing = PreparingStates.Connection;
+        }
+        else if preparing == PreparingStates.Connection {
+            preparing = PreparingStates.Login;
+        } 
+        else if preparing == PreparingStates.Login {
+            preparing = PreparingStates.End;
+        } 
+        else if preparing == PreparingStates.End {
+            end_preparing()
+        }
+
+        // Additional preparing states
+        else if preparing == PreparingStates.Register {
+            preparing = PreparingStates.Login;
+        }
+
+        PreparingInternal.prepare-needed = false;
+        PreparingInternal.handle_state(preparing);
+        debug("[UI]: handle next state", preparing);
+    }
+
+    function end_preparing() {
+        PreparingInternal.update_services();
+        application = ApplicationStates.Main;
+        preparing = PreparingStates.Greeting;
+        debug("[UI]: end of preparing")
+    }
+}

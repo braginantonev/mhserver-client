@@ -1,5 +1,5 @@
+pub mod api;
 pub mod app;
 pub mod files;
-pub mod api;
 
-//Todo: Create Config macro 
+//Todo: Create Config macro

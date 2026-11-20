@@ -34,15 +34,18 @@ export struct File {
 }
 
 export struct LoadFile {
-    connID: string,
+    id: string, // slint don't support rust u64 type. So we use string instead 
     is_upload: bool,
     name: string,
     progress: float,
-    previous: float,
+
+    // we use eye candy value, not size in bytes
+    to_load: string,
+    loaded: string, 
 }
 
 export global FilesInternal {
-    in-out property <string> current-directory: "/";
+    in_out property <[string]> path: ["root"];
     in-out property <File> active-file;
     in-out property <[File]> showed-files;
     in-out property <[LoadFile]> load-files;
@@ -55,6 +58,7 @@ export global FilesInternal {
     callback update_list();
 
     callback cd(target: string);
+    callback cd_current(target: int);
     callback mkdir(name: string);
     callback rmdir(target: string);
     callback rmfile(target: string);

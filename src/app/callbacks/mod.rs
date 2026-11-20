@@ -1,3 +1,5 @@
-pub mod preparing;
+pub mod auth;
 pub mod files;
+pub mod preparing;
 pub mod window;
+pub mod globals;

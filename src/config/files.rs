@@ -1,26 +1,34 @@
-use std::path::PathBuf;
-use api::apis::configuration::Configuration;
+use std::path::{Path, PathBuf};
 
-use crate::repository::dirs::default_download_dir;
+const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
 
 #[derive(Debug)]
 pub struct FileServiceConfig {
-    api_conf: Configuration,
     download_dir: PathBuf,
+
+    // bytes in second
+    server_throughput: usize,
+    chunk_size: usize,
 }
 
 impl FileServiceConfig {
-    pub fn new(api_conf: Configuration, download_dir: Option<PathBuf>) -> Self {
-        Self { api_conf, download_dir: download_dir.unwrap_or(default_download_dir()) }
+    pub fn new(download_dir: &Path, server_throughput: usize) -> Self {
+        Self {
+            download_dir: download_dir.to_path_buf(),
+            server_throughput,
+            chunk_size: DEFAULT_CHUNK_SIZE,
+        }
     }
 
-    pub fn download_dir(&self) -> PathBuf {
-        self.download_dir.clone()
+    pub fn download_dir(&self) -> &Path {
+        &self.download_dir
     }
-}
 
-impl Default for FileServiceConfig {
-    fn default() -> Self {
-        Self { api_conf: Configuration::default(), download_dir: default_download_dir() }
+    pub fn server_throughput(&self) -> usize {
+        self.server_throughput
+    }
+
+    pub fn chunk_size(&self) -> usize {
+        self.chunk_size
     }
 }

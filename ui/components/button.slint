@@ -1,5 +1,36 @@
 import { ColorSettings } from "../globals/settings.slint";
 
+export component OutlineButton {
+    out property <bool> enabled: true;
+
+    in property <string> text <=> label.text;
+    in property <length> font-size <=> label.font-size;
+
+    callback clicked <=> touch.clicked;
+
+    hover := Rectangle {
+        clip: true;
+        border-radius: 5px;
+        border-color: ColorSettings.field-border-color;
+        border-width: touch.has-hover ? 1px : 0px;
+        animate border-width {
+            duration: 250ms;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: enabled;
+    }
+
+    label := Text {
+        width: parent.width;
+        overflow: elide;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        color: enabled ? white : gray;
+    }
+}
+
 export component SimpleButton {
     in property <bool> enabled: true;
     in property <image> icon <=> image.source;

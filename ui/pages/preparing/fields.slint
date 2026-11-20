@@ -1,9 +1,11 @@
-import { Button, LineEdit } from "std-widgets.slint";
+import { Button, LineEdit, ComboBox, CheckBox } from "std-widgets.slint";
 import { FieldBase } from "../../components/fields.slint";
 import { SimpleButton } from "../../components/button.slint";
 import { PreparingInternal, UpdateStatus } from "../../globals/internal/preparing.slint";
-import { State, PreparingStates } from "../../globals/state.slint";
+import { PreparingStates } from "../../globals/state/enums.slint";
+import { State } from "../../globals/state/state.slint";
 import { PreparingSettings, OS } from "../../globals/settings.slint";
+import { RFDApi } from "../../globals/apis.slint";
 
 component FieldLayout inherits VerticalLayout {
     in property <string> header-text <=> header.text;
@@ -20,8 +22,31 @@ component FieldLayout inherits VerticalLayout {
     }
 }
 
+component CertPicker {
+    out property <bool> picked <=> st.checked;
+    out property <string> path <=> edit.text;
+
+    HorizontalLayout {
+        spacing: 10px;
+
+        st := CheckBox {}
+
+        edit := LineEdit {
+            enabled: st.checked;
+            placeholder-text: @tr("TLS сертификат сервера");
+        }
+
+        Button {
+            enabled: st.checked;
+            clicked => {
+                edit.text = RFDApi.pick-file();
+            }   
+        }
+    }
+}
+
 export component ConnectionField inherits FieldBase {
-    rows: 3;
+    rows: 4;
     header-height: layout.header-height;
     height: self.calculate_height(layout.spacing, layout.padding);
 
@@ -32,11 +57,13 @@ export component ConnectionField inherits FieldBase {
             placeholder-text: @tr("Адрес сервера, например localhost:8080");
         }
 
+        cert := CertPicker {}
+
         Button {
             enabled: root.enabled;
             text: @tr("Продолжить");
             clicked => {
-                PreparingInternal.connect(server_addr_line.text)
+                PreparingInternal.connect(server_addr_line.text, cert.picked ? cert.path : "")
             }
         }
     }

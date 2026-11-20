@@ -1,21 +1,28 @@
 /// This crate used for service-requests to server.
 /// All structs have initialized once config
-
+pub mod auth;
 pub mod files;
 pub mod preparing;
 
-use api::apis::Error;
+use {
+    std::fmt,
+    tonic::Status,
+};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ServiceError {
     label: String,
     desc: Option<String>,
-    code: Option<reqwest::StatusCode>,
+    code: Option<tonic::Code>,
 }
 
 impl ServiceError {
-    pub fn new(label: &str, desc: Option<String>, code: Option<reqwest::StatusCode>) -> Self {
-        Self { label: label.to_owned(), desc, code }
+    pub fn new(label: &str, desc: Option<String>, code: Option<tonic::Code>) -> Self {
+        Self {
+            label: label.to_owned(),
+            desc,
+            code,
+        }
     }
 
     pub fn label(&self) -> String {
@@ -25,19 +32,16 @@ impl ServiceError {
     pub fn description(&self) -> String {
         match &self.desc {
             Some(v) => v.clone(),
-            None => String::new()
+            None => String::new(),
         }
     }
 
-    pub fn code(&self) -> Option<reqwest::StatusCode> {
+    pub fn code(&self) -> Option<tonic::Code> {
         self.code
     }
 
+    #[allow(dead_code)]
     pub fn with_label(mut self, label: &str) -> Self {
-        if !self.label.is_empty() {
-            let old_label = &self.label.clone();
-            self = self.with_desc(old_label);
-        }
         self.label = label.to_owned();
         self
     }
@@ -48,28 +52,27 @@ impl ServiceError {
                 v.push('\n');
                 v.push_str(desc);
                 v
-            },
-            None => desc.to_owned()
+            }
+            None => desc.to_owned(),
         });
         self
     }
 }
 
-impl<T> From<Error<T>> for ServiceError {
-    fn from(value: Error<T>) -> Self {
-        match value {
-            Error::ReqwestMiddleware(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
-            Error::Reqwest(err) => ServiceError::new("network error", Some(err.to_string()), err.status()),
-            Error::Serde(err) => ServiceError { label: String::from("request parse error"), desc: Some(err.to_string()), code: None },
-            Error::Io(err) => ServiceError { label: err.to_string(), desc: None, code: None },
-            Error::ResponseError(c) => {
-                let label = c.content;
-                ServiceError { label: String::from(label.strip_suffix('\n').unwrap_or(&label)), desc: None, code: Some(c.status) }
-            },
-        }
+impl std::error::Error for ServiceError {}
+
+impl fmt::Display for ServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({}): {}", self.label, self.code.unwrap_or(tonic::Code::Unknown), self.description())
     }
 }
 
-pub trait Service {
-    fn update_config(&mut self, http_client: reqwest::Client, app_cfg: crate::config::app::ApplicationConfig);
+impl From<Status> for ServiceError {
+    fn from(value: Status) -> Self {
+        Self::new(
+            "Service error",
+            Some(value.message().to_owned()),
+            Some(value.code()),
+        )
+    }
 }

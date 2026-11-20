@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ServerApiConfiguration {
     base_path: String,
-    jwt: String
+    jwt: String,
 }
 
 impl ServerApiConfiguration {

@@ -1,25 +1,29 @@
 [package]
 name = "mhserver-client"
-version = "1.0.1"
+version = "2.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-api = { path = "./api/gen", features = ["native-tls"]}
-reqwest = { version = "0.13.1", default-features = false, features = ["json", "stream", "native-tls"] }
 slint = "1.15.1"
-tokio = { version = "1.49.0", default-features = false, features = ["macros", "rt-multi-thread", "sync"] }
-serde = "1.0.228"
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
+tokio-util = { version = "0.7.19", default-features = false }
+tokio-stream = "0.1.19"
+serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+serde_json = "1.0.154"
 toml = "0.9.11"
-uuid = "1.23.1"
 system-interface = "0.27.3"
 rfd = "0.17.2"
 semver = "1.0.28"
-futures-util = "0.3.33"
-reqwest-middleware = "0.5.2"
-http = "1.5.0"
-async-trait = "0.1.91"
+tonic = { version = "0.14.8", features = ["_tls-any"] }
+prost = "0.14.4"
+tonic-prost = "0.14.6"
+async-stream = "0.3.6"
+base64 = "0.23.1"
+tower = "0.5.3"
+reqwest = { version = "0.13.5", default-features = false, features = ["default-tls"] }
 
 [build-dependencies]
 slint-build = "1.15.1"
 winresource = "0.1.31"
+tonic-prost-build = "0.14.6"

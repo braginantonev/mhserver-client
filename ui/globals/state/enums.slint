@@ -1,0 +1,18 @@
+export enum PreparingStates {
+    // Main preparing states
+    Greeting,
+    Update,
+    Connection, 
+    Login,
+    End,
+
+    // Additional preparing states
+    // By default this states not using in standard state change
+    // Use this states only by force change
+    Register
+}
+
+export enum ApplicationStates {
+    Preparing, 
+    Main
+}

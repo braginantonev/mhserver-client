@@ -1,65 +1,65 @@
 use {
-    reqwest_middleware::Middleware, 
-    std::{sync::Arc, time::SystemTime}, 
-    tokio::{time::Duration, sync::mpsc::{Receiver, Sender, channel}},
+    std::sync::Arc,
+    tokio::{
+        sync::{
+            Mutex,
+            mpsc::{Receiver, Sender, channel},
+        },
+        time::Duration,
+    },
 };
 
-//todo: use on ping services, when this will be possible in server API
-#[allow(dead_code)] 
-pub fn get_delay(rl: &api::apis::RateLimit) -> Duration {
-    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    Duration::from_millis((rl.reset() - now) * 1000 / rl.limit() as u64)
-}
+pub struct StreamThrottle(Duration);
 
-/// The request queue provided the wait() to distribute the sending of requests to the ratelimit time window.
-/// This is simple lock with one timer.
-pub struct RequestQueue {
-    rx: Arc<tokio::sync::Mutex<Receiver<()>>>,
-}
-
-impl RequestQueue {
-    pub fn new(pass_interval: Duration) -> Self {
-        let (tx, rx) = channel::<()>(1);
-        let queue = Self { rx: Arc::new(tokio::sync::Mutex::new(rx)) };
-        queue.start_passing(tx, pass_interval);
-        queue
+impl StreamThrottle {
+    pub fn new(server_throughput: usize, part_size: usize) -> Self {
+        Self(Duration::from_secs(1) / (server_throughput / part_size) as u32)
     }
 
-    fn start_passing(&self, tx: Sender<()>, interval: Duration) {
+    pub fn duration(&self) -> Duration {
+        self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct Rate {
+    limit: usize,
+    window: Duration,
+}
+
+impl Rate {
+    pub fn new(limit: usize, time_window: Duration) -> Self {
+        Self { limit, window: time_window }
+    }
+}
+
+type Token = ();
+
+/// The request queue provided the wait() to distribute the sending of requests to the ratelimit time window.
+/// This is thread-safe struct.
+#[derive(Clone)]
+pub struct Limiter {
+    receiver: Arc<Mutex<Receiver<Token>>>
+}
+
+impl Limiter {
+    pub fn new(rate: Rate) -> Self {
+        let (rx, tx) = channel(rate.limit); 
+        let limiter = Self { receiver: Arc::new(Mutex::new(tx)) };
+        limiter.start(rx, rate.window / rate.limit as u32);
+        limiter
+    }
+
+    fn start(&self, rx: Sender<Token>, interval: Duration) {
         tokio::spawn(async move {
             loop {
-                let _ = tx.send(()).await;
                 tokio::time::sleep(interval).await;
+                let _ = rx.send(()).await;
             }
         });
     }
 
     pub async fn wait(&self) {
-        let rx = self.rx.clone();
-        rx.lock().await.recv().await;
-    }
-}
-
-pub struct RateLimitMiddleware {
-    queue: RequestQueue
-}
-
-impl RateLimitMiddleware {
-    pub fn new(queue: RequestQueue) -> Self {
-        Self { queue }
-    }
-}
-
-#[async_trait::async_trait]
-impl Middleware for RateLimitMiddleware {
-    async fn handle(
-        &self,
-        req: reqwest::Request,
-        extensions: &mut http::Extensions,
-        next: reqwest_middleware::Next<'_>,
-    ) -> reqwest_middleware::Result<reqwest::Response> {
-        self.queue.wait().await;
-        let resp = next.run(req, extensions).await?;
-        Ok(resp)
+        self.receiver.lock().await.recv().await;
     }
 }
