@@ -1,12 +1,12 @@
 use {
-    super::api::ServerApiConfiguration,
-    serde::{Deserialize, Serialize},
-    std::{env, fs, io, path::PathBuf},
+    super::api::ServerApiConfiguration, crate::service::files::dirs::default_download_dir, serde::{Deserialize, Serialize}, std::{env, fs, io, path::{Path, PathBuf}},
 };
 
 const CONFIG_PATH: &str = ".config/mhserver-client";
 const CONFIG_FILENAME: &str = "general.conf";
 const PEM_CERT_FILENAME: &str = "rootCA.pem";
+
+const DEFAULT_SERVER_THROUGHPUT: usize = 200 * 1024 * 1024;
 
 fn config_dir() -> PathBuf {
     env::home_dir()
@@ -36,7 +36,7 @@ pub fn save_pem_cert(file: &str, over: bool) -> io::Result<()> {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ApplicationConfig {
-    download_directory: Option<String>,
+    download_directory: String,
     server_api: ServerApiConfiguration,
     server_throughput: usize,
 }
@@ -62,6 +62,17 @@ impl ApplicationConfig {
         );
     }
 
+    /// set normal value if not normalized
+    pub fn normalize(&mut self) {
+        if self.download_directory.is_empty() {
+            self.download_directory = default_download_dir().display().to_string();
+        }
+
+        if self.server_throughput == 0 {
+            self.server_throughput = DEFAULT_SERVER_THROUGHPUT;
+        }
+    }
+
     pub fn server_api_config(&self) -> &ServerApiConfiguration {
         &self.server_api
     }
@@ -70,11 +81,8 @@ impl ApplicationConfig {
         &mut self.server_api
     }
 
-    pub fn download_dir(&self) -> Option<PathBuf> {
-        if let Some(dir) = self.download_directory.clone() {
-            return Some(PathBuf::from(dir));
-        }
-        None
+    pub fn download_dir(&self) -> &Path {
+        Path::new(&self.download_directory)
     }
 
     pub fn server_throughput(&self) -> usize {
@@ -85,9 +93,9 @@ impl ApplicationConfig {
 impl Default for ApplicationConfig {
     fn default() -> Self {
         Self { 
-            download_directory: None, 
+            download_directory: default_download_dir().display().to_string(), 
             server_api: ServerApiConfiguration::default(), 
-            server_throughput: 200 * 1024 * 1024 
+            server_throughput: DEFAULT_SERVER_THROUGHPUT,
         }
     }
 }

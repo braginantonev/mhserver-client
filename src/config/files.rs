@@ -1,5 +1,4 @@
-use std::path::PathBuf;
-use crate::service::files::dirs::default_download_dir;
+use std::path::{Path, PathBuf};
 
 const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
 
@@ -13,16 +12,16 @@ pub struct FileServiceConfig {
 }
 
 impl FileServiceConfig {
-    pub fn new(download_dir: Option<PathBuf>, server_throughput: usize) -> Self {
+    pub fn new(download_dir: &Path, server_throughput: usize) -> Self {
         Self {
-            download_dir: download_dir.unwrap_or(default_download_dir()),
+            download_dir: download_dir.to_path_buf(),
             server_throughput,
             chunk_size: DEFAULT_CHUNK_SIZE,
         }
     }
 
-    pub fn download_dir(&self) -> PathBuf {
-        self.download_dir.clone()
+    pub fn download_dir(&self) -> &Path {
+        &self.download_dir
     }
 
     pub fn server_throughput(&self) -> usize {
@@ -31,15 +30,5 @@ impl FileServiceConfig {
 
     pub fn chunk_size(&self) -> usize {
         self.chunk_size
-    }
-}
-
-impl Default for FileServiceConfig {
-    fn default() -> Self {
-        Self {
-            download_dir: default_download_dir(),
-            server_throughput: 0,
-            chunk_size: DEFAULT_CHUNK_SIZE,
-        }
     }
 }

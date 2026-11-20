@@ -1,6 +1,6 @@
 use {
     crate::{
-        app::Application, service::files::dirs::default_download_dir, MainInternal,
+        app::Application, MainInternal,
         NotificationInfo, NotificationsInternal,
     },
     slint::{ComponentHandle, Global, Model, ModelRc, VecModel},
@@ -17,12 +17,10 @@ impl Application {
             move || {
                 let cfg = cfg.clone();
                 tokio::spawn(async move {
-                    let download_dir = cfg
-                        .read()
-                        .await
-                        .download_dir()
-                        .unwrap_or(default_download_dir());
-                    let _ = std::fs::create_dir_all(download_dir.clone());
+                    let lock = cfg.read().await;
+                    let download_dir = lock.download_dir();
+
+                    let _ = std::fs::create_dir_all(download_dir);
 
                     #[cfg(target_os = "windows")]
                     Command::new("explorer").arg(download_dir).spawn().unwrap();

@@ -28,7 +28,9 @@ impl Application {
             }
         };
 
-        let cfg = ApplicationConfig::from_file().unwrap_or_default();
+        let mut cfg = ApplicationConfig::from_file().unwrap_or_default();
+        cfg.normalize();
+
         let tls_cfg = transport::init_tls_config().ok();
 
         let s = Self {

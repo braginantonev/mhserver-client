@@ -335,7 +335,7 @@ impl FileManager {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
 
-        let mut save_to = self.cfg.download_dir();
+        let mut save_to = self.cfg.download_dir().to_path_buf();
         if with_dirs {
             save_to = save_to.join(&from[1..]);
         }
