@@ -1,7 +1,15 @@
 use {
-    crate::repository::transport::Channel as InterceptedChannel,
-    tonic::transport::Channel as InnerChannel,
+    crate::{
+        repository::transport::Channel as InterceptedChannel,
+        config::app::read_pem_cert,
+    },
+    tonic::transport::{Channel as InnerChannel, Certificate, ClientTlsConfig},
 };
+
+pub fn init_tls_config() -> Result<ClientTlsConfig, std::io::Error> {
+    read_pem_cert().map(|pem| ClientTlsConfig::new()
+        .ca_certificate(Certificate::from_pem(pem)))
+}
 
 pub struct Channel {
     inner: InnerChannel,

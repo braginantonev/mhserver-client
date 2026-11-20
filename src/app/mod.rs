@@ -4,13 +4,17 @@ mod di;
 mod transport;
 
 use {
-    crate::{MainWindow, config::app::ApplicationConfig}, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::RwLock,
+    crate::{MainWindow, config::app::ApplicationConfig}, errors::{ApplicationError, ApplicationErrors}, slint::ComponentHandle, std::sync::Arc, tokio::sync::{Mutex, RwLock}, tonic::transport::ClientTlsConfig,
 };
 
 pub struct Application {
     ui_window: MainWindow,
     chan: Arc<RwLock<Option<transport::Channel>>>,
     cfg: Arc<RwLock<ApplicationConfig>>,
+
+    // in not app cfg, because `ApplicationConfig` - will set from file
+    // which `ClientTlsConfig` is not  
+    tls_cfg: Arc<Mutex<Option<ClientTlsConfig>>>,
 }
 
 impl Application {
@@ -24,15 +28,14 @@ impl Application {
             }
         };
 
-        let cfg = Arc::new(RwLock::new(match ApplicationConfig::from_file() {
-            Ok(res) => res,
-            Err(_) => ApplicationConfig::default(),
-        }));
+        let cfg = ApplicationConfig::from_file().unwrap_or_default();
+        let tls_cfg = transport::init_tls_config().ok();
 
         let s = Self {
             ui_window: win,
             chan: Arc::default(),
-            cfg,
+            cfg: Arc::new(RwLock::new(cfg)),
+            tls_cfg: Arc::new(Mutex::new(tls_cfg)),
         };
 
         Ok(s)

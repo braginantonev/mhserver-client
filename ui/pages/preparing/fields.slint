@@ -37,7 +37,7 @@ export component ConnectionField inherits FieldBase {
             enabled: root.enabled;
             text: @tr("Продолжить");
             clicked => {
-                PreparingInternal.connect(server_addr_line.text)
+                PreparingInternal.connect(server_addr_line.text, "")
             }
         }
     }

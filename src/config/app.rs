@@ -1,11 +1,12 @@
 use {
     super::api::ServerApiConfiguration,
     serde::{Deserialize, Serialize},
-    std::{env, fs, path::PathBuf},
+    std::{env, fs, io, path::PathBuf},
 };
 
 const CONFIG_PATH: &str = ".config/mhserver-client";
 const CONFIG_FILENAME: &str = "general.conf";
+const PEM_CERT_FILENAME: &str = "rootCA.pem";
 
 fn config_dir() -> PathBuf {
     env::home_dir()
@@ -15,6 +16,22 @@ fn config_dir() -> PathBuf {
 
 fn config_file() -> PathBuf {
     config_dir().join(CONFIG_FILENAME)
+}
+
+pub fn read_pem_cert() -> io::Result<Vec<u8>> {
+    fs::read(config_dir().join(PEM_CERT_FILENAME))
+}
+
+pub fn save_pem_cert(file: &str, over: bool) -> io::Result<()> {
+    // we not use rename, because user can download pem file on other disk
+    let body = fs::read(file)?;
+    let target = config_dir().join(PEM_CERT_FILENAME);
+
+    if !over && fs::exists(target.as_path())? {
+        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "tls cert already exists"));
+    }
+
+    std::fs::write(target, body)
 }
 
 #[derive(Serialize, Deserialize, Clone)]

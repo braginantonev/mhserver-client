@@ -6,7 +6,7 @@ pub mod preparing;
 
 use tonic::Status;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ServiceError {
     label: String,
     desc: Option<String>,

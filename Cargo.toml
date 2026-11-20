@@ -15,7 +15,7 @@ toml = "0.9.11"
 system-interface = "0.27.3"
 rfd = "0.17.2"
 semver = "1.0.28"
-tonic = "0.14.6"
+tonic = { version = "0.14.8", features = ["_tls-any"] }
 prost = "0.14.4"
 tonic-prost = "0.14.6"
 async-stream = "0.3.6"

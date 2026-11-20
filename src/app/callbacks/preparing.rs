@@ -1,24 +1,17 @@
 use {
     crate::{
-        actions::{MainActions, PreparingActions, UiActions},
-        service::{
-            preparing,
-            auth::extend::is_jwt_expired,
-        },
-        app::{
-            transport::Channel, 
-            di::build_intercepted_channel
-        },
-        app::Application,
-        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, UpdateStatus
-    }, 
-    slint::ComponentHandle, 
-    tonic::transport::{Endpoint, Error},
+        NotificationType, OS, PreparingInternal, PreparingSettings, PreparingStates, UpdateStatus, actions::{MainActions::self, PreparingActions, UiActions}, app::{
+            Application, di::build_intercepted_channel, transport::{Channel, init_tls_config}
+        }, config::app::save_pem_cert, service::{
+            auth::extend::is_jwt_expired, preparing,
+        }
+    }, slint::ComponentHandle, tonic::transport::{ClientTlsConfig, Endpoint, Error},
 };
 
 #[inline]
-async fn try_connect_to_server(address: String) -> Result<tonic::transport::Channel, Error> {
+async fn try_connect_to_server(address: String, tls_config: ClientTlsConfig) -> Result<tonic::transport::Channel, Error> {
     Endpoint::from_shared(address)?
+        .tls_config(tls_config)?
         .connect_timeout(std::time::Duration::from_secs(5))
         .connect()
         .await
@@ -42,11 +35,13 @@ impl Application {
         preparing_internal.on_handle_state({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
+            let tls_cfg = self.tls_cfg.clone();
             let chan = self.chan.clone();
 
             move |state: PreparingStates| {
                 let win = win.clone();
                 let cfg = cfg.clone();
+                let tls_cfg = tls_cfg.clone();
                 let chan = chan.clone();
 
                 tokio::spawn(async move {
@@ -55,20 +50,30 @@ impl Application {
 
                         PreparingStates::Connection => {
                             let address = String::from(cfg.read().await.server_api_config().base_path());
+                            let tls_cfg = tls_cfg.lock().await.clone();
 
-                            address.is_empty() || match try_connect_to_server(address).await {
-                                Ok(c) => {
-                                    *chan.write().await = Some(Channel::new(c.clone(), build_intercepted_channel(c, "")));
-                                    false
-                                },
-                                Err(_) => {
-                                    MainActions::ShowNotification(
-                                        "Failed connect to server".to_owned(), 
-                                        "Server is off or address was changed".to_owned(), 
-                                        NotificationType::Error
-                                    ).run_in_event_loop(win.clone());
-                                    true
-                                },
+                            if let Some(tls_cfg) = tls_cfg {
+                                address.is_empty() ||  match try_connect_to_server(address, tls_cfg.clone()).await {
+                                    Ok(c) => {
+                                        *chan.write().await = Some(Channel::new(c.clone(), build_intercepted_channel(c, "")));
+                                        false
+                                    },
+                                    Err(_) => {
+                                        MainActions::ShowNotification(
+                                            "Failed connect to server".to_owned(), 
+                                            "Server is off or address was changed".to_owned(), 
+                                            NotificationType::Error
+                                        ).run_in_event_loop(win.clone());
+                                        true
+                                    },
+                                }
+                            } else {
+                                MainActions::ShowNotification(
+                                    "Failed init TLS".to_owned(),
+                                    "TLS server certificate not found".to_owned(),
+                                    NotificationType::Error
+                                ).run_in_event_loop(win.clone());
+                                true
                             }
                         },
 
@@ -118,15 +123,57 @@ impl Application {
         preparing_internal.on_connect({
             let win = win_weak.clone();
             let cfg = self.cfg.clone();
+            let tls_cfg = self.tls_cfg.clone();
             let chan = self.chan.clone();
 
-            move |srv_addr| {
+            move |srv_addr, tls_cert_filepath| {
                 let win = win.clone();
                 let cfg = cfg.clone();
+                let tls_cfg = tls_cfg.clone();
                 let chan = chan.clone();
 
                 tokio::spawn(async move {
-                    match try_connect_to_server(srv_addr.to_string()).await {
+                    let tls_cfg = {
+                        let mut lock = tls_cfg.lock().await;
+
+                        if lock.is_none() && tls_cert_filepath.is_empty() {
+                            MainActions::ShowNotification(
+                                "TLS certificate not set".to_owned(),
+                                "Old TLS not found and new is not set".to_owned(),
+                                NotificationType::Error
+                            ).run_in_event_loop(win);
+                            return
+                        }
+
+                        // mv new cert to config path
+                        if !tls_cert_filepath.is_empty() {
+                            if let Err(err) = save_pem_cert(&tls_cert_filepath, true) {
+                                MainActions::ShowNotification(
+                                    "Failed save new TLS cert".to_owned(),
+                                    err.to_string(),
+                                    NotificationType::Error
+                                ).run_in_event_loop(win);
+                                return
+                            }
+                        }
+
+                        match init_tls_config() {
+                            Ok(cfg) => {
+                                *lock = Some(cfg.clone());
+                                cfg
+                            },
+                            Err(err) => {
+                                MainActions::ShowNotification(
+                                    "Failed init tls config".to_owned(),
+                                    err.to_string(),
+                                    NotificationType::Error
+                                ).run_in_event_loop(win);
+                                return
+                            }
+                        }
+                    };
+                    
+                    match try_connect_to_server(srv_addr.to_string(), tls_cfg).await {
                         Ok(c) => {
                             cfg.write()
                                 .await
