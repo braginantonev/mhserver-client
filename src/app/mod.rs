@@ -42,6 +42,7 @@ impl Application {
     }
 
     async fn init(&self) {
+        self.init_apis();
         self.init_window_callbacks();
         self.init_preparing();
         self.init_services().await;
