@@ -49,9 +49,7 @@ component SelectExtender {
     
     private property <bool> selected: FilesInternal.active-file != {};
 
-    private property <string> size: FilesInternal.active-file.size > 0
-        ? FilesInternal.active-file.size
-        : "";
+    private property <string> size: FilesInternal.active-file.size;
     
     private property <string> files-count: FilesInternal.showed-files.length < 5
         ? @tr("{} элемента", FilesInternal.showed-files.length)

@@ -12,6 +12,10 @@ component Notification inherits OpacityObject {
     private property <duration> lifetime: 4s;
     private property <length> border-width: 1px;
 
+    // to sync animation for back, hover and ext area
+    private property <length> background-height: layout.height - border-width * 2;
+    private property <length> background-width: layout.width - border-width * 2;
+
     visible-duration: 500ms;
 
     function end_lifetime() {
@@ -71,14 +75,26 @@ component Notification inherits OpacityObject {
     back := FieldBackground {
         enabled: true;
         x: progress.x + border-width;
-        height: layout.height - border-width * 2;
-        width: layout.width - border-width * 2;
+        height: background-height;
+        width: background-width;
         border-width: 0px;
     }
 
-    TouchArea {
-        width: back.width;
-        height: back.height;
+    // hover
+    FieldBackground {
+        enabled: extend_area.has-hover;
+        visible-duration: 250ms;
+        visible-easing: linear;
+        color: #80808025;
+
+        height: background-height;
+        width: background-width;
+        border-width: back.border-width;
+    }
+
+    extend_area := TouchArea {
+        width: background-width;
+        height: background-height;
         clicked => { extend(); }
     }
 
