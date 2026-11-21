@@ -42,6 +42,30 @@ component FolderNameInput inherits PopupWindow {
     }    
 }
 
+component SelectExtender {
+    private property <string> file-type: FilesInternal.active-file.is-dir 
+        ? @tr("Каталог")
+        : @tr("Файл");
+    
+    private property <bool> selected: FilesInternal.active-file != {};
+
+    private property <string> size: FilesInternal.active-file.size > 0
+        ? FilesInternal.active-file.size
+        : "";
+    
+    private property <string> files-count: FilesInternal.showed-files.length < 5
+        ? @tr("{} элемента", FilesInternal.showed-files.length)
+        : @tr("{} элементов", FilesInternal.showed-files.length);
+
+    Text {
+        overflow: elide;
+        vertical-alignment: center;
+        text: selected
+            ? @tr("Выбрано: {} ({}) {}", FilesInternal.active-file.name, file-type, size)
+            : files-count;
+        }
+}
+
 //* ----------------- File ----------------- *//
 
 component FileCeil {
@@ -453,12 +477,20 @@ export component FilesServiceField inherits FieldBackground {
 
         MenuSeparator {}
 
-        // available space label
-        Text {
-            x: fields-padding;
-            text: @tr("Доступно места") + ": " + FilesInternal.available-space;
-            vertical-alignment: center;
-            font-size: 12px;
+        HorizontalLayout {
+            padding-left: 15px;
+            padding-right: 15px;
+            alignment: space-between;
+
+            // Selector
+            SelectExtender {}
+
+            // Available space label
+            Text {
+                text: @tr("Доступно места") + ": " + FilesInternal.available-space;
+                vertical-alignment: center;
+                font-size: 12px;
+            }
         }
     }
     
