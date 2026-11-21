@@ -33,7 +33,7 @@ impl Load {
             typ,
             file,
             to_load,
-            loaded: Size(0),
+            loaded: Size::zero(),
         }
     }
 
@@ -54,13 +54,13 @@ impl Load {
     }
 
     pub fn to_load(&self) -> Size {
-        self.to_load.unwrap_or(Size(0))
+        self.to_load.unwrap_or_default()
     }
 
     /// Return loaded percent between 0.0 and 1.0 if `to_load` size is known
     pub fn completed_percent(&self) -> Option<f32> {
         match &self.to_load {
-            Some(v) => Some(self.loaded.0 as f32 / v.0 as f32),
+            Some(v) => Some(self.loaded.bytes() as f32 / v.bytes() as f32),
             None => None
         }
     }
@@ -129,7 +129,7 @@ impl Loader {
     /// Return true if `loaded` from `Load` was increased.
     pub async fn increase_loaded(&self, id: u64, v: usize) -> bool {
         if let Some(conn) = self.loads.write().await.get_mut(&id) {
-            conn.loaded.0 += v;
+            conn.loaded = Size::new(v + conn.loaded.bytes());
             return true;
         }
         false

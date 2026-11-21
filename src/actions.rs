@@ -2,13 +2,20 @@ use {
     super::{api::v3::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
     crate::{
         service::{files::loader::*, ServiceError},
+        repository::size::Size,
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,
         PreparingInternal, PreparingStates, State,
     },
-    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak},
+    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak, SharedString},
     std::rc::Rc,
     tonic::Code,
 };
+
+impl Into<SharedString> for Size {
+    fn into(self) -> SharedString {
+        SharedString::from(Into::<String>::into(self))
+    }
+}
 
 pub trait UiActions: TryFrom<ServiceError> {
     fn run(self, win: MainWindow);
@@ -127,7 +134,7 @@ impl UiActions for FilesActions {
                         name: f.name.to_shared_string(),
                         server_path: from.to_shared_string(),
                         is_dir: f.is_dir,
-                        size: f.size as i32,
+                        size: Size::new(f.size as usize).into(),
                     })
                     .collect();
                 files.sort_by_key(|k| !k.is_dir);

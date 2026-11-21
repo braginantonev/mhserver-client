@@ -7,7 +7,10 @@ use {
     crate::{
         api::v3::{self as api, files_service_client::FilesServiceClient},
         config::files::FileServiceConfig,
-        repository::ratelimit::StreamThrottle,
+        repository::{
+            ratelimit::StreamThrottle,
+            size::Size,
+        },
     }, 
     std::{
         fs::File, 
@@ -19,29 +22,6 @@ use {
 };
 
 type Client = FilesServiceClient<crate::repository::transport::Channel>;
-
-#[derive(Clone, Copy)]
-pub struct Size(usize);
-
-impl Size {
-    /// Return eye candy size. Example: `12 mb`, `1 gb` etc
-    pub fn to_string_candy(&self) -> String {
-        const EXTENSIONS: [&str; 5] = ["b", "kb", "mb", "gb", "tb"];
-        let mut size = self.0 as f32;
-        let mut i = 0;
-        while size > 1024.0 && i < EXTENSIONS.len() - 1 {
-            size = size / 1024.0;
-            i += 1;
-        }
-        format!("{:.2} {}", size as f32, EXTENSIONS[i])
-    }
-}
-
-impl Into<usize> for Size {
-    fn into(self) -> usize {
-        self.0
-    }
-}
 
 #[derive(Clone)]
 struct FilesList(Vec<api::FileInfo>);
@@ -148,7 +128,7 @@ impl FileManager {
 
     pub async fn available_space(&self, mut client: Client) -> Result<Size, ServiceError> {
         match client.get_available_disk_space(()).await {
-            Ok(v) => Ok(Size(v.get_ref().value as usize)),
+            Ok(v) => Ok(Size::new(v.get_ref().value as usize)),
             Err(err) => Err(ServiceError::from(err)),
         }
     }
@@ -284,7 +264,7 @@ impl FileManager {
             size: file_meta.len() as u64
         };
 
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size(file_meta.len() as usize)))).await;
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size::new(file_meta.len() as usize)))).await;
 
         let stream_loader = self.loader.clone();
         let chunk_size = self.cfg.chunk_size();
