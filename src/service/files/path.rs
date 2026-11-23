@@ -56,3 +56,13 @@ impl Into<Vec<String>> for ServerPath {
         self.buff
     }
 }
+
+// From 3.x requires
+pub fn dirpath_is_correct(target: &str) -> bool {
+    !target.is_empty() && !target.contains("..")
+}
+
+// From 3.x requires
+pub fn filepath_is_correct(target: &str) -> bool {
+    !target.is_empty() && !target.contains('/') && target.len() < 75
+}

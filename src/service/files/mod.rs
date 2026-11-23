@@ -230,9 +230,17 @@ impl FileManager {
         mut client: Client,
         to: Option<path::ServerPath>,
         os_file_path: PathBuf,
-    ) -> Result<tokio::task::JoinHandle<Result<(), ServiceError>>, ServiceError> {
-        let upload_to = to.unwrap_or(self.current_dir()).into();
+    ) -> Result<(), ServiceError> {
+        let upload_to: String = to.unwrap_or(self.current_dir()).into();
         let filename = os_file_path.file_name().unwrap().display().to_string();
+
+        if !path::dirpath_is_correct(&upload_to) {
+            return Err(ServiceError::new("Bad directory syntax", None, None));
+        }
+
+        if !path::filepath_is_correct(&filename) {
+            return Err(ServiceError::new("Bad filename syntax", None, None));
+        }
 
         let file = match File::open(os_file_path.clone()) {
             Ok(f) => Arc::new(f),
@@ -256,6 +264,10 @@ impl FileManager {
             }
         };
 
+        if file_meta.len() == 0 {
+            return Err(ServiceError::new("Attempt to save empty file", None, None))
+        }
+
         let conn_req = api::NewFile {
             target: Some(api::TargetFile {
                 directory: upload_to,
@@ -268,42 +280,52 @@ impl FileManager {
 
         let stream_loader = self.loader.clone();
         let chunk_size = self.cfg.chunk_size();
+        let throttle = self.stream_throttle.clone();
 
-        let mut offset: u64 = 0;
-        let stream = async_stream::stream! {
-            yield api::SaveFileRequest {
+        let (tx_stream, stream) = tokio::sync::mpsc::channel(10);
+
+        tokio::spawn(async move {
+            let mut offset: u64 = 0;
+
+            if tx_stream.send(api::SaveFileRequest {
                 info: Some(api::save_file_request::Info::Meta(conn_req)),
-            };
+            }).await.is_err() {
+                return;
+            }
 
             while offset < file_meta.len() {
+                let rl = tokio::time::sleep(throttle.duration());
+
                 let mut save_chunk = vec![0u8; chunk_size];
                 let read = file.read_at(save_chunk.as_mut_slice(), offset).expect("failed read chunk from file");
 
-                yield api::SaveFileRequest {
+                rl.await;
+
+                if tx_stream.send(api::SaveFileRequest {
                     info: Some(api::save_file_request::Info::Chunk(save_chunk[..read].to_vec()))
+                }).await.is_err() {
+                    return;
                 };
 
                 offset += chunk_size as u64;
                 if !stream_loader.increase_loaded(load_id, read).await {
-                    break
+                    return;
                 }
             }
-        }.throttle(self.stream_throttle.duration());
+        });
 
         let stream_loader = self.loader.clone();
 
-        Ok(tokio::spawn(async move {
-            match client.save_file(stream).await {
-                Ok(_) => {
-                    stream_loader.complete_load(load_id).await;
-                    Ok(())
-                },
-                Err(status) => {
-                    stream_loader.drop_load(load_id).await;
-                    Err(ServiceError::from(status))
-                }
+        match client.save_file(tokio_stream::wrappers::ReceiverStream::new(stream)).await {
+            Ok(_) => {
+                stream_loader.complete_load(load_id).await;
+                Ok(())
+            },
+            Err(status) => {
+                stream_loader.drop_load(load_id).await;
+                Err(ServiceError::from(status))
             }
-        }))
+        }
     }
 
     pub async fn download_file(
@@ -311,9 +333,17 @@ impl FileManager {
         mut client: Client,
         from: Option<String>,
         filename: String,
-    ) -> Result<tokio::task::JoinHandle<Result<(), ServiceError>>, ServiceError> {
+    ) -> Result<(), ServiceError> {
         let with_dirs = from.is_some();
         let from = from.unwrap_or(self.current_dir().into());
+
+        if !path::dirpath_is_correct(&from) {
+            return Err(ServiceError::new("Bad directory syntax", None, None));
+        }
+
+        if !path::filepath_is_correct(&filename) {
+            return Err(ServiceError::new("Bad filename syntax", None, None));
+        }
 
         let mut save_to = self.cfg.download_dir().to_path_buf();
         if with_dirs {
@@ -347,45 +377,44 @@ impl FileManager {
 
         let loader = self.loader.clone();
 
-        Ok(tokio::spawn(async move {
-            let mut stream = match client.read_file(conn_req).await {
-                Ok(res) => res.into_inner(),
-                Err(status) => return Err(ServiceError::from(status)),
+        let mut stream = match client.read_file(conn_req).await {
+            Ok(res) => res.into_inner(),
+            Err(status) => return Err(ServiceError::from(status)),
+        };
+
+        let load_id = loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
+
+        let mut download_err: Option<ServiceError> = None;
+        while let Some(chunk) = stream.next().await {
+            let chunk = match chunk {
+                Ok(c) => c,
+                Err(status) => {
+                    download_err = Some(ServiceError::from(status));
+                    break
+                }
             };
 
-            let load_id = loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
-
-            let mut download_err: Option<ServiceError> = None;
-            while let Some(chunk) = stream.next().await {
-                let chunk = match chunk {
-                    Ok(c) => c,
-                    Err(status) => {
-                        download_err = Some(ServiceError::from(status));
-                        break
-                    }
-                };
-
-                if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
-                    download_err = Some(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename));
-                    break
-                }
-
-                if !loader.increase_loaded(load_id, chunk.data.len()).await {
-                    break
-                }
+            if let Err(err) = file.write_at(&chunk.data, chunk.offset) {
+                download_err = Some(ServiceError::new("failed save file", Some(err.to_string()), None).with_desc(&filename));
+                break
             }
 
-            match download_err {
-                Some(err) => {
-                    loader.drop_load(load_id).await;
-                    Err(err)
-                }
-                None => {
-                    let _ = std::fs::rename(save_to.clone(), save_to.display().to_string().trim_end_matches(".part"));
-                    loader.complete_load(load_id).await;
-                    Ok(())
-                },
+            if !loader.increase_loaded(load_id, chunk.data.len()).await {
+                break
             }
-        }))
+        }
+
+        match download_err {
+            Some(err) => {
+                loader.drop_load(load_id).await;
+                Err(err)
+            }
+            None => {
+                let _ = std::fs::rename(save_to.clone(), save_to.display().to_string().trim_end_matches(".part"));
+                loader.complete_load(load_id).await;
+                Ok(())
+            },
+        }
+        
     }
 }

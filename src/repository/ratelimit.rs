@@ -9,6 +9,7 @@ use {
     },
 };
 
+#[derive(Clone, Copy)]
 pub struct StreamThrottle(Duration);
 
 impl StreamThrottle {
