@@ -3,12 +3,16 @@ use {
         actions::{AnyActions, FilesActions, MainActions, UiActions},
         api::v3::{files_service_client::FilesServiceClient, FilesList},
         app::Application,
-        service::files::{
-            dirs::Directory,
-            loader::LoadStatus,
-            path::ServerPath,
-            FileManager
+        service::{
+            files::{
+                dirs::Directory,
+                loader::LoadStatus,
+                path::ServerPath,
+                FileManager,
+            },
+            ServiceError,
         },
+        repository::pools::JoinHandlePool,
         FilesInternal,
         NotificationType,
     },
@@ -197,6 +201,20 @@ impl Application {
                 let service = service.clone();
                 let chan = chan.clone();
 
+                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
+
+                tokio::spawn({
+                    let handles_pool = handles_pool.clone();
+                    let win = win.clone();
+                    async move {
+                        while let Some(res) = handles_pool.get_complete().await {
+                            if let Err(err) = res {
+                                AnyActions::from(err).run_in_event_loop(win.clone());
+                            }
+                        }
+                    }
+                });
+
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
                     let current_dir = service.read().await.current_dir();
@@ -211,27 +229,14 @@ impl Application {
                         None => return,
                     };
 
-                    let mut handles = Vec::with_capacity(files.len());
-
-                    let mut lock = service.write().await;
                     for f in files {
-                        match lock.upload_file(client.clone(), Some(current_dir.clone()), f.path().to_path_buf()).await {
-                            Ok(h) => handles.push(h),
-                            Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
-                        }
-                    }
-                    drop(lock);
-
-                    for h in handles {
-                        match h.await {
-                            Ok(k) => {
-                                if let Err(err) = k {
-                                    AnyActions::from(err).run_in_event_loop(win.clone());
-                                }
-                            },
-                            Err(err) => 
-                                MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
-                        }
+                        let service = service.clone();
+                        let client = client.clone();
+                        let current_dir = current_dir.clone();
+                        
+                        handles_pool.push_future(async move {
+                            service.write().await.upload_file(client, Some(current_dir), f.path().to_path_buf()).await
+                        }).await;
                     }
                 });
             }
@@ -247,6 +252,20 @@ impl Application {
                 let service = service.clone();
                 let chan = chan.clone();
 
+                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
+
+                tokio::spawn({
+                    let handles_pool = handles_pool.clone();
+                    let win = win.clone();
+                    async move {
+                        while let Some(res) = handles_pool.get_complete().await {
+                            if let Err(err) = res {
+                                AnyActions::from(err).run_in_event_loop(win.clone());
+                            }
+                        }
+                    }
+                });
+
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
                     let current_dir = service.read().await.current_dir();
@@ -261,7 +280,6 @@ impl Application {
                         None => return,
                     };
 
-                    let mut handles = Vec::new();
                     for dir in dirs {
                         let mut files = Directory::from_recursive(dir.path()).read();
                         while let Some(files) = files.recv().await {
@@ -284,27 +302,14 @@ impl Application {
                             };
 
                             for f in files.1 {
-                                match service
-                                    .write()
-                                    .await
-                                    .upload_file(client.clone(), Some(files.0.clone()), f)
-                                    .await {
-                                    Ok(h) => handles.push(h),
-                                    Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
-                                }
-                            }
-                        }
-                    }
+                                let service = service.clone();
+                                let client = client.clone();
+                                let server_path = files.0.clone();
 
-                    for h in handles {
-                        match h.await {
-                            Ok(k) => {
-                                if let Err(err) = k {
-                                    AnyActions::from(err).run_in_event_loop(win.clone());
-                                }
-                            },
-                            Err(err) => 
-                                MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
+                                handles_pool.push_future(async move {
+                                    service.write().await.upload_file(client.clone(), Some(server_path), f).await
+                                }).await;
+                            }
                         }
                     }
                 });
@@ -323,26 +328,14 @@ impl Application {
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
-                    let resp = service
+                    if let Err(err) = service
                         .write()
                         .await
                         .download_file(client, None, filename.to_string())
-                        .await;
-
-                    match resp {
-                        Ok(h) => {
-                            match h.await {
-                                Ok(k) => {
-                                    if let Err(err) = k {
-                                        AnyActions::from(err).run_in_event_loop(win.clone());
-                                    }
-                                },
-                                Err(err) => 
-                                    MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
-                            }
-                        },
-                        Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
-                    };
+                        .await
+                    {
+                        AnyActions::from(err).run_in_event_loop(win);
+                    }
                 });
             }
         });
@@ -356,6 +349,20 @@ impl Application {
                 let win = win.clone();
                 let service = service.clone();
                 let chan = chan.clone();
+
+                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
+
+                tokio::spawn({
+                    let handle_pool = handles_pool.clone();
+                    let win = win.clone();
+                    async move {
+                        while let Some(res) = handle_pool.get_complete().await {
+                            if let Err(err) = res {
+                                AnyActions::from(err).run_in_event_loop(win.clone());
+                            }
+                        }
+                    }
+                });
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
@@ -380,27 +387,13 @@ impl Application {
                         }
                     };
 
-                    let mut handles = Vec::with_capacity(download_files.len());
-                    for file in download_files {
-                        match service
-                            .write()
-                            .await
-                            .download_file(client.clone(), Some(from.clone()), file.name.clone())
-                            .await {
-                            Ok(h) => handles.push(h),
-                            Err(err) => AnyActions::from(err).run_in_event_loop(win.clone()),
-                        }
-                    }
-
-                    for h in handles {
-                        match h.await {
-                            Ok(resp) => {
-                                if let Err(err) = resp {
-                                    AnyActions::from(err).run_in_event_loop(win.clone());
-                                }
-                            },
-                            Err(err) => MainActions::ShowNotification("Failed upload file".to_owned(), err.to_string(), NotificationType::Error).run_in_event_loop(win.clone()),
-                        };
+                    for f in download_files {
+                        let service = service.clone();
+                        let client = client.clone();
+                        let from = from.clone();
+                        handles_pool.push_future(async move {
+                            service.write().await.download_file(client, Some(from), f.name).await
+                        }).await;
                     }
                 });
             }
