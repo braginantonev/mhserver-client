@@ -289,6 +289,8 @@ impl FileManager {
             }
         };
 
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size::new(file_meta.len() as usize)))).await;
+
         if file_meta.len() == 0 {
             return Err(ServiceError::new("Attempt to save empty file", None, None))
         }
@@ -300,8 +302,6 @@ impl FileManager {
             }),
             size: file_meta.len() as u64
         };
-
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size::new(file_meta.len() as usize)))).await;
 
         let stream_loader = self.loader.clone();
         let chunk_size = self.cfg.chunk_size();
@@ -374,6 +374,8 @@ impl FileManager {
             save_to = save_to.join(&from);
         }
 
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
+
         std::fs::create_dir_all(save_to.as_path())
             .map_err(|err| ServiceError::new("Failed download file", Some(err.to_string()), None)
                 .with_desc(&from)
@@ -390,14 +392,10 @@ impl FileManager {
             name: target.clone(),
         };
 
-        let loader = self.loader.clone();
-
         let mut stream = match client.read_file(conn_req).await {
             Ok(res) => res.into_inner(),
             Err(status) => return Err(ServiceError::from(status)),
         };
-
-        let load_id = loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
 
         let mut download_err: Option<ServiceError> = None;
         while let Some(chunk) = stream.next().await {
@@ -414,19 +412,19 @@ impl FileManager {
                 break
             }
 
-            if !loader.increase_loaded(load_id, chunk.data.len()).await {
+            if !self.loader.increase_loaded(load_id, chunk.data.len()).await {
                 break
             }
         }
 
         match download_err {
             Some(err) => {
-                loader.drop_load(load_id).await;
+                self.loader.drop_load(load_id).await;
                 Err(err)
             }
             None => {
                 let _ = std::fs::rename(save_file.clone(), save_file.display().to_string().trim_end_matches(".part"));
-                loader.complete_load(load_id).await;
+                self.loader.complete_load(load_id).await;
                 Ok(())
             },
         }
