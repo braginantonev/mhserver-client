@@ -64,11 +64,10 @@ where
 
     fn run_worker(&self, res_tx: Sender<usize>) {
         let handles = self.handles.clone();
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(250));
         
         tokio::spawn(async move {
             loop {
-                interval.tick().await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                 let lock = handles.read().await;
                 if let Some(h) = lock.fetch_next() {
                     if !h.is_finished() {
