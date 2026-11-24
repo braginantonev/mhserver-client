@@ -1,4 +1,4 @@
-import { Button, HorizontalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, ScrollView } from "std-widgets.slint";
 import { SimpleButton } from "button.slint";
 import { NotificationsInternal, NotificationInfo, NotificationType } from "../globals/notification.slint";
 import { OpacityObject, MenuSeparator } from "base.slint";
@@ -168,10 +168,22 @@ component Notification inherits OpacityObject {
 }
 
 export component NotificationsBlock {
-    VerticalLayout {
-        spacing: 10px;
-        for data[i] in NotificationsInternal.active-notifications: Notification {
-            info: data;
+    Rectangle {
+        width: parent.width + 30px;
+        height: parent.height + 30px;
+        background: view.content-height > view.height ? #44444415 : transparent;
+        border-bottom-left-radius: 20px;
+        animate background {
+            duration: 500ms;
+        }
+    }
+
+    view := ScrollView {
+        VerticalLayout {
+            spacing: 10px;
+            for data[i] in NotificationsInternal.active-notifications: Notification {
+                info: data;
+            }
         }
     }
 }
