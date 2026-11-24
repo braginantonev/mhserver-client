@@ -98,5 +98,7 @@ https://[fe80::2e31:aac1:3a8e:12]:30543
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/main.png" alt="app logo" width="500"/>
+  <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/files.png" alt="app logo" width="500"/>
   <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/upload.png" alt="app logo" width="500"/>
+  <img src="https://raw.githubusercontent.com/braginantonev/mhserver-client/main/docs/screenshots/download.png" alt="app logo" width="500"/>
 </p>
