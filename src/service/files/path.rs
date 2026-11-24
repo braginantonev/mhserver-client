@@ -8,14 +8,14 @@ impl ServerPath {
         Self { buff: inner }
     }
 
-    /// Push a single directory.
+    /// Push an element to end
     pub fn push(&mut self, path: &str) {
         self.buff.push(path.to_owned());
     }
 
-    /// Pop a singe directory.
-    pub fn pop(&mut self) -> bool {
-        self.buff.pop().is_some()
+    /// Remove the last element
+    pub fn pop(&mut self) -> Option<String> {
+        self.buff.pop()
     }
 
     pub fn with(mut self, element: &str) -> Self {
@@ -28,6 +28,12 @@ impl ServerPath {
     }
 }
 
+impl From<String> for ServerPath {
+    fn from(value: String) -> Self {
+        Self { buff: value.split(std::path::MAIN_SEPARATOR).map(|s| s.to_owned()).collect() }
+    }
+}
+
 impl Default for ServerPath {
     fn default() -> Self {
         Self { buff: Vec::new() }
@@ -36,7 +42,13 @@ impl Default for ServerPath {
 
 impl ToString for ServerPath {
     fn to_string(&self) -> String {
-        let mut s = String::from("/");
+        let cap: usize = self.buff.iter().map(|s| s.len()).sum();
+
+        if cap == 0 {
+            return String::from('/')
+        }
+
+        let mut s = String::with_capacity(cap + self.count() + 1);
         for element in &self.buff {
             s.push_str(element);
             s.push('/');
