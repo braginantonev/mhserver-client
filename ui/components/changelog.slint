@@ -1,0 +1,34 @@
+import { FieldBackground } from "fields.slint";
+import { MenuSeparator } from "base.slint";
+import { ScrollView } from "std-widgets.slint";
+import { MainInternal } from "../globals/internal/main.slint";
+import { PreparingInternal } from "../globals/internal/preparing.slint";
+
+export component ChangelogWindow inherits PopupWindow {
+    in property <styled-text> text: @markdown("undefined");
+
+    FieldBackground {
+        width: parent.width;
+        height: parent.height;
+    }
+
+    HorizontalLayout {
+        spacing: 10px;
+        padding: 10px;
+
+        Text {
+            text: @tr("Что изменилось?");
+            font-size: 14pt;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        MenuSeparator {}
+
+        ScrollView {
+            StyledText {
+                text: text;
+            }
+        }
+    }
+}
