@@ -19,6 +19,8 @@ use {
     std::sync::Arc,
 };
 
+const MAX_TASKS_IN_REQ: usize = 5;
+
 impl Application {
     pub fn init_files_service(&self, service: Arc<FileManager>) {
         let internal = self.ui_window.global::<FilesInternal>();
@@ -235,7 +237,8 @@ impl Application {
                 let service = service.clone();
                 let chan = chan.clone();
 
-                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
+                let handles_pool = Arc::new(JoinHandlePool::with_capacity(MAX_TASKS_IN_REQ));
+                let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
 
                 tokio::spawn({
                     let handles_pool = handles_pool.clone();
@@ -245,6 +248,7 @@ impl Application {
                             if let Err(err) = res {
                                 AnyActions::from(err).run_in_event_loop(win.clone());
                             }
+                            sem_rx.recv().await;
                         }
                     }
                 });
@@ -277,6 +281,8 @@ impl Application {
                             };
 
                             for f in files.1 {
+                                let _ = sem_tx.send(()).await;
+
                                 let service = service.clone();
                                 let client = client.clone();
                                 let server_path = files.0.clone();
@@ -321,6 +327,7 @@ impl Application {
                 let chan = chan.clone();
 
                 let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
+                let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
 
                 tokio::spawn({
                     let handle_pool = handles_pool.clone();
@@ -330,6 +337,7 @@ impl Application {
                             if let Err(err) = res {
                                 AnyActions::from(err).run_in_event_loop(win.clone());
                             }
+                            sem_rx.recv().await;
                         }
                     }
                 });
@@ -356,9 +364,12 @@ impl Application {
                     };
 
                     for f in download_files.value {
+                        let _ = sem_tx.send(()).await;
+
                         let service = service.clone();
                         let client = client.clone();
                         let from = from.clone();
+
                         handles_pool.push_future(async move {
                             service.download_file(client, Some(from), f.name).await
                         }).await;
