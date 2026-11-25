@@ -26,6 +26,10 @@ impl ServerPath {
     pub fn count(&self) -> usize {
         self.buff.len()
     }
+
+    pub fn last(&self) -> Option<&String> {
+        self.buff.last()
+    }
 }
 
 impl From<String> for ServerPath {

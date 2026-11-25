@@ -43,10 +43,15 @@ impl FilesList {
     }
 
     // API 3.x not accept dir and file with same name, so we can don't check dir target or not
-    pub fn remove(&mut self, target: path::ServerPath) {
-        if target.count() != 0 {
-            self.value.truncate(target.count()-1); // -1 because we truncate also a last dir or file
-        }
+    pub fn remove(&mut self, target: path::ServerPath) -> Option<api::FileInfo> {
+        let target = target.last()?;
+        let target_idx = self.value
+            .iter()
+            .enumerate()
+            .find(|x| x.1.name == *target)?
+            .0;
+
+        Some(self.value.remove(target_idx))
     }
 }
 
@@ -209,7 +214,11 @@ impl FileManager {
         client.remove_dir(request).await.map_err(|st| ServiceError::from(st))?; 
         
         // remove dir without get files from server
-        Ok(self.dirs_head.write().await.files_mut().remove(target)) 
+        if self.dirs_head.write().await.files_mut().remove(target).is_none() {
+            return Err(ServiceError::new("Failed remove directory", Some("Target not found".to_owned()), None));
+        };
+
+        Ok(())
     }
 
     pub async fn remove_file(
@@ -224,8 +233,13 @@ impl FileManager {
         };
 
         client.remove_file(request).await.map_err(|st| ServiceError::from(st))?;
-        
-        Ok(self.dirs_head.write().await.files_mut().remove(target.with(&filename)))
+
+        // remove dir without get files from server
+        if self.dirs_head.write().await.files_mut().remove(target.with(&filename)).is_none() {
+            return Err(ServiceError::new("Failed remove file", Some("Target not found".to_owned()), None));
+        };
+
+        Ok(())
     }
 
     /// Get files list from server and save to local cache
