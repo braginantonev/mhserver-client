@@ -25,7 +25,7 @@ pub async fn check_update() -> Result<UpdateStatus, ServiceError> {
 
 pub async fn download_update() -> Result<(), ServiceError> {
     if !cfg!(target_os = "windows") {
-        return Err(ServiceError::new("failed download update", Some("This action available only in widnows".to_owned()), None)
+        return Err(ServiceError::new("failed download update", Some("This action available only in windows".to_owned()), None)
             .with_desc("Please use your package manager or another way to update"))
     }
 

@@ -6,6 +6,7 @@ import { PreparingStates } from "../../globals/state/enums.slint";
 import { State } from "../../globals/state/state.slint";
 import { PreparingSettings, OS } from "../../globals/settings.slint";
 import { RFDApi } from "../../globals/apis.slint";
+import { Assets } from "../../assets.slint";
 
 component FieldLayout inherits VerticalLayout {
     in property <string> header-text <=> header.text;
@@ -38,6 +39,8 @@ component CertPicker {
 
         Button {
             enabled: st.checked;
+            icon: Assets.files-icon;
+            colorize-icon: true;
             clicked => {
                 edit.text = RFDApi.pick-file();
             }   
