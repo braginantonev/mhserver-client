@@ -1,5 +1,5 @@
 use {
-    std::{collections::HashMap, sync::{Arc, atomic::{AtomicUsize, Ordering::Relaxed}}}, tokio::sync::{OnceCell, RwLock},
+    std::{collections::HashMap, sync::{Arc, atomic::{AtomicUsize, Ordering::Relaxed}}}, tokio::sync::{OnceCell, Mutex, RwLock},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -8,7 +8,7 @@ pub enum LoadKind {
     Download
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LoadState {
     Active,
     Completed,
@@ -22,7 +22,7 @@ pub type MutableParts = AtomicUsize;
 pub struct LoadInfo {
     kind: LoadKind,
     target: String,
-    parts: OnceCell<Parts>
+    parts: Option<Parts>
 }
 
 impl LoadInfo {
@@ -30,7 +30,7 @@ impl LoadInfo {
         Self { 
             kind, 
             target, 
-            parts: OnceCell::new_with(parts) 
+            parts: parts
         }
     }
 
@@ -43,11 +43,7 @@ impl LoadInfo {
     }
 
     pub fn parts(&self) -> Option<Parts> {
-        self.parts.get().map(|x| *x)
-    }
-
-    pub fn set_parts(&self, value: Parts) -> bool {
-        self.parts.set(value).is_ok()
+        self.parts
     }
 }
 
@@ -58,7 +54,9 @@ pub struct LoadStatus {
 
 impl LoadStatus {
     fn set_state(&self, value: LoadState) {
-        self.state.set(value);
+        if let Err(err) = self.state.set(value) {
+            eprintln!("failed set state ({:?}) for load: {}", value, err);
+        };
     }
 
     pub fn state(&self) -> LoadState {
@@ -108,7 +106,7 @@ pub type LoadToken = Arc<Load>;
 pub struct Loader {
     counter: AtomicUsize,
     loads: RwLock<HashMap<LoadID, Arc<Load>>>,
-    ended: RwLock<Vec<Arc<Load>>>
+    ended: Mutex<Vec<Arc<Load>>>
 }
 
 impl Loader {
@@ -116,23 +114,19 @@ impl Loader {
         Self {
             counter: AtomicUsize::new(0),
             loads: RwLock::new(HashMap::new()),
-            ended: RwLock::new(Vec::new()),
+            ended: Mutex::new(Vec::new()),
         }    
     }
 
     async fn transfer_drop_load(&self, id: LoadID, drop_state: LoadState) {
         if let Some(to_remove) = self.loads.write().await.remove(&id) {
             to_remove.status().set_state(drop_state);
-            self.ended.write().await.push(to_remove);
+            self.ended.lock().await.push(to_remove);
         }
     }
 
     fn free_id(&self) -> LoadID {
         self.counter.fetch_add(1, Relaxed)
-    }
-
-    pub async fn get_load_token(&self, id: LoadID) -> Option<LoadToken> {
-        self.loads.read().await.get(&id).map(|l| l.clone())
     }
 
     pub async fn add(&self, info: LoadInfo) -> (LoadID, LoadToken) {
@@ -143,7 +137,7 @@ impl Loader {
     }
 
     pub async fn drain_ended(&self) -> Vec<Arc<Load>> {
-        let mut lock = self.ended.write().await;
+        let mut lock = self.ended.lock().await;
         lock.drain(..).collect()
     }
 
