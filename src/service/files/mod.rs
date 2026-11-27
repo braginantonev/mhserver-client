@@ -89,7 +89,7 @@ impl ActiveDirectory {
 pub struct FileManager {
     cfg: FileServiceConfig,
     dirs_head: RwLock<ActiveDirectory>,
-    loader: Arc<loader::Loader>,
+    loader: loader::Loader,
 
     stream_throttle: StreamThrottle,
 }
@@ -101,7 +101,7 @@ impl FileManager {
         Self {
             cfg,
             dirs_head: RwLock::new(ActiveDirectory::default()),
-            loader: Arc::default(),
+            loader: loader::Loader::default(),
             stream_throttle,
         }
     }
@@ -153,16 +153,8 @@ impl FileManager {
         self.get_files(client, Some(target)).await
     }
 
-    pub async fn cancel_load(&self, id: loader::LoadID) {
-        self.loader.cancel_load(id).await;
-    }
-
-    pub async fn get_load_files(&self) -> Vec<(loader::LoadID, loader::LoadToken)> {
-        self.loader.get_active().await
-    }
-
-    pub async fn get_loaded_files(&self) -> Vec<Arc<loader::Load>> {
-        self.loader.drain_ended().await
+    pub fn loader(&self) -> &loader::Loader {
+        &self.loader
     }
 
     //* API requests

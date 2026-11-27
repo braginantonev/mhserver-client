@@ -413,6 +413,7 @@ impl Application {
                 let service = service.clone();
                 tokio::spawn(async move {
                     service
+                        .loader()
                         .cancel_load(id.parse().unwrap()) // I guarantee the string is u64
                         .await;
                 });
@@ -430,8 +431,8 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let complete = service.get_loaded_files().await;
-                    let load_files = service.get_load_files().await;
+                    let complete = service.loader().drain_ended().await;
+                    let load_files = service.loader().get_active().await;
 
                     FilesActions::UpdateLoadFiles(load_files).run_in_event_loop(win.clone());
 
