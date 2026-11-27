@@ -1,137 +1,171 @@
 use {
-    std::{collections::HashMap, sync::Arc},
-    tokio::sync::{RwLock, Mutex},
+    std::{collections::HashMap, sync::{Arc, atomic::{AtomicUsize, Ordering::Relaxed}}}, tokio::sync::{OnceCell, RwLock},
 };
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum LoadType {
+pub enum LoadKind {
     Upload,
     Download
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum LoadStatus {
+pub enum LoadState {
     Active,
     Completed,
     Dropped
 }
 
+pub type Parts = usize;
+pub type MutableParts = AtomicUsize;
+
 #[derive(Clone)]
+pub struct LoadInfo {
+    kind: LoadKind,
+    target: String,
+    parts: OnceCell<Parts>
+}
+
+impl LoadInfo {
+    pub fn new(kind: LoadKind, target: String, parts: Option<Parts>) -> Self {
+        Self { 
+            kind, 
+            target, 
+            parts: OnceCell::new_with(parts) 
+        }
+    }
+
+    pub fn kind(&self) -> LoadKind {
+        self.kind
+    }
+
+    pub fn target(&self) -> String {
+        self.target.clone()
+    }
+
+    pub fn parts(&self) -> Option<Parts> {
+        self.parts.get().map(|x| *x)
+    }
+
+    pub fn set_parts(&self, value: Parts) -> bool {
+        self.parts.set(value).is_ok()
+    }
+}
+
+pub struct LoadStatus {
+    state: OnceCell<LoadState>,
+    completed: MutableParts // count of saved or loaded parts
+}
+
+impl LoadStatus {
+    fn set_state(&self, value: LoadState) {
+        self.state.set(value);
+    }
+
+    pub fn state(&self) -> LoadState {
+        self.state.get().map(|x| *x).unwrap_or(LoadState::Active)
+    }
+
+    pub fn add_progress(&self, progress: usize) {
+        self.completed.fetch_add(progress, Relaxed);
+    }
+
+    pub fn completed(&self) -> usize {
+        self.completed.load(Relaxed)
+    }
+}
+
+impl Default for LoadStatus {
+    fn default() -> Self {
+        Self { state: OnceCell::new(), completed: AtomicUsize::new(0) }
+    }
+}
+
 pub struct Load {
+    info: LoadInfo,
     status: LoadStatus,
-    typ: LoadType,
-    file: String,
-    to_load: Option<usize>,
-    loaded: usize, // count of saved or loaded chunks
 }
 
 impl Load {
-    pub fn new(typ: LoadType, file: String, to_load: Option<usize>) -> Self {
+    pub fn new(info: LoadInfo) -> Self {
         Self {
-            status: LoadStatus::Active,
-            typ,
-            file,
-            to_load,
-            loaded: 0,
+            info,
+            status: LoadStatus::default()
         }
     }
 
-    pub fn status(&self) -> LoadStatus {
-        self.status
+    pub fn info(&self) -> &LoadInfo {
+        &self.info
     }
 
-    pub fn typ(&self) -> LoadType {
-        self.typ
-    }
-
-    pub fn file(&self) -> String {
-        self.file.clone()
-    }
-
-    pub fn loaded(&self) -> usize {
-        self.loaded
-    }
-
-    pub fn to_load(&self) -> usize {
-        self.to_load.unwrap_or_default()
-    }
-
-    /// Return loaded percent between 0.0 and 1.0 if `to_load` size is known
-    pub fn completed_percent(&self) -> Option<f32> {
-        match &self.to_load {
-            Some(v) => Some(self.loaded as f32 / *v as f32),
-            None => None
-        }
+    pub fn status(&self) -> &LoadStatus {
+        &self.status
     }
 }
 
-pub type LoadID = u64;
+pub type LoadID = usize;
+pub type LoadToken = Arc<Load>;
 
 pub struct Loader {
-    counter: Mutex<u64>,
-    loads: Arc<RwLock<HashMap<LoadID, Load>>>,
-    completed: Arc<RwLock<Vec<Load>>>,
+    counter: AtomicUsize,
+    loads: RwLock<HashMap<LoadID, Arc<Load>>>,
+    ended: RwLock<Vec<Arc<Load>>>
 }
 
 impl Loader {
     pub fn new() -> Self {
         Self {
-            loads: Arc::default(),
-            completed: Arc::default(),
-            counter: Mutex::new(0),
+            counter: AtomicUsize::new(0),
+            loads: RwLock::new(HashMap::new()),
+            ended: RwLock::new(Vec::new()),
         }    
     }
 
-    async fn transfer_load(&self, id: u64, new_status: LoadStatus) {
-        if let Some(mut to_remove) = self.loads.write().await.remove(&id) {
-            to_remove.status = new_status;
-            self.completed.write().await.push(to_remove);
+    async fn transfer_drop_load(&self, id: LoadID, drop_state: LoadState) {
+        if let Some(to_remove) = self.loads.write().await.remove(&id) {
+            to_remove.status().set_state(drop_state);
+            self.ended.write().await.push(to_remove);
         }
     }
 
-    pub async fn drain_completed(&self) -> Vec<Load> {
-        let mut lock = self.completed.write().await;
+    fn free_id(&self) -> LoadID {
+        self.counter.fetch_add(1, Relaxed)
+    }
+
+    pub async fn get_load_token(&self, id: LoadID) -> Option<LoadToken> {
+        self.loads.read().await.get(&id).map(|l| l.clone())
+    }
+
+    pub async fn add(&self, info: LoadInfo) -> (LoadID, LoadToken) {
+        let load = Arc::new(Load::new(info));
+        let id = self.free_id();
+        self.loads.write().await.insert(id, load.clone());
+        (id, load)
+    }
+
+    pub async fn drain_ended(&self) -> Vec<Arc<Load>> {
+        let mut lock = self.ended.write().await;
         lock.drain(..).collect()
     }
 
-    pub async fn get_uncompleted(&self) -> Vec<(LoadID, Load)> {
+    pub async fn get_active(&self) -> Vec<(LoadID, LoadToken)> {
         let lock = self.loads.read().await;
         lock.iter().map(|v| (*v.0, v.1.clone())).collect()
     }
 
-    pub async fn add(&self, val: Load) -> u64 {
-        let mut counter = self.counter.lock().await;
-        let id = *counter;
-
-        self.loads.write().await.insert(id, val);
-        *counter += 1;
-
-        id
-    }
-
     /// Push `Load` to completed with status `LoadStatus::Dropped`. Do nothing if `Load` not found.
     /// This is a wrap func for `Loader::drop_load()`
-    pub async fn cancel_load(&self, id: u64) {
+    pub async fn cancel_load(&self, id: LoadID) {
         self.drop_load(id).await;
     }
 
     /// Push `Load` to completed. Do nothing if `Load` not found.
-    pub async fn complete_load(&self, id: u64) {
-        self.transfer_load(id, LoadStatus::Completed).await;
+    pub async fn complete_load(&self, id: LoadID) {
+        self.transfer_drop_load(id, LoadState::Completed).await;
     }
 
     /// Push `Load` to completed with status `LoadStatus::Dropped`. Do nothing if `Load` not found.
-    pub async fn drop_load(&self, id: u64) {
-        self.transfer_load(id, LoadStatus::Dropped).await;
-    }
-
-    /// Return true if `loaded` from `Load` was increased.
-    pub async fn increase_loaded(&self, id: u64, v: usize) -> bool {
-        if let Some(conn) = self.loads.write().await.get_mut(&id) {
-            conn.loaded = v + conn.loaded;
-            return true;
-        }
-        false
+    pub async fn drop_load(&self, id: LoadID) {
+        self.transfer_drop_load(id, LoadState::Dropped).await;
     }
 }
 

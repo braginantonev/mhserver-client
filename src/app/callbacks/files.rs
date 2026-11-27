@@ -6,7 +6,7 @@ use {
         service::{
             files::{
                 dirs::Directory,
-                loader::LoadStatus,
+                loader::LoadState,
                 path::ServerPath,
                 FileManager,
             },
@@ -430,15 +430,15 @@ impl Application {
                 let service = service.clone();
 
                 tokio::spawn(async move {
-                    let load_files = service.get_load_files().await;
                     let complete = service.get_loaded_files().await;
+                    let load_files = service.get_load_files().await;
 
                     FilesActions::UpdateLoadFiles(load_files).run_in_event_loop(win.clone());
 
                     // Show downloaded files
                     complete.into_iter().for_each(|load| {
-                        match load.status() {
-                            LoadStatus::Completed => FilesActions::NotifyLoadedFile(load.file(), load.typ())
+                        match load.status().state() {
+                            LoadState::Completed => FilesActions::NotifyLoadedFile(load.info().target(), load.info().kind())
                                 .run_in_event_loop(win.clone()),
                             _ => {},
                         }

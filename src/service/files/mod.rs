@@ -153,16 +153,16 @@ impl FileManager {
         self.get_files(client, Some(target)).await
     }
 
-    pub async fn cancel_load(&self, id: u64) {
+    pub async fn cancel_load(&self, id: loader::LoadID) {
         self.loader.cancel_load(id).await;
     }
 
-    pub async fn get_load_files(&self) -> Vec<(loader::LoadID, loader::Load)> {
-        self.loader.get_uncompleted().await
+    pub async fn get_load_files(&self) -> Vec<(loader::LoadID, loader::LoadToken)> {
+        self.loader.get_active().await
     }
 
-    pub async fn get_loaded_files(&self) -> Vec<loader::Load> {
-        self.loader.drain_completed().await
+    pub async fn get_loaded_files(&self) -> Vec<Arc<loader::Load>> {
+        self.loader.drain_ended().await
     }
 
     //* API requests
@@ -302,7 +302,7 @@ impl FileManager {
             }
         };
 
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(file_meta.len() as usize))).await;
+        let (load_id, load_token) = self.loader.add(loader::LoadInfo::new(loader::LoadKind::Upload, os_file_path.display().to_string(), Some(file_meta.len() as usize))).await;
 
         if file_meta.len() == 0 {
             return Err(ServiceError::new("Attempt to save empty file", None, None))
@@ -316,7 +316,6 @@ impl FileManager {
             size: file_meta.len() as u64
         };
 
-        let stream_loader = self.loader.clone();
         let chunk_size = self.cfg.chunk_size();
         let throttle = self.stream_throttle.clone();
 
@@ -346,21 +345,17 @@ impl FileManager {
                 };
 
                 offset += chunk_size as u64;
-                if !stream_loader.increase_loaded(load_id, read).await {
-                    return;
-                }
+                load_token.status().add_progress(read);
             }
         });
 
-        let stream_loader = self.loader.clone();
-
         match client.save_file(tokio_stream::wrappers::ReceiverStream::new(stream)).await {
             Ok(_) => {
-                stream_loader.complete_load(load_id).await;
+                self.loader.complete_load(load_id).await;
                 Ok(())
             },
             Err(status) => {
-                stream_loader.drop_load(load_id).await;
+                self.loader.drop_load(load_id).await;
                 Err(ServiceError::from(status))
             }
         }
@@ -387,7 +382,7 @@ impl FileManager {
             save_to = save_to.join(&from);
         }
 
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Download, save_to.display().to_string(), None)).await;
+        let (load_id, load_token) = self.loader.add(loader::LoadInfo::new(loader::LoadKind::Download, save_to.display().to_string(), None)).await;
 
         std::fs::create_dir_all(save_to.as_path())
             .map_err(|err| ServiceError::new("Failed download file", Some(err.to_string()), None)
@@ -425,9 +420,7 @@ impl FileManager {
                 break
             }
 
-            if !self.loader.increase_loaded(load_id, chunk.data.len()).await {
-                break
-            }
+            load_token.status().add_progress(chunk.data.len());
         }
 
         match download_err {

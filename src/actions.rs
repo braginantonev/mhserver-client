@@ -106,13 +106,13 @@ pub enum FilesActions {
     /// Update files in data service. Required the files, and server path, where is this files located.
     UpdateFilesList(FilesList, String),
 
-    UpdateLoadFiles(Vec<(LoadID, Load)>),
+    UpdateLoadFiles(Vec<(LoadID, LoadToken)>),
 
     UpdateCurrentDirectory(Vec<String>),
 
     UpdateAvailableSpace(String),
 
-    NotifyLoadedFile(String, LoadType),
+    NotifyLoadedFile(String, LoadKind),
 }
 
 impl UiActions for FilesActions {
@@ -140,11 +140,11 @@ impl UiActions for FilesActions {
                     .set_load_files(ModelRc::from(Rc::new(VecModel::from_iter(
                         files.into_iter().map(|load| LoadFile {
                             id: load.0.to_shared_string(),
-                            is_upload: load.1.typ() == LoadType::Upload,
-                            name: load.1.file().to_shared_string(),
-                            progress: load.1.completed_percent().unwrap_or(1.0),
-                            to_load: size::size_to_string_candy(load.1.to_load()).into(),
-                            loaded: size::size_to_string_candy(load.1.loaded()).into(),
+                            is_upload: load.1.info().kind() == LoadKind::Upload,
+                            name: load.1.info().target().to_shared_string(),
+                            progress: load.1.info().parts().map(|all| load.1.status().completed() as f32 / all as f32).unwrap_or(1.0),
+                            to_load: size::size_to_string_candy(load.1.info().parts().unwrap_or(0)).into(),
+                            loaded: size::size_to_string_candy(load.1.status().completed()).into(),
                         }),
                     ))));
             }
@@ -163,12 +163,12 @@ impl UiActions for FilesActions {
             }
             FilesActions::NotifyLoadedFile(name, load_type) => {
                 match load_type {
-                    LoadType::Download => MainActions::ShowNotification(
+                    LoadKind::Download => MainActions::ShowNotification(
                         "File downloaded".to_owned(),
                         name,
                         NotificationType::Download,
                     ),
-                    LoadType::Upload => MainActions::ShowNotification(
+                    LoadKind::Upload => MainActions::ShowNotification(
                         "File uploaded".to_owned(),
                         name,
                         NotificationType::Upload,
