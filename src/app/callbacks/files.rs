@@ -11,7 +11,10 @@ use {
                 FileManager,
             },
         },
-        repository::pools::JoinHandlePool,
+        repository::{
+            pools::JoinHandlePool,
+            size::size_to_string_candy,
+        },
         FilesInternal,
         NotificationType,
     },
@@ -50,7 +53,7 @@ impl Application {
                     };
 
                     match service.available_space(client).await {
-                        Ok(s) => FilesActions::UpdateAvailableSpace(s.to_string_candy())
+                        Ok(s) => FilesActions::UpdateAvailableSpace(size_to_string_candy(s))
                             .run_in_event_loop(win),
                         Err(err) => AnyActions::from(err).run_in_event_loop(win),
                     };

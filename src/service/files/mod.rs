@@ -9,7 +9,6 @@ use {
         config::files::FileServiceConfig,
         repository::{
             ratelimit::StreamThrottle,
-            size::Size,
         },
     }, 
     std::{
@@ -168,9 +167,9 @@ impl FileManager {
 
     //* API requests
 
-    pub async fn available_space(&self, mut client: Client) -> Result<Size, ServiceError> {
+    pub async fn available_space(&self, mut client: Client) -> Result<usize, ServiceError> {
         match client.get_available_disk_space(()).await {
-            Ok(v) => Ok(Size::new(v.get_ref().value as usize)),
+            Ok(v) => Ok(v.get_ref().value as usize),
             Err(err) => Err(ServiceError::from(err)),
         }
     }
@@ -303,7 +302,7 @@ impl FileManager {
             }
         };
 
-        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(Size::new(file_meta.len() as usize)))).await;
+        let load_id = self.loader.add(loader::Load::new(loader::LoadType::Upload, os_file_path.display().to_string(), Some(file_meta.len() as usize))).await;
 
         if file_meta.len() == 0 {
             return Err(ServiceError::new("Attempt to save empty file", None, None))

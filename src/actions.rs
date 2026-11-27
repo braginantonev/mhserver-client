@@ -2,20 +2,14 @@ use {
     super::{api::v3::FilesList, repository::filetypes::FileTypes, File, MainWindow, NotificationType},
     crate::{
         service::{files::loader::*, ServiceError},
-        repository::size::Size,
+        repository::size,
         FileIcons, FilesInternal, LoadFile, MainInternal, NotificationInfo, NotificationsInternal,
         PreparingInternal, PreparingStates, State,
     },
-    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak, SharedString},
+    slint::{ComponentHandle, Global, ModelRc, ToSharedString, VecModel, Weak},
     std::rc::Rc,
     tonic::Code,
 };
-
-impl Into<SharedString> for Size {
-    fn into(self) -> SharedString {
-        SharedString::from(Into::<String>::into(self))
-    }
-}
 
 pub trait UiActions: TryFrom<ServiceError> {
     fn run(self, win: MainWindow);
@@ -134,7 +128,7 @@ impl UiActions for FilesActions {
                         name: f.name.to_shared_string(),
                         server_path: from.to_shared_string(),
                         is_dir: f.is_dir,
-                        size: Size::new(f.size as usize).into(),
+                        size: size::size_to_string_candy(f.size as usize).into(),
                     })
                     .collect();
                 files.sort_by_key(|k| !k.is_dir);
@@ -149,8 +143,8 @@ impl UiActions for FilesActions {
                             is_upload: load.1.typ() == LoadType::Upload,
                             name: load.1.file().to_shared_string(),
                             progress: load.1.completed_percent().unwrap_or(1.0),
-                            to_load: load.1.to_load().to_string_candy().into(),
-                            loaded: load.1.loaded().to_string_candy().into(),
+                            to_load: size::size_to_string_candy(load.1.to_load()).into(),
+                            loaded: size::size_to_string_candy(load.1.loaded()).into(),
                         }),
                     ))));
             }
