@@ -22,12 +22,28 @@ use {
     std::sync::Arc,
 };
 
-const MAX_TASKS_IN_REQ: usize = 5;
+const MAX_TASKS_IN_REQ: usize = 7;
 
 impl Application {
     pub fn init_files_service(&self, service: Arc<FileManager>) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
+
+        let files_handles_pool = Arc::new(JoinHandlePool::with_capacity(MAX_TASKS_IN_REQ));
+        let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
+
+        tokio::spawn({
+            let handles_pool = files_handles_pool.clone();
+            let win = win.clone();
+            async move {
+                while let Some(res) = handles_pool.get_complete().await {
+                    if let Err(err) = res {
+                        AnyActions::from(err).run_in_event_loop(win.clone());
+                    }
+                    sem_rx.recv().await;
+                }
+            }
+        });
 
         internal.on_update_list({
             let win = win.clone();
@@ -180,28 +196,16 @@ impl Application {
         });
 
         internal.on_upload_files({
-            let win = win.clone();
             let chan = self.chan.clone();
             let service = service.clone();
+            let handles_pool = files_handles_pool.clone();
+            let semaphore = sem_tx.clone();
 
             move || {
-                let win = win.clone();
                 let service = service.clone();
                 let chan = chan.clone();
-
-                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
-
-                tokio::spawn({
-                    let handles_pool = handles_pool.clone();
-                    let win = win.clone();
-                    async move {
-                        while let Some(res) = handles_pool.get_complete().await {
-                            if let Err(err) = res {
-                                AnyActions::from(err).run_in_event_loop(win.clone());
-                            }
-                        }
-                    }
-                });
+                let handles_pool = handles_pool.clone();
+                let semaphore = semaphore.clone();
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
@@ -218,6 +222,8 @@ impl Application {
                     };
 
                     for f in files {
+                        semaphore.send(()).await;
+
                         let service = service.clone();
                         let client = client.clone();
                         let current_dir = current_dir.clone();
@@ -234,27 +240,15 @@ impl Application {
             let win = win.clone();
             let chan = self.chan.clone();
             let service = service.clone();
+            let handles_pool = files_handles_pool.clone();
+            let semaphore = sem_tx.clone();
 
             move || {
                 let win = win.clone();
                 let service = service.clone();
                 let chan = chan.clone();
-
-                let handles_pool = Arc::new(JoinHandlePool::with_capacity(MAX_TASKS_IN_REQ));
-                let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
-
-                tokio::spawn({
-                    let handles_pool = handles_pool.clone();
-                    let win = win.clone();
-                    async move {
-                        while let Some(res) = handles_pool.get_complete().await {
-                            if let Err(err) = res {
-                                AnyActions::from(err).run_in_event_loop(win.clone());
-                            }
-                            sem_rx.recv().await;
-                        }
-                    }
-                });
+                let handles_pool = handles_pool.clone();
+                let semaphore = semaphore.clone();
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
@@ -284,7 +278,7 @@ impl Application {
                             };
 
                             for f in files.1 {
-                                let _ = sem_tx.send(()).await;
+                                let _ = semaphore.send(()).await;
 
                                 let service = service.clone();
                                 let client = client.clone();
@@ -301,20 +295,24 @@ impl Application {
         });
 
         internal.on_download_file({
-            let win = win.clone();
             let chan = self.chan.clone();
             let service = service.clone();
+            let handles_pool = files_handles_pool.clone();
+            let semaphore = sem_tx.clone();
 
             move |filename| {
-                let win = win.clone();
                 let service = service.clone();
                 let chan = chan.clone();
+                let handles_pool = handles_pool.clone();
+                let semaphore = semaphore.clone();
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
-                    if let Err(err) = service.download_file(client, None, filename.to_string()).await {
-                        AnyActions::from(err).run_in_event_loop(win);
-                    }
+                    semaphore.send(()).await;
+
+                    handles_pool.push_future(async move {
+                        service.download_file(client, None, filename.to_string()).await
+                    }).await;
                 });
             }
         });
@@ -323,27 +321,15 @@ impl Application {
             let win = win.clone();
             let chan = self.chan.clone();
             let service = service.clone();
+            let handles_pool = files_handles_pool.clone();
+            let semaphore = sem_tx.clone();
 
             move |dir_name| {
                 let win = win.clone();
                 let service = service.clone();
                 let chan = chan.clone();
-
-                let handles_pool = Arc::new(JoinHandlePool::with_capacity(25));
-                let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
-
-                tokio::spawn({
-                    let handle_pool = handles_pool.clone();
-                    let win = win.clone();
-                    async move {
-                        while let Some(res) = handle_pool.get_complete().await {
-                            if let Err(err) = res {
-                                AnyActions::from(err).run_in_event_loop(win.clone());
-                            }
-                            sem_rx.recv().await;
-                        }
-                    }
-                });
+                let handles_pool = handles_pool.clone();
+                let semaphore = semaphore.clone();
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
@@ -367,7 +353,7 @@ impl Application {
                     };
 
                     for f in download_files.value {
-                        let _ = sem_tx.send(()).await;
+                        let _ = semaphore.send(()).await;
 
                         let service = service.clone();
                         let client = client.clone();

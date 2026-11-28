@@ -1,5 +1,12 @@
 use {
-    std::{collections::HashMap, sync::{Arc, atomic::{AtomicUsize, Ordering::Relaxed}}}, tokio::sync::{OnceCell, Mutex, RwLock},
+    std::{
+        sync::{
+            atomic::{AtomicUsize, Ordering::Relaxed},
+            Arc, 
+        },
+        collections::HashMap, 
+    },
+    tokio::sync::{OnceCell, Mutex, RwLock},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -119,7 +126,9 @@ impl Loader {
     }
 
     async fn transfer_drop_load(&self, id: LoadID, drop_state: LoadState) {
+        println!("req to drop: {}", id);
         if let Some(to_remove) = self.loads.write().await.remove(&id) {
+            println!("droped {id}");
             to_remove.status().set_state(drop_state);
             self.ended.lock().await.push(to_remove);
         }

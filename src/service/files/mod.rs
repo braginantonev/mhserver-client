@@ -106,6 +106,10 @@ impl FileManager {
         }
     }
 
+    pub fn loader(&self) -> &loader::Loader {
+        &self.loader
+    }
+
     pub async fn current_dir(&self) -> path::ServerPath {
         self.dirs_head.read().await.path()
     }
@@ -151,10 +155,6 @@ impl FileManager {
     pub async fn cd(&self, client: Client, target: path::ServerPath) -> Result<FilesList, ServiceError> {
         *self.dirs_head.write().await.path_mut() = target.clone();
         self.get_files(client, Some(target)).await
-    }
-
-    pub fn loader(&self) -> &loader::Loader {
-        &self.loader
     }
 
     //* API requests
