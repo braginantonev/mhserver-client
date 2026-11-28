@@ -30,7 +30,10 @@ impl Application {
         let win = self.ui_window.as_weak();
 
         let files_handles_pool = Arc::new(JoinHandlePool::with_capacity(MAX_TASKS_IN_REQ));
-        let (sem_tx, mut sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ); // temp
+
+        // Because files handles pool is just a cycle array, I provide a semaphore
+        // To balance load
+        let (load_sem, mut load_sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ);
 
         tokio::spawn({
             let handles_pool = files_handles_pool.clone();
@@ -40,7 +43,7 @@ impl Application {
                     if let Err(err) = res {
                         AnyActions::from(err).run_in_event_loop(win.clone());
                     }
-                    sem_rx.recv().await;
+                    load_sem_rx.recv().await;
                 }
             }
         });
@@ -199,7 +202,7 @@ impl Application {
             let chan = self.chan.clone();
             let service = service.clone();
             let handles_pool = files_handles_pool.clone();
-            let semaphore = sem_tx.clone();
+            let semaphore = load_sem.clone();
 
             move || {
                 let service = service.clone();
@@ -222,7 +225,10 @@ impl Application {
                     };
 
                     for f in files {
-                        semaphore.send(()).await;
+                        if semaphore.send(()).await.is_err() {
+                            eprintln!("load sem is closed");
+                            return
+                        }
 
                         let service = service.clone();
                         let client = client.clone();
@@ -241,7 +247,7 @@ impl Application {
             let chan = self.chan.clone();
             let service = service.clone();
             let handles_pool = files_handles_pool.clone();
-            let semaphore = sem_tx.clone();
+            let semaphore = load_sem.clone();
 
             move || {
                 let win = win.clone();
@@ -278,7 +284,10 @@ impl Application {
                             };
 
                             for f in files.1 {
-                                let _ = semaphore.send(()).await;
+                                if semaphore.send(()).await.is_err() {
+                                    eprintln!("load sem is closed");
+                                    return
+                                }
 
                                 let service = service.clone();
                                 let client = client.clone();
@@ -298,7 +307,7 @@ impl Application {
             let chan = self.chan.clone();
             let service = service.clone();
             let handles_pool = files_handles_pool.clone();
-            let semaphore = sem_tx.clone();
+            let semaphore = load_sem.clone();
 
             move |filename| {
                 let service = service.clone();
@@ -308,7 +317,10 @@ impl Application {
 
                 tokio::spawn(async move {
                     let client = FilesServiceClient::new(chan.read().await.as_ref().unwrap().intercepted());
-                    semaphore.send(()).await;
+                    if semaphore.send(()).await.is_err() {
+                        eprintln!("load sem is closed");
+                        return
+                    }
 
                     handles_pool.push_future(async move {
                         service.download_file(client, None, filename.to_string()).await
@@ -322,7 +334,7 @@ impl Application {
             let chan = self.chan.clone();
             let service = service.clone();
             let handles_pool = files_handles_pool.clone();
-            let semaphore = sem_tx.clone();
+            let semaphore = load_sem.clone();
 
             move |dir_name| {
                 let win = win.clone();
@@ -353,7 +365,10 @@ impl Application {
                     };
 
                     for f in download_files.value {
-                        let _ = semaphore.send(()).await;
+                        if semaphore.send(()).await.is_err() {
+                            eprintln!("load sem is closed");
+                            return
+                        }
 
                         let service = service.clone();
                         let client = client.clone();
