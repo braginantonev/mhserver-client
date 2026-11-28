@@ -22,18 +22,17 @@ use {
     std::sync::Arc,
 };
 
-const MAX_TASKS_IN_REQ: usize = 7;
-
 impl Application {
-    pub fn init_files_service(&self, service: Arc<FileManager>) {
+    pub async fn init_files_service(&self, service: Arc<FileManager>) {
         let internal = self.ui_window.global::<FilesInternal>();
         let win = self.ui_window.as_weak();
+        let max_parallel_loads = self.cfg.read().await.max_parallel_loads();
 
-        let files_handles_pool = Arc::new(JoinHandlePool::with_capacity(MAX_TASKS_IN_REQ));
+        let files_handles_pool = Arc::new(JoinHandlePool::with_capacity(100));
 
         // Because files handles pool is just a cycle array, I provide a semaphore
         // To balance load
-        let (load_sem, mut load_sem_rx) = tokio::sync::mpsc::channel::<()>(MAX_TASKS_IN_REQ);
+        let (load_sem, mut load_sem_rx) = tokio::sync::mpsc::channel::<()>(max_parallel_loads);
 
         tokio::spawn({
             let handles_pool = files_handles_pool.clone();

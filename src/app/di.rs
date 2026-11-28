@@ -36,6 +36,6 @@ impl super::Application {
         // Files service
         let files_cfg = FileServiceConfig::new(app_cfg.download_dir(), app_cfg.server_throughput());
         let files_service = Arc::new(files::FileManager::new(files_cfg));
-        self.init_files_service(files_service);
+        self.init_files_service(files_service).await;
     }
 }

@@ -7,6 +7,7 @@ const CONFIG_FILENAME: &str = "general.conf";
 const PEM_CERT_FILENAME: &str = "rootCA.pem";
 
 const DEFAULT_SERVER_THROUGHPUT: usize = 200 * 1024 * 1024;
+const DEFAULT_MAX_PARALLEL_LOADS: usize = 5;
 
 fn config_dir() -> PathBuf {
     env::home_dir()
@@ -39,6 +40,7 @@ pub struct ApplicationConfig {
     download_directory: String,
     server_api: ServerApiConfiguration,
     server_throughput: usize,
+    max_parallel_loads: usize,
 }
 
 impl ApplicationConfig {
@@ -71,6 +73,10 @@ impl ApplicationConfig {
         if self.server_throughput == 0 {
             self.server_throughput = DEFAULT_SERVER_THROUGHPUT;
         }
+
+        if self.max_parallel_loads == 0 {
+            self.max_parallel_loads = DEFAULT_MAX_PARALLEL_LOADS;
+        }
     }
 
     pub fn server_api_config(&self) -> &ServerApiConfiguration {
@@ -88,6 +94,10 @@ impl ApplicationConfig {
     pub fn server_throughput(&self) -> usize {
         self.server_throughput
     }
+
+    pub fn max_parallel_loads(&self) -> usize {
+        self.max_parallel_loads
+    }
 }
 
 impl Default for ApplicationConfig {
@@ -96,6 +106,7 @@ impl Default for ApplicationConfig {
             download_directory: default_download_dir().display().to_string(), 
             server_api: ServerApiConfiguration::default(), 
             server_throughput: DEFAULT_SERVER_THROUGHPUT,
+            max_parallel_loads: DEFAULT_MAX_PARALLEL_LOADS,
         }
     }
 }
