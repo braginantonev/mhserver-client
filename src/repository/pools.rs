@@ -1,10 +1,17 @@
-use std::{future::Future, sync::{Arc, atomic::{AtomicUsize, Ordering::Relaxed}}};
-
-use tokio::{sync::{RwLock, mpsc::{Receiver, Sender}}, task::JoinHandle};
-
 use {
+    std::{
+        future::Future,
+        sync::{
+            atomic::{AtomicUsize, Ordering::Relaxed},
+            Arc 
+        },
+    },
     tokio::{
-        sync::{mpsc, Mutex},
+        sync::{
+            mpsc::{Receiver, Sender},
+            RwLock, mpsc, Mutex
+        },
+        task::JoinHandle,
     }
 };
 
@@ -51,7 +58,7 @@ pub struct JoinHandlePool<T: Send + 'static> {
 
 impl<T> JoinHandlePool<T>
 where 
-    T: Send + 'static 
+    T: Send + 'static
 {
     pub fn with_capacity(capacity: usize) -> Self {
         let (res_tx, res_rx) = mpsc::channel(capacity);
@@ -80,6 +87,10 @@ where
                 }
             }
         });
+    }
+
+    pub async fn close(&self) {
+        self.complete.lock().await.close();
     }
 
     pub async fn push_future<F>(&self, future: F) 
